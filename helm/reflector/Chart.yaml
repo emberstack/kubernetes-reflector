@@ -1,0 +1,20 @@
+apiVersion: v1
+appVersion: "1.0"
+description: A Helm chart to deploy Reflector
+icon: https://raw.githubusercontent.com/EmberStack/CDN/master/Projects/ES.FX/es.fx.1.0.0.0.png
+name: reflector
+version: 0.1.0
+keywords:
+- reflector
+- controller
+- copy
+- secrets
+- configmaps
+- cert-manager
+- certificates
+home: https://github.com/EmberStack/ES.Kubernetes.Reflector
+sources:
+- https://github.com/EmberStack/ES.Kubernetes.Reflector
+maintainers:
+- name: winromulus
+engine: gotpl

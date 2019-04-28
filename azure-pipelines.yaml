@@ -1,0 +1,63 @@
+name: $(Build.Number.Major).$(Date:yy)$(DayOfYear).$(Rev:r)
+
+trigger:
+  branches:
+    include:
+      - '*'
+      
+pool:
+  vmImage: 'Ubuntu-16.04'
+
+variables:
+  buildConfiguration: 'Release'
+
+steps:
+- script: |
+   mkdir -p deploy/helm
+   mkdir -p deploy/manual
+  workingDirectory: ' $(Build.ArtifactStagingDirectory)'
+  displayName: 'Create Artifacts directories'
+    
+- task: HelmInstaller@0
+  displayName: 'Install Helm'
+  inputs:
+    helmVersion: 2.13.1
+    kubectlVersion: 1.10.11
+    
+- script: 'helm lint'
+  workingDirectory: helm/reflector
+  displayName: 'helm lint'
+  
+- task: HelmDeploy@0
+  displayName: 'helm package'
+  inputs:
+    connectionType: None
+    command: package
+    chartPath: helm/reflector
+    chartVersion: '$(Build.BuildNumber)'
+    destination: '$(Build.ArtifactStagingDirectory)/deploy/helm'
+
+- script: 'helm template --namespace kube-system --name reflector reflector > $(Build.ArtifactStagingDirectory)/deploy/manual/reflector-$(Build.BuildNumber).yaml'
+  workingDirectory: helm
+  displayName: 'helm template'
+
+- task: Docker@2
+  displayName: 'Build and push image'
+  inputs:
+    containerRegistry: 'Emberstack Docker Hub'
+    repository: emberstack/es.kubernetes.reflector
+    Dockerfile: ES.Kubernetes.Reflector/Dockerfile
+    buildContext: .
+    tags: 'build-$(Build.BuildNumber)'
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact: deploy-chart'
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)/deploy/helm'
+    ArtifactName: deploy-chart
+    
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact: deploy-manual'
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)/deploy/manual'
+    ArtifactName: deploy-manual
