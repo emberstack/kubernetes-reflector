@@ -1,5 +1,4 @@
 apiVersion: v1
-appVersion: "1.0"
 description: A Helm chart to deploy Reflector
 icon: https://raw.githubusercontent.com/EmberStack/CDN/master/Projects/ES.FX/es.fx.1.0.0.0.png
 name: reflector
@@ -17,4 +16,5 @@ sources:
 - https://github.com/EmberStack/ES.Kubernetes.Reflector
 maintainers:
 - name: winromulus
+  email: helm-charts@emberstack.com
 engine: gotpl

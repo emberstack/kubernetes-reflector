@@ -6,18 +6,15 @@ Reflector includes a cert-manager extension used to automatically annotate creat
 
 ## Deployment
 
-Reflector can be deployed either manually or using Helm (recommended). Each release (found on the [Releases](https://github.com/EmberStack/ES.Kubernetes.Reflector/releases) GitHub page) contains the manual deployment file (`reflector.yaml`) file and packaged Helm chart (`reflector.tgz`).
+Reflector can be deployed either manually or using Helm (recommended).
 
 #### Deployment using Helm
 
-Use Helm to install the latest release packaged chart:
+Use Helm to install the latest released chart:
 ```shellsession
-$ helm upgrade --install reflector https://github.com/EmberStack/ES.Kubernetes.Reflector/releases/latest/download/reflector.tgz
-```
-or download the [latest](https://github.com/EmberStack/ES.Kubernetes.Reflector/releases/latest) `reflector.tgz` packaged chart and apply it:
-
-```shellsession
-$ helm upgrade --install reflector reflector.tgz
+$ helm repo add emberstack https://emberstack.github.io/helm-charts
+$ helm update
+$ helm upgrade --install reflector emberstack/reflector
 ```
 
 You can customize the values of the helm deployment by using the following Values:
@@ -43,18 +40,16 @@ You can customize the values of the helm deployment by using the following Value
 | `tolerations`                        | Toleration labels for pod assignment             | `[]`                                                    |
 | `affinity`                           | Node affinity for pod assignment                 | `{}`                                                    |
 
-
+> Find us on [Helm Hub](https://hub.helm.sh/charts/emberstack)
 
 
 #### Manual deployment
+Each release (found on the [Releases](https://github.com/EmberStack/ES.Kubernetes.Reflector/releases) GitHub page) contains the manual deployment file (`reflector.yaml`).
+
 ```shellsession
 $ kubectl apply -f https://github.com/EmberStack/ES.Kubernetes.Reflector/releases/latest/download/reflector.yaml
 ```
-or by downloading the [latest](https://github.com/EmberStack/ES.Kubernetes.Reflector/releases/latest) `reflector.yaml` file and apply it:
 
-```shellsession
-$ kubectl apply -f reflector.yaml
-```
 
 ## Usage
 
