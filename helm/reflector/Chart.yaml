@@ -16,4 +16,5 @@ sources:
 - https://github.com/EmberStack/ES.Kubernetes.Reflector
 maintainers:
 - name: winromulus
+  email: helm-charts@emberstack.com
 engine: gotpl
