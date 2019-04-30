@@ -1,5 +1,5 @@
-# Helm chart for [Reflector](https://github.com/EmberStack/ES.Kubernetes.Reflector)
-Reflector is a Kubernetes addon designed monitor changes to resources (secrets and configmaps) and reflect changes to mirror resources in the same or other namespaces.
+# Introduction
+[Reflector](https://github.com/EmberStack/ES.Kubernetes.Reflector) is a Kubernetes addon designed monitor changes to resources (secrets and configmaps) and reflect changes to mirror resources in the same or other namespaces.
 
 ### Extensions
 Reflector includes a `cert-manager` extension used to automatically annotate created secrets and allow reflection.
@@ -10,7 +10,7 @@ Please see a detailed usage guide on the [Reflector GitHub repository](https://g
 
 You can install the chart with the release name `reflector` as below:
 ```console
-$ helm install --name reflector stable/reflector
+$ helm install --name reflector emberstack/reflector
 ```
 > Note - If you do not specify a name, helm will select a name for you.
 
@@ -41,7 +41,7 @@ The configuration parameters in this section control the resources requested and
 ## Upgrading the Chart
 You can upgrade using the following command:
 ```console
-$ helm upgrade <HELM_RELEASE_NAME> stable/reflector
+$ helm upgrade <HELM_RELEASE_NAME> emberstack/reflector
 ```
 
 ## Uninstalling the Chart
