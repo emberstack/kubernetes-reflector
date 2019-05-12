@@ -1,5 +1,14 @@
 # Reflector
-Reflector is a Kubernetes addon designed monitor changes to resources (secrets and configmaps) and reflect changes to mirror resources in the same or other namespaces.
+Reflector is a Kubernetes addon designed to monitor changes to resources (secrets and configmaps) and reflect changes to mirror resources in the same or other namespaces.
+
+[![Build Status](https://dev.azure.com/emberstack/OpenSource/_apis/build/status/ES.Kubernetes.Reflector?branchName=master)](https://dev.azure.com/emberstack/OpenSource/_build/latest?definitionId=12&branchName=master)
+[![Release](https://img.shields.io/github/release/emberstack/ES.Kubernetes.Reflector.svg?style=flat-square)](https://github.com/emberstack/ES.Kubernetes.Reflector/releases/latest)
+[![GitHub Tag](https://img.shields.io/github/tag/emberstack/ES.Kubernetes.Reflector.svg?style=flat-square)](https://github.com/emberstack/ES.Kubernetes.Reflector/releases/latest)
+[![Docker Image](https://images.microbadger.com/badges/image/emberstack/es.kubernetes.reflector.svg)](https://microbadger.com/images/emberstack/es.kubernetes.reflector)
+[![Docker Version](https://images.microbadger.com/badges/version/emberstack/es.kubernetes.reflector.svg)](https://microbadger.com/images/emberstack/es.kubernetes.reflector)
+[![Docker Pulls](https://img.shields.io/docker/pulls/emberstack/es.kubernetes.reflector.svg?style=flat-square)](https://hub.docker.com/r/emberstack/es.kubernetes.reflector)
+[![Docker Stars](https://img.shields.io/docker/stars/emberstack/es.kubernetes.reflector.svg?style=flat-square)](https://hub.docker.com/r/remberstack/es.kubernetes.reflector)
+[![license](https://img.shields.io/github/license/emberstack/ES.Kubernetes.Reflector.svg?style=flat-square)](LICENSE)
 
 ### Extensions
 Reflector includes a cert-manager extension used to automatically annotate created secrets and allow reflection. See the `cert-manager` extension usage below for more details.
