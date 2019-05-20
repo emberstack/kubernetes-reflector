@@ -37,6 +37,7 @@ You can customize the values of the helm deployment by using the following Value
 | `image.tag`                          | Container image tag                              | `latest`                                                |
 | `image.pullPolicy`                   | Container image pull policy                      | `Always` if `image.tag` is `latest`, else `IfNotPresent`|
 | `extensions.certManager.enabled`     | `cert-manager` addon                             | `true`                                                  |
+| `configuration.logging.minimumLevel` | Logging minimum level                            | `Information`                                           |
 | `rbac.enabled`                       | Create and use RBAC resources                    | `true`                                                  |
 | `serviceAccount.create`              | Create ServiceAccount                            | `true`                                                  |
 | `serviceAccount.name`                | ServiceAccount name                              | _release name_                                          |
@@ -65,7 +66,7 @@ $ kubectl apply -f https://github.com/EmberStack/ES.Kubernetes.Reflector/release
 ### 1. Annotate the source secret or configmap
   
   - Add `reflector.v1.k8s.emberstack.com/reflection-allowed: "true"` to the resource annotations to permit reflection to mirrors.
-  - Add `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "<list>"` to the resource annotations to permit reflection from only the list of comma separated namespaces or regular expressions. If this annotation is omitted, all   namespaces are allowed.
+  - Add `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "<list>"` to the resource annotations to permit reflection from only the list of comma separated namespaces or regular expressions. If this annotation is omitted, all   namespaces are allowed.  
   
   Example source secret:
    ```yaml
@@ -96,6 +97,8 @@ $ kubectl apply -f https://github.com/EmberStack/ES.Kubernetes.Reflector/release
 ### 2. Annotate the mirror secret or configmap
 
   - Add `reflector.v1.k8s.emberstack.com/reflects: "<source namespace>/<source name>"` to the mirror object. The value of the annotation is the full name of the source object in `namespace/name` format.
+
+  > Note: Add `reflector.v1.k8s.emberstack.com/reflected-version: ""` to the resource annotations when doing any manual changes to the mirror (for example when deploying with `helm` or re-applying the deployment script). This will reset the reflected version or the mirror.
   
   Example mirror secret:
    ```yaml
@@ -123,7 +126,7 @@ $ kubectl apply -f https://github.com/EmberStack/ES.Kubernetes.Reflector/release
 
 ### 3. Done!
   Reflector will monitor any changes done to the source objects and copy the following fields:
-  - `data` and `type` for secrets
+  - `data` for secrets
   - `data` and `binaryData` for configmaps
   Reflector keeps track of what was copied by annotating mirrors with the source object version.
 

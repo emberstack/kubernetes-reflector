@@ -26,6 +26,7 @@ The configuration parameters in this section control the resources requested and
 | `image.tag`                          | Container image tag                              | `latest`                                                |
 | `image.pullPolicy`                   | Container image pull policy                      | `Always` if `image.tag` is `latest`, else `IfNotPresent`|
 | `extensions.certManager.enabled`     | `cert-manager` addon                             | `true`                                                  |
+| `configuration.logging.minimumLevel` | Logging minimum level                            | `Information`                                           |
 | `rbac.enabled`                       | Create and use RBAC resources                    | `true`                                                  |
 | `serviceAccount.create`              | Create ServiceAccount                            | `true`                                                  |
 | `serviceAccount.name`                | ServiceAccount name                              | _release name_                                          |

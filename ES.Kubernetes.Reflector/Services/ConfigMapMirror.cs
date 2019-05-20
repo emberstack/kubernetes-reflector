@@ -55,7 +55,6 @@ namespace ES.Kubernetes.Reflector.Services
             });
             patch.Replace(e => e.Data, source.Data);
             patch.Replace(e => e.BinaryData, source.BinaryData);
-            patch.Replace(e => e.Kind, source.Kind);
 
             await ApiClient.PatchNamespacedConfigMapAsync(new V1Patch(patch),
                 target.Metadata.Name, target.Metadata.NamespaceProperty);

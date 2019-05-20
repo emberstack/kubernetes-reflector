@@ -6,8 +6,7 @@
             "Override": {
                 "Microsoft": "Warning",
                 "Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager": "Error",
-                "System": "Warning",
-                "Quartz": "Warning"
+                "System": "Warning"
             }
         },
         "WriteTo": [
