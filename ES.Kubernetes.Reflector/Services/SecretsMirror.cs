@@ -53,8 +53,6 @@ namespace ES.Kubernetes.Reflector.Services
                 [Annotations.Reflection.ReflectedAt] = JsonConvert.SerializeObject(DateTimeOffset.UtcNow)
             });
             patch.Replace(e => e.Data, source.Data);
-            patch.Replace(e => e.Kind, source.Kind);
-            patch.Replace(e => e.Type, source.Type);
 
             await ApiClient.PatchNamespacedSecretWithHttpMessagesAsync(new V1Patch(patch),
                 target.Metadata.Name, target.Metadata.NamespaceProperty);

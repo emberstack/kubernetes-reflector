@@ -27,6 +27,8 @@ spec:
           env:
             - name: ES_Reflector__Extensions__CertManager__Enabled
               value: {{ .Values.extensions.certManager.enabled | quote }}
+            - name: ES_Serilog__MinimumLevel__Default
+              value: {{ .Values.configuration.logging.minimumLevel | quote }}
           ports:
             - name: http
               containerPort: 80
