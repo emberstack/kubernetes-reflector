@@ -10,14 +10,15 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
+  DOCKER_CLI_EXPERIMENTAL: 'enabled'
 
 steps:
 - script: |
    mkdir -p deploy/helm
    mkdir -p deploy/manual
-  workingDirectory: ' $(Build.ArtifactStagingDirectory)'
+  workingDirectory: '$(Build.ArtifactStagingDirectory)'
   displayName: 'Create Artifacts directories'
-    
+  
 - task: HelmInstaller@0
   displayName: 'Install Helm'
   inputs:
@@ -42,13 +43,37 @@ steps:
   displayName: 'helm template'
 
 - task: Docker@2
-  displayName: 'Build and push image'
+  displayName: 'Build and push amd64 image'
   inputs:
     containerRegistry: 'Emberstack Docker Hub'
     repository: emberstack/es.kubernetes.reflector
     Dockerfile: ES.Kubernetes.Reflector/Dockerfile
     buildContext: .
-    tags: 'build-$(Build.BuildNumber)'
+    tags: 'build-$(Build.BuildNumber)-amd64'
+    
+- script: 'docker run --entrypoint "/bin/cp" --rm -v $(System.DefaultWorkingDirectory):/filecopy emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)-amd64 -r /app /filecopy'
+  displayName: 'Extract built app'
+  
+- task: Docker@2
+  displayName: 'Build and push arm32v7 image'
+  inputs:
+    containerRegistry: 'Emberstack Docker Hub'
+    repository: emberstack/es.kubernetes.reflector
+    Dockerfile: ES.Kubernetes.Reflector/Dockerfile_arm32v7
+    buildContext: .
+    tags: 'build-$(Build.BuildNumber)-arm32v7'
+    
+- task: Docker@2
+  displayName: 'Docker Hub login'
+  inputs:
+    containerRegistry: 'Emberstack Docker Hub'
+    command: login
+    
+- script: |
+   docker manifest create emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber) emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)-amd64 emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)-arm32v7
+   docker manifest push emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)
+  displayName: 'Create and push multi-arch manifest'
+
 
 - task: PublishBuildArtifacts@1
   displayName: 'Publish Artifact: deploy-chart'

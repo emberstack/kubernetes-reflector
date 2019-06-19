@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
+    <RuntimeIdentifiers>linux-x64;linux-musl-x64;linux-arm</RuntimeIdentifiers>
   </PropertyGroup>
 
   <ItemGroup>

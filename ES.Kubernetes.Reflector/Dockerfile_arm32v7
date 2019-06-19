@@ -1,0 +1,8 @@
+FROM mcr.microsoft.com/dotnet/core/aspnet:2.2-stretch-slim-arm32v7 AS base
+WORKDIR /app
+EXPOSE 80
+
+FROM base AS final
+WORKDIR /app
+COPY /app .
+ENTRYPOINT ["dotnet", "ES.Kubernetes.Reflector.dll"]
