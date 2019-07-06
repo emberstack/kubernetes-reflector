@@ -11,7 +11,7 @@ Reflector is a Kubernetes addon designed to monitor changes to resources (secret
 [![license](https://img.shields.io/github/license/emberstack/ES.Kubernetes.Reflector.svg?style=flat-square)](LICENSE)
 
 
-> Supports both `amd64` and `arm`
+> Supports `amd64`, `arm` and `arm64`
 
 ### Extensions
 Reflector includes a cert-manager extension used to automatically annotate created secrets and allow reflection. See the `cert-manager` extension usage below for more details.

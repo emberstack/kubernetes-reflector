@@ -3,7 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.28803.156
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ES.Kubernetes.Reflector", "ES.Kubernetes.Reflector\ES.Kubernetes.Reflector.csproj", "{7FC880DB-5EF3-4B08-A894-8382A1FAEDE2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ES.Kubernetes.Reflector", "ES.Kubernetes.Reflector\ES.Kubernetes.Reflector.csproj", "{7FC880DB-5EF3-4B08-A894-8382A1FAEDE2}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ES.Kubernetes.Reflector.Core", "ES.Kubernetes.Reflector.Core\ES.Kubernetes.Reflector.Core.csproj", "{4D9F3F79-E4DA-47C3-B2D4-6659478AF332}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ES.Kubernetes.Reflector.CertManager", "ES.Kubernetes.Reflector.CertManager\ES.Kubernetes.Reflector.CertManager.csproj", "{D2F79489-BA06-451A-AA69-199616560299}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ES.Kubernetes.Reflector.Secrets", "ES.Kubernetes.Reflector.Secrets\ES.Kubernetes.Reflector.Secrets.csproj", "{6065E02B-04CA-4936-9D93-A5C675DDBE50}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ES.Kubernetes.Reflector.ConfigMaps", "ES.Kubernetes.Reflector.ConfigMaps\ES.Kubernetes.Reflector.ConfigMaps.csproj", "{506F914C-E14B-4097-A3B0-380239ADB29E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +23,22 @@ Global
 		{7FC880DB-5EF3-4B08-A894-8382A1FAEDE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7FC880DB-5EF3-4B08-A894-8382A1FAEDE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7FC880DB-5EF3-4B08-A894-8382A1FAEDE2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4D9F3F79-E4DA-47C3-B2D4-6659478AF332}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4D9F3F79-E4DA-47C3-B2D4-6659478AF332}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4D9F3F79-E4DA-47C3-B2D4-6659478AF332}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4D9F3F79-E4DA-47C3-B2D4-6659478AF332}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D2F79489-BA06-451A-AA69-199616560299}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D2F79489-BA06-451A-AA69-199616560299}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D2F79489-BA06-451A-AA69-199616560299}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D2F79489-BA06-451A-AA69-199616560299}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6065E02B-04CA-4936-9D93-A5C675DDBE50}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6065E02B-04CA-4936-9D93-A5C675DDBE50}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6065E02B-04CA-4936-9D93-A5C675DDBE50}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6065E02B-04CA-4936-9D93-A5C675DDBE50}.Release|Any CPU.Build.0 = Release|Any CPU
+		{506F914C-E14B-4097-A3B0-380239ADB29E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{506F914C-E14B-4097-A3B0-380239ADB29E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{506F914C-E14B-4097-A3B0-380239ADB29E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{506F914C-E14B-4097-A3B0-380239ADB29E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
