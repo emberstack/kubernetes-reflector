@@ -53,7 +53,7 @@ steps:
     tags: 'build-$(Build.BuildNumber)-amd64'
   
 - task: Docker@2
-  displayName: 'Build arm32v7 image'
+  displayName: 'Build arm32 image'
   inputs:
     containerRegistry: 'Emberstack Docker Hub'
     repository: emberstack/es.kubernetes.reflector
@@ -61,7 +61,19 @@ steps:
     buildContext: .
     command: build
     arguments: '--build-arg BASE_IMAGE=emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)-amd64 --build-arg FINAL_IMAGE=mcr.microsoft.com/dotnet/core/aspnet:2.2-stretch-slim-arm32v7'
-    tags: 'build-$(Build.BuildNumber)-arm32v7'
+    tags: 'build-$(Build.BuildNumber)-arm32'
+
+- task: Docker@2
+  displayName: 'Build arm64 image'
+  inputs:
+    containerRegistry: 'Emberstack Docker Hub'
+    repository: emberstack/es.kubernetes.reflector
+    Dockerfile: ES.Kubernetes.Reflector/Dockerfile_arch
+    buildContext: .
+    command: build
+    arguments: '--build-arg BASE_IMAGE=emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)-amd64 --build-arg FINAL_IMAGE=mcr.microsoft.com/dotnet/core/aspnet:3.0-buster-slim-arm64v8'
+    tags: 'build-$(Build.BuildNumber)-arm64'
+
 
 - task: Docker@2
   displayName: 'Push images'
@@ -71,7 +83,8 @@ steps:
     command: push
     tags: |
      build-$(Build.BuildNumber)-amd64
-     build-$(Build.BuildNumber)-arm32v7
+     build-$(Build.BuildNumber)-arm32
+     build-$(Build.BuildNumber)-arm64
     
 - task: Docker@2
   displayName: 'Docker Hub login'
@@ -80,7 +93,8 @@ steps:
     command: login
     
 - script: |
-   docker manifest create emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber) emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)-amd64 emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)-arm32v7
+   docker manifest create emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber) emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)-amd64 emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)-arm32 emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)-arm64
+   docker manifest inspect emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)
    docker manifest push emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)
   displayName: 'Create and push multi-arch manifest'
 
