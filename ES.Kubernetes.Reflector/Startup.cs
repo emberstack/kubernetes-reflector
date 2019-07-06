@@ -1,7 +1,12 @@
 ﻿using System;
-using ES.Kubernetes.Reflector.Business;
-using ES.Kubernetes.Reflector.Services;
+using System.Reflection;
+using Autofac;
+using ES.Kubernetes.Reflector.CertManager;
+using ES.Kubernetes.Reflector.ConfigMaps;
+using ES.Kubernetes.Reflector.Core;
+using ES.Kubernetes.Reflector.Secrets;
 using k8s;
+using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -9,24 +14,28 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Serilog;
 
 namespace ES.Kubernetes.Reflector
 {
     public class Startup
     {
-        public IConfiguration Configuration { get; }
         public Startup(IConfiguration configuration)
         {
-            Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(configuration).CreateLogger();
             Configuration = configuration;
         }
+
+        public IConfiguration Configuration { get; }
 
 
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
 
+            services.AddMediatR(Assembly.GetExecutingAssembly());
+
+            services.AddHealthChecks()
+                .AddCheck<CoreHealthCheck>("Core")
+                .AddCheck<CertManagerHealthCheck>("Extensions.CertManager");
 
             services.AddSingleton(s =>
             {
@@ -39,22 +48,19 @@ namespace ES.Kubernetes.Reflector
                     : KubernetesClientConfiguration.BuildConfigFromConfigFile();
             });
 
-            services.AddSingleton<IKubernetes>(s =>
-            {
-                var logger = s.GetRequiredService<ILogger<Startup>>();
-                logger.LogDebug("Initializing Kubernetes client");
-                return new k8s.Kubernetes(s.GetRequiredService<KubernetesClientConfiguration>())
-                { HttpClient = { Timeout = TimeSpan.FromMinutes(60) } };
-            });
+            services.AddTransient<IKubernetes>(s =>
+                new k8s.Kubernetes(s.GetRequiredService<KubernetesClientConfiguration>())
+                    {HttpClient = {Timeout = TimeSpan.FromMinutes(60)}});
+        }
 
-            services.AddTransient<SecretsMonitor>();
-            services.AddTransient<ConfigMapMonitor>();
-            services.AddTransient<CustomResourceDefinitionMonitor>();
-            services.AddTransient<CertManagerCertificatesMonitor>();
 
-            services.AddHostedService<SecretsMirror>();
-            services.AddHostedService<ConfigMapMirror>();
-            services.AddHostedService<CertManagerMirror>();
+        // ReSharper disable once UnusedMember.Global
+        public void ConfigureContainer(ContainerBuilder builder)
+        {
+            builder.RegisterModule<CoreModule>();
+            builder.RegisterModule<SecretsModule>();
+            builder.RegisterModule<ConfigMapsModule>();
+            builder.RegisterModule<CertManagerModule>();
         }
 
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
@@ -70,6 +76,8 @@ namespace ES.Kubernetes.Reflector
             app.UseForwardedHeaders(forwardingOptions);
 
             if (env.IsDevelopment()) app.UseDeveloperExceptionPage();
+
+            app.UseHealthChecks("/healthz");
 
             app.UseMvc();
         }
