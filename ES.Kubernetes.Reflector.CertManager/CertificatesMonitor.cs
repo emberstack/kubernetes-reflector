@@ -18,21 +18,17 @@ namespace ES.Kubernetes.Reflector.CertManager
         IRequestHandler<HealthCheckRequest<CertificatesMonitor>, bool>
     {
         private readonly BroadcastWatcher<Certificate, InternalCertificateWatcherEvent> _certificatesWatcher;
-        private readonly IKubernetes _client;
         private readonly ILogger<CertificatesMonitor> _logger;
         private readonly BroadcastWatcher<V1Secret, InternalSecretWatcherEvent> _secretsWatcher;
         private string _certificateResourceDefinitionVersion;
 
         public CertificatesMonitor(ILogger<CertificatesMonitor> logger,
             BroadcastWatcher<Certificate, InternalCertificateWatcherEvent> certificatesWatcher,
-            BroadcastWatcher<V1Secret, InternalSecretWatcherEvent> secretsWatcher,
-            IKubernetes client)
+            BroadcastWatcher<V1Secret, InternalSecretWatcherEvent> secretsWatcher)
         {
             _logger = logger;
             _certificatesWatcher = certificatesWatcher;
             _secretsWatcher = secretsWatcher;
-            _client = client;
-
 
             _secretsWatcher.OnBeforePublish = e =>
                 e.CertificateResourceDefinitionVersion = _certificateResourceDefinitionVersion;
