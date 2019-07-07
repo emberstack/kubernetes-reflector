@@ -1,11 +1,9 @@
-﻿using System;
-using System.Reflection;
+﻿using System.Reflection;
 using Autofac;
 using ES.Kubernetes.Reflector.CertManager;
 using ES.Kubernetes.Reflector.ConfigMaps;
 using ES.Kubernetes.Reflector.Core;
 using ES.Kubernetes.Reflector.Secrets;
-using k8s;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -19,8 +17,11 @@ namespace ES.Kubernetes.Reflector
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+        private readonly ILogger<Startup> _logger;
+
+        public Startup(IConfiguration configuration, ILogger<Startup> logger)
         {
+            _logger = logger;
             Configuration = configuration;
         }
 
@@ -36,21 +37,6 @@ namespace ES.Kubernetes.Reflector
             services.AddHealthChecks()
                 .AddCheck<CoreHealthCheck>("Core")
                 .AddCheck<CertManagerHealthCheck>("Extensions.CertManager");
-
-            services.AddSingleton(s =>
-            {
-                var logger = s.GetRequiredService<ILogger<Startup>>();
-                var inCluster = KubernetesClientConfiguration.IsInCluster();
-                logger.LogDebug("Building client configuration. Client is in cluster: '{inCluster}'", inCluster);
-
-                return inCluster
-                    ? KubernetesClientConfiguration.InClusterConfig()
-                    : KubernetesClientConfiguration.BuildConfigFromConfigFile();
-            });
-
-            services.AddTransient<IKubernetes>(s =>
-                new k8s.Kubernetes(s.GetRequiredService<KubernetesClientConfiguration>())
-                    {HttpClient = {Timeout = TimeSpan.FromMinutes(60)}});
         }
 
 
@@ -60,7 +46,10 @@ namespace ES.Kubernetes.Reflector
             builder.RegisterModule<CoreModule>();
             builder.RegisterModule<SecretsModule>();
             builder.RegisterModule<ConfigMapsModule>();
-            builder.RegisterModule<CertManagerModule>();
+
+            var certManagerEnabled = bool.Parse(Configuration["Reflector:Extensions:CertManager:Enabled"]);
+            _logger.LogInformation("CertManager extension enabled: {certManagerEnabled}", certManagerEnabled);
+            if (certManagerEnabled) builder.RegisterModule<CertManagerModule>();
         }
 
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
