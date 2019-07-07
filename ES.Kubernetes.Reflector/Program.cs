@@ -17,9 +17,9 @@ namespace ES.Kubernetes.Reflector
             Log.Logger = new LoggerConfiguration()
                 .ReadFrom.Configuration(new ConfigurationBuilder()
                     .SetBasePath(Directory.GetCurrentDirectory())
-                    .AddCommandLine(args ?? new string[0])
-                    .AddEnvironmentVariables("ES_")
                     .AddJsonFile("reflector.logging.json")
+                    .AddEnvironmentVariables("ES_")
+                    .AddCommandLine(args ?? new string[0])
                     .Build())
                 .CreateLogger();
 
@@ -51,9 +51,9 @@ namespace ES.Kubernetes.Reflector
                 .ConfigureAppConfiguration((ctx, builder) =>
                 {
                     builder.SetBasePath(Directory.GetCurrentDirectory());
-                    builder.AddCommandLine(args ?? new string[0]);
-                    builder.AddEnvironmentVariables("ES_");
                     builder.AddJsonFile("reflector.appsettings.json", false, true);
+                    builder.AddEnvironmentVariables("ES_");
+                    builder.AddCommandLine(args ?? new string[0]);
                 })
                 .ConfigureServices(services =>
                 {
