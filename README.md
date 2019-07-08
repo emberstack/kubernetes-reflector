@@ -25,7 +25,7 @@ Reflector can be deployed either manually or using Helm (recommended).
 Use Helm to install the latest released chart:
 ```shellsession
 $ helm repo add emberstack https://emberstack.github.io/helm-charts
-$ helm update
+$ helm repo update
 $ helm upgrade --install reflector emberstack/reflector
 ```
 

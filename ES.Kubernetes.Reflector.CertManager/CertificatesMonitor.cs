@@ -103,7 +103,7 @@ namespace ES.Kubernetes.Reflector.CertManager
             var resourceDefinition = request.Item;
 
             _certificateResourceDefinitionVersion = request.Item.Spec.Version;
-            _logger.LogInformation("Updating watchers for {kind} version {version}",
+            _logger.LogDebug("Updating watchers for {kind} version {version}",
                 CertManagerConstants.CertificateKind, request.Item.Spec.Version);
 
             await _certificatesWatcher.Stop();
