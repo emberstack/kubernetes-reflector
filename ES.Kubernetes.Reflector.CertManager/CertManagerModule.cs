@@ -1,4 +1,5 @@
 ﻿using Autofac;
+using ES.Kubernetes.Reflector.Core.Health;
 
 namespace ES.Kubernetes.Reflector.CertManager
 {
@@ -6,8 +7,9 @@ namespace ES.Kubernetes.Reflector.CertManager
     {
         protected override void Load(ContainerBuilder builder)
         {
-            builder.RegisterType<CertificateSecretAnnotator>().AsImplementedInterfaces();
-            builder.RegisterType<CertificatesMonitor>().AsImplementedInterfaces().SingleInstance();
+            builder.RegisterType<SecretEtcher>().AsImplementedInterfaces().SingleInstance();
+            builder.RegisterType<Monitor>().AsImplementedInterfaces().AsSelf().SingleInstance();
+            builder.AddHealthCheck<Monitor>();
         }
     }
 }

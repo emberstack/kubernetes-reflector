@@ -7,6 +7,7 @@ using ES.Kubernetes.Reflector.CertManager.Constants;
 using ES.Kubernetes.Reflector.CertManager.Events;
 using ES.Kubernetes.Reflector.CertManager.Resources;
 using ES.Kubernetes.Reflector.Core.Constants;
+using ES.Kubernetes.Reflector.Core.Resources;
 using k8s;
 using k8s.Models;
 using MediatR;
@@ -17,14 +18,14 @@ using Newtonsoft.Json.Linq;
 
 namespace ES.Kubernetes.Reflector.CertManager
 {
-    public class CertificateSecretAnnotator :
+    public class SecretEtcher :
         INotificationHandler<InternalCertificateWatcherEvent>,
         INotificationHandler<InternalSecretWatcherEvent>
     {
         private readonly IKubernetes _client;
-        private readonly ILogger<CertificateSecretAnnotator> _logger;
+        private readonly ILogger<SecretEtcher> _logger;
 
-        public CertificateSecretAnnotator(ILogger<CertificateSecretAnnotator> logger, IKubernetes client)
+        public SecretEtcher(ILogger<SecretEtcher> logger, IKubernetes client)
         {
             _logger = logger;
             _client = client;
@@ -38,10 +39,11 @@ namespace ES.Kubernetes.Reflector.CertManager
             if (notification.Item.Spec == null) return;
 
             var certificate = notification.Item;
+            var certificateId = KubernetesObjectId.For(certificate.Metadata);
+            var secretId = new KubernetesObjectId(certificateId.Namespace, certificate.Spec.SecretName);
 
-            _logger.LogDebug("Certificate {certNs}/{certName} has secret {secretNs}/{secretName}",
-                certificate.Metadata.NamespaceProperty, certificate.Metadata.Name,
-                certificate.Metadata.NamespaceProperty, certificate.Spec.SecretName);
+            _logger.LogDebug("{kind} {@certificateId} has secret {@secretId}",
+                certificate.Kind, certificateId, secretId);
             V1Secret secret = null;
             try
             {
@@ -50,8 +52,7 @@ namespace ES.Kubernetes.Reflector.CertManager
             }
             catch (HttpOperationException ex) when (ex.Response.StatusCode == HttpStatusCode.NotFound)
             {
-                _logger.LogDebug("Could not find matching secret {secretNs}/{secretName}",
-                    certificate.Metadata.NamespaceProperty, certificate.Spec.SecretName);
+                _logger.LogDebug("Could not find matching secret {@secretId}", secretId);
             }
 
             if (secret != null) await Annotate(secret, certificate);
@@ -62,14 +63,15 @@ namespace ES.Kubernetes.Reflector.CertManager
             if (notification.Type != WatchEventType.Added && notification.Type != WatchEventType.Modified) return;
 
             var secret = notification.Item;
+            var secretId = KubernetesObjectId.For(secret.Metadata);
             var metadata = secret.Metadata;
             if (metadata.Labels == null) return;
 
             if (metadata.Labels.TryGetValue(CertManagerConstants.CertificateNameLabel, out var certificateName))
             {
-                _logger.LogDebug("Secret {secretNs}/{secretName} belongs to certificate {certNs}/{certName}",
-                    metadata.NamespaceProperty, metadata.Name,
-                    metadata.NamespaceProperty, certificateName);
+                var certificateId = new KubernetesObjectId(secretId.Namespace, certificateName);
+                _logger.LogDebug("{kind} {@certificateId} has secret {@secretId}",
+                    CertManagerConstants.CertificateKind, certificateId, secretId);
 
                 Certificate certificate = null;
                 try
@@ -82,8 +84,8 @@ namespace ES.Kubernetes.Reflector.CertManager
                 }
                 catch (HttpOperationException exception) when (exception.Response.StatusCode == HttpStatusCode.NotFound)
                 {
-                    _logger.LogDebug("Could not find certificate {certNs}/{certName}",
-                        metadata.NamespaceProperty, certificateName);
+                    _logger.LogDebug("Could not find {kind} {@id}",
+                        CertManagerConstants.CertificateKind, certificateId);
                 }
 
                 if (certificate != null) await Annotate(secret, certificate);
@@ -93,6 +95,9 @@ namespace ES.Kubernetes.Reflector.CertManager
 
         private async Task Annotate(V1Secret secret, Certificate certificate)
         {
+            var secretId = KubernetesObjectId.For(secret.Metadata);
+            var certificateId = KubernetesObjectId.For(certificate.Metadata);
+
             var secretAnnotations =
                 new Dictionary<string, string>(secret.Metadata.Annotations ?? new Dictionary<string, string>());
             var original = secretAnnotations.ToDictionary(s => s.Key, s => s.Value);
@@ -118,6 +123,14 @@ namespace ES.Kubernetes.Reflector.CertManager
                 {
                     Annotations.CertManagerCertificate.SecretReflectionAllowedNamespaces,
                     Annotations.Reflection.AllowedNamespaces
+                },
+                {
+                    Annotations.CertManagerCertificate.SecretReflectionAutoEnabled,
+                    Annotations.Reflection.AutoEnabled
+                },
+                {
+                    Annotations.CertManagerCertificate.SecretReflectionAutoNamespaces,
+                    Annotations.Reflection.AutoNamespaces
                 }
             });
 
@@ -127,21 +140,23 @@ namespace ES.Kubernetes.Reflector.CertManager
                 secretAnnotations.All(s => original[s.Key] == s.Value))
             {
                 _logger.LogDebug(
-                    "Secret {secretNs}/{secretName} matches certificate {certNs}/{certName} reflection annotations",
-                    secret.Metadata.NamespaceProperty, secret.Metadata.Name,
-                    certificate.Metadata.NamespaceProperty, certificate.Metadata.Name);
+                    "{secretKind} {@secretId} matches {certificateKind} {@certificateId} annotations",
+                    secret.Kind, secretId, certificate.Kind, certificateId, Annotations.Prefix);
                 return;
             }
 
-            _logger.LogInformation(
-                "Annotating secret {secretNamespace}/{secretName} to match certificate {certificateNamespace}/{certificateName} reflection annotations",
-                secret.Metadata.NamespaceProperty, secret.Metadata.Name,
-                certificate.Metadata.NamespaceProperty, certificate.Metadata.Name);
+            _logger.LogTrace(
+                "Patching {secretKind} {@secretId} to match {certificateKind} {@certificateId} {reflectorPrefix} annotations",
+                secret.Kind, secretId, certificate.Kind, certificateId, Annotations.Prefix);
 
             var patch = new JsonPatchDocument<V1Secret>();
             patch.Replace(e => e.Metadata.Annotations, secretAnnotations);
             await _client.PatchNamespacedSecretWithHttpMessagesAsync(new V1Patch(patch),
                 secret.Metadata.Name, secret.Metadata.NamespaceProperty);
+
+            _logger.LogInformation(
+                "Patched {secretKind} {@secretId} to match {certificateKind} {@certificateId} {reflectorPrefix} annotations",
+                secret.Kind, secretId, certificate.Kind, certificateId, Annotations.Prefix);
         }
     }
 }

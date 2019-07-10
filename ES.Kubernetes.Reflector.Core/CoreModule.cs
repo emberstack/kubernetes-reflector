@@ -1,7 +1,6 @@
 ﻿using System;
 using Autofac;
 using ES.Kubernetes.Reflector.Core.Monitoring;
-using ES.Kubernetes.Reflector.Core.Monitors;
 using k8s;
 using Microsoft.Extensions.Logging;
 
@@ -11,8 +10,8 @@ namespace ES.Kubernetes.Reflector.Core
     {
         protected override void Load(ContainerBuilder builder)
         {
-            builder.RegisterGeneric(typeof(BroadcastWatcher<,>));
-            builder.RegisterGeneric(typeof(BroadcastWatcher<>));
+            builder.RegisterGeneric(typeof(ManagedWatcher<>));
+            builder.RegisterGeneric(typeof(ManagedWatcher<,>));
 
 
             builder.Register(s =>
@@ -28,11 +27,6 @@ namespace ES.Kubernetes.Reflector.Core
 
             builder.Register(s => new k8s.Kubernetes(s.Resolve<KubernetesClientConfiguration>())
                 {HttpClient = {Timeout = TimeSpan.FromMinutes(60)}}).As<k8s.Kubernetes>().As<IKubernetes>();
-
-
-            builder.RegisterType<SecretsMonitor>().AsImplementedInterfaces().SingleInstance();
-            builder.RegisterType<ConfigMapMonitor>().AsImplementedInterfaces().SingleInstance();
-            builder.RegisterType<CustomResourceDefinitionsMonitor>().AsImplementedInterfaces().SingleInstance();
         }
     }
 }

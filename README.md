@@ -35,7 +35,6 @@ You can customize the values of the helm deployment by using the following Value
 | ------------------------------------ | ------------------------------------------------ | ------------------------------------------------------- |
 | `nameOverride`                       | Overrides release name                           | `""`                                                    |
 | `fullnameOverride`                   | Overrides release fullname                       | `""`                                                    |
-| `replicaCount`                       | Number of replica.                               | `1`                                                     |
 | `image.repository`                   | Container image repository                       | `emberstack/es.kubernetes.reflector`                    |
 | `image.tag`                          | Container image tag                              | `latest`                                                |
 | `image.pullPolicy`                   | Container image pull policy                      | `Always` if `image.tag` is `latest`, else `IfNotPresent`|
@@ -69,7 +68,16 @@ $ kubectl apply -f https://github.com/EmberStack/ES.Kubernetes.Reflector/release
 ### 1. Annotate the source secret or configmap
   
   - Add `reflector.v1.k8s.emberstack.com/reflection-allowed: "true"` to the resource annotations to permit reflection to mirrors.
-  - Add `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "<list>"` to the resource annotations to permit reflection from only the list of comma separated namespaces or regular expressions. If this annotation is omitted, all   namespaces are allowed.  
+  - Add `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "<list>"` to the resource annotations to permit reflection from only the list of comma separated namespaces or regular expressions. If this annotation is omitted or is empty, all namespaces are allowed.
+
+  #### Automatic mirror creation:
+  Reflector can create mirrors with the same name in other namespaces automatically. The following annotations control if and how the mirrors are created:
+  - Add `reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"` to the resource annotations to automatically create mirrors in other namespaces. Note: Requires `reflector.v1.k8s.emberstack.com/reflection-allowed` to be `true` since mirrors need to able to reflect the source.
+  - Add `reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "<list>"` to the resource annotations specify in which namespaces to automatically create mirrors. If this annotation is omitted or is empty, all namespaces are allowed. Note: Namespaces in this list will also be checked by `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces` since mirrors need to be in namespaces from where reflection is permitted.
+
+  > Important: If the `source` is deleted, automatic mirrors are deleted. Also if either reflection or automirroring is turned off or the automatic mirror's namespace is no longer a valid match for the allowed namespaces, the automatic mirror is deleted.
+
+  > Important: Reflector will skip any conflicting resource when creating auto-mirrors. If there is already a resource with the source's name in a namespace where an automatic mirror is to be created, that namespace is skipped and logged as a warning.
   
   Example source secret:
    ```yaml
@@ -101,7 +109,7 @@ $ kubectl apply -f https://github.com/EmberStack/ES.Kubernetes.Reflector/release
 
   - Add `reflector.v1.k8s.emberstack.com/reflects: "<source namespace>/<source name>"` to the mirror object. The value of the annotation is the full name of the source object in `namespace/name` format.
 
-  > Note: Add `reflector.v1.k8s.emberstack.com/reflected-version: ""` to the resource annotations when doing any manual changes to the mirror (for example when deploying with `helm` or re-applying the deployment script). This will reset the reflected version or the mirror.
+  > Note: Add `reflector.v1.k8s.emberstack.com/reflected-version: ""` to the resource annotations when doing any manual changes to the mirror (for example when deploying with `helm` or re-applying the deployment script). This will reset the reflected version of the mirror.
   
   Example mirror secret:
    ```yaml
@@ -137,10 +145,11 @@ $ kubectl apply -f https://github.com/EmberStack/ES.Kubernetes.Reflector/release
 
 ## (Optional) `cert-manager` extension
 Reflector can automatically annotate secrets created by cert-manager by annotating the `Certificate` object. This allows for issued certificates (example: wildcard certificates) to be reused in other namespaces and permit automatic updates of mirrors on certificate renewal.
-
   
   - Add `reflector.v1.k8s.emberstack.com/secret-reflection-allowed` to the certificate annotations. Reflector will automatically annotate the resulting secret with `reflector.v1.k8s.emberstack.com/reflection-allowed`.
-  - Add `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "<list>"` to the certificate annotations. Reflector will automatically annotate the resulting secret with `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces`.
+  - Add `reflector.v1.k8s.emberstack.com/secret-reflection-allowed-namespaces: "<list>"` to the certificate annotations. Reflector will automatically annotate the resulting secret with `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces`.
+  - Add `reflector.v1.k8s.emberstack.com/secret-reflection-auto-enabled: "true"` to the certificate annotations. Reflector will automatically annotate the resulting secret with `reflector.v1.k8s.emberstack.com/reflection-auto-enabled`.
+  - Add `reflector.v1.k8s.emberstack.com/secret-reflection-auto-namespaces: "<list>"` to the certificate annotations. Reflector will automatically annotate the resulting secret with `reflector.v1.k8s.emberstack.com/reflection-auto-namespaces`.
 
 
 In the following example, the generated secret `certificate-secret` will be annotated with the `reflector.v1.k8s.emberstack.com/reflection-allowed` and `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces` based on the certificate annotations.

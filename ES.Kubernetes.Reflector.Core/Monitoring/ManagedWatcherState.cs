@@ -1,6 +1,6 @@
 ﻿namespace ES.Kubernetes.Reflector.Core.Monitoring
 {
-    public enum BroadcastWatcherState
+    public enum ManagedWatcherState
     {
         Stopped,
         Stopping,
