@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading.Tasks;
 using Autofac.Extensions.DependencyInjection;
+using ES.Kubernetes.Reflector.Core.Resources;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -21,6 +22,7 @@ namespace ES.Kubernetes.Reflector
                     .AddEnvironmentVariables("ES_")
                     .AddCommandLine(args ?? new string[0])
                     .Build())
+                .Destructure.ByTransforming<KubernetesObjectId>(s => s.ToString())
                 .CreateLogger();
 
             try

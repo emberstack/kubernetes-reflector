@@ -4,41 +4,63 @@ using System.Threading.Tasks;
 using ES.Kubernetes.Reflector.Core.Events;
 using ES.Kubernetes.Reflector.Core.Queuing;
 using k8s;
-using MediatR;
 using Microsoft.Rest;
 
 namespace ES.Kubernetes.Reflector.Core.Monitoring
 {
-    public class BroadcastWatcher<TResource> : BroadcastWatcher<TResource, WatcherEvent<TResource>>
-        where TResource : IKubernetesObject
+    public class ManagedWatcher<TResource> : ManagedWatcher<TResource, WatcherEvent<TResource>>
+        where TResource : class, IKubernetesObject
     {
-        public BroadcastWatcher(IMediator mediator, IKubernetes apiClient) : base(mediator, apiClient)
+        public ManagedWatcher(IKubernetes apiClient) : base(apiClient)
         {
         }
     }
 
 
-    public class BroadcastWatcher<TResource, TNotification>
-        where TResource : IKubernetesObject
+    public class ManagedWatcher<TResource, TNotification>
+        where TResource : class, IKubernetesObject
         where TNotification : WatcherEvent<TResource>, new()
     {
-        private readonly IKubernetes _apiClient;
+        private readonly IKubernetes _client;
         private readonly FeederQueue<TNotification> _queue;
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
+        private Func<TNotification, Task> _eventHandlerFactory;
         private bool _isMonitoring;
         private Func<IKubernetes, Task<HttpOperationResponse>> _requestFactory;
         private Watcher<TResource> _watcher;
         public Action<TNotification> OnBeforePublish;
 
-        public Action<BroadcastWatcher<TResource, TNotification>, BroadcastWatcherStateUpdate> OnStateChanged;
+        public Func<ManagedWatcher<TResource, TNotification>, ManagedWatcherStateUpdate, Task> OnStateChanged;
 
-        public BroadcastWatcher(IMediator mediator, IKubernetes apiClient)
+        public ManagedWatcher(IKubernetes client)
         {
-            _apiClient = apiClient;
-            _queue = new FeederQueue<TNotification>(item => mediator.Publish(item));
+            _client = client;
+            _queue = new FeederQueue<TNotification>(item => EventHandlerFactory?.Invoke(item) ?? Task.CompletedTask);
         }
 
         public bool IsFaulted { get; set; }
+
+
+        public Func<TNotification, Task> EventHandlerFactory
+        {
+            get => _eventHandlerFactory;
+            set
+            {
+                try
+                {
+                    _semaphore.Wait();
+                    if (_isMonitoring)
+                        throw new InvalidOperationException(
+                            $"{nameof(EventHandlerFactory)} cannot be set while watcher is started.");
+                    _eventHandlerFactory = value;
+                }
+                finally
+                {
+                    _semaphore.Release();
+                }
+            }
+        }
+
 
         public Func<IKubernetes, Task<HttpOperationResponse>> RequestFactory
         {
@@ -50,7 +72,7 @@ namespace ES.Kubernetes.Reflector.Core.Monitoring
                     _semaphore.Wait();
                     if (_isMonitoring)
                         throw new InvalidOperationException(
-                            $"{nameof(RequestFactory)} cannot be set while monitor is running.");
+                            $"{nameof(RequestFactory)} cannot be set while watcher is started.");
                 }
                 finally
                 {
@@ -66,12 +88,12 @@ namespace ES.Kubernetes.Reflector.Core.Monitoring
         {
             await Stop();
 
-            OnStateChanged?.Invoke(this, new BroadcastWatcherStateUpdate {State = BroadcastWatcherState.Starting});
+            OnStateChanged?.Invoke(this, new ManagedWatcherStateUpdate {State = ManagedWatcherState.Starting});
 
             try
             {
                 _semaphore.Wait();
-                var request = await _requestFactory(_apiClient);
+                var request = await _requestFactory(_client);
 
                 _watcher = request.Watch<TResource>((eventType, item) =>
                 {
@@ -86,8 +108,8 @@ namespace ES.Kubernetes.Reflector.Core.Monitoring
             catch (Exception e)
             {
                 IsFaulted = true;
-                OnStateChanged?.Invoke(this, new BroadcastWatcherStateUpdate
-                    {State = BroadcastWatcherState.Faulted, Exception = e});
+                OnStateChanged?.Invoke(this, new ManagedWatcherStateUpdate
+                    {State = ManagedWatcherState.Faulted, Exception = e});
                 throw;
             }
             finally
@@ -96,36 +118,36 @@ namespace ES.Kubernetes.Reflector.Core.Monitoring
             }
 
 
-            OnStateChanged?.Invoke(this, new BroadcastWatcherStateUpdate {State = BroadcastWatcherState.Started});
+            OnStateChanged?.Invoke(this, new ManagedWatcherStateUpdate {State = ManagedWatcherState.Started});
         }
 
         private void OnWatcherClosed()
         {
-            OnStateChanged?.Invoke(this, new BroadcastWatcherStateUpdate {State = BroadcastWatcherState.Closed});
+            OnStateChanged?.Invoke(this, new ManagedWatcherStateUpdate {State = ManagedWatcherState.Closed});
         }
 
         private void OnWatcherError(Exception e)
         {
             IsFaulted = true;
             OnStateChanged?.Invoke(
-                this, new BroadcastWatcherStateUpdate {State = BroadcastWatcherState.Faulted, Exception = e});
+                this, new ManagedWatcherStateUpdate {State = ManagedWatcherState.Faulted, Exception = e});
         }
 
-        public Task Stop()
+        public async Task Stop()
         {
             IsFaulted = false;
             try
             {
                 _semaphore.Wait();
-                if (!_isMonitoring) return Task.CompletedTask;
-                OnStateChanged?.Invoke(this, new BroadcastWatcherStateUpdate {State = BroadcastWatcherState.Stopping});
+                if (!_isMonitoring) return;
+                OnStateChanged?.Invoke(this, new ManagedWatcherStateUpdate {State = ManagedWatcherState.Stopping});
                 _isMonitoring = false;
 
                 _watcher.OnError -= OnWatcherError;
                 _watcher.OnClosed -= OnWatcherClosed;
                 _watcher?.Dispose();
 
-                _queue.Clear();
+                await _queue.WaitAndClear();
             }
             finally
             {
@@ -133,8 +155,7 @@ namespace ES.Kubernetes.Reflector.Core.Monitoring
             }
 
 
-            OnStateChanged?.Invoke(this, new BroadcastWatcherStateUpdate {State = BroadcastWatcherState.Stopped});
-            return Task.CompletedTask;
+            OnStateChanged?.Invoke(this, new ManagedWatcherStateUpdate {State = ManagedWatcherState.Stopped});
         }
     }
 }

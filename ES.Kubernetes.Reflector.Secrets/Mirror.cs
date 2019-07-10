@@ -1,49 +1,89 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ES.Kubernetes.Reflector.Core.Constants;
-using ES.Kubernetes.Reflector.Core.Events;
-using ES.Kubernetes.Reflector.Core.Reflection;
+using ES.Kubernetes.Reflector.Core.Mirroring;
+using ES.Kubernetes.Reflector.Core.Monitoring;
 using ES.Kubernetes.Reflector.Core.Resources;
 using k8s;
 using k8s.Models;
-using MediatR;
 using Microsoft.AspNetCore.JsonPatch;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Rest;
 using Newtonsoft.Json;
 
 namespace ES.Kubernetes.Reflector.Secrets
 {
-    public class Mirror : ResourceReflector<V1Secret>, INotificationHandler<WatcherEvent<V1Secret>>
+    public class Mirror : ResourceMirror<V1Secret>, IHostedService, IHealthCheck
     {
-        private readonly ILogger<Mirror> _logger;
-
-        private readonly ConcurrentDictionary<KubernetesObjectId, List<KubernetesObjectId>> _mirrors =
-            new ConcurrentDictionary<KubernetesObjectId, List<KubernetesObjectId>>();
-
-        public Mirror(ILogger<Mirror> logger, IKubernetes client) : base(logger, client)
+        public Mirror(ILogger<Mirror> logger, IKubernetes client,
+            ManagedWatcher<V1Secret> secretWatcher,
+            ManagedWatcher<V1Namespace> namespaceWatcher)
+            : base(logger, client, secretWatcher, namespaceWatcher)
         {
-            _logger = logger;
         }
 
-        public async Task Handle(WatcherEvent<V1Secret> request, CancellationToken cancellationToken)
+
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
-            await OnWatcherEvent(request);
+            await WatchersStart();
         }
 
-        protected override Task<V1Secret> GetRequest(IKubernetes apiClient, string name, string ns)
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
-            return apiClient.ReadNamespacedSecretAsync(name, ns);
+            await WatchersStop();
         }
 
-        protected override V1ObjectMeta GetMetadata(V1Secret resource)
+
+        protected override async Task<HttpOperationResponse> OnResourceWatcher(IKubernetes client)
         {
-            return resource.Metadata;
+            return await client.ListSecretForAllNamespacesWithHttpMessagesAsync(watch: true);
         }
 
-        protected override async Task Patch(V1Secret target, V1Secret source)
+        protected override async Task<V1Secret> OnResourceAutoReflect(IKubernetes client, V1Secret item, string ns)
+        {
+            return await client.CreateNamespacedSecretAsync(new V1Secret
+            {
+                ApiVersion = item.ApiVersion,
+                Kind = item.Kind,
+                Type = item.Type,
+                Data = item.Data,
+                Metadata = new V1ObjectMeta
+                {
+                    Name = item.Metadata.Name,
+                    NamespaceProperty = ns,
+                    Annotations = new Dictionary<string, string>
+                    {
+                        [Annotations.Reflection.AutoReflects] = KubernetesObjectId.For(item.Metadata).ToString(),
+                        [Annotations.Reflection.Reflects] = KubernetesObjectId.For(item.Metadata).ToString(),
+                        [Annotations.Reflection.ReflectedVersion] = item.Metadata.ResourceVersion,
+                        [Annotations.Reflection.ReflectedAt] = JsonConvert.SerializeObject(DateTimeOffset.UtcNow)
+                    }
+                }
+            }, ns);
+        }
+
+        protected override Task OnResourceDelete(IKubernetes client, string name, string ns)
+        {
+            return client.DeleteNamespacedSecretAsync(name, ns);
+        }
+
+        protected override async Task<IList<V1Secret>> OnResourceList(IKubernetes client, string labelSelector = null,
+            string fieldSelector = null)
+        {
+            return (await client.ListSecretForAllNamespacesAsync(fieldSelector: fieldSelector,
+                labelSelector: labelSelector)).Items;
+        }
+
+        protected override Task<V1Secret> OnResourceGet(IKubernetes client, string name, string ns)
+        {
+            return client.ReadNamespacedSecretAsync(name, ns);
+        }
+
+        protected override async Task OnResourcePatch(IKubernetes client, V1Secret target, V1Secret source)
         {
             var patch = new JsonPatchDocument<V1Secret>();
             patch.Replace(e => e.Metadata.Annotations, new Dictionary<string, string>(target.Metadata.Annotations)
@@ -53,8 +93,13 @@ namespace ES.Kubernetes.Reflector.Secrets
             });
             patch.Replace(e => e.Data, source.Data);
 
-            await Client.PatchNamespacedSecretWithHttpMessagesAsync(new V1Patch(patch),
+            await client.PatchNamespacedSecretWithHttpMessagesAsync(new V1Patch(patch),
                 target.Metadata.Name, target.Metadata.NamespaceProperty);
+        }
+
+        public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = new CancellationToken())
+        {
+            return Task.FromResult(IsFaulted ? HealthCheckResult.Unhealthy() : HealthCheckResult.Healthy());
         }
     }
 }

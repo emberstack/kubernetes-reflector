@@ -1,60 +1,107 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ES.Kubernetes.Reflector.Core.Constants;
-using ES.Kubernetes.Reflector.Core.Events;
-using ES.Kubernetes.Reflector.Core.Reflection;
+using ES.Kubernetes.Reflector.Core.Mirroring;
+using ES.Kubernetes.Reflector.Core.Monitoring;
 using ES.Kubernetes.Reflector.Core.Resources;
 using k8s;
 using k8s.Models;
-using MediatR;
 using Microsoft.AspNetCore.JsonPatch;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Rest;
+using Newtonsoft.Json;
 
 namespace ES.Kubernetes.Reflector.ConfigMaps
 {
-    public class Mirror : ResourceReflector<V1ConfigMap>, INotificationHandler<WatcherEvent<V1ConfigMap>>
+    public class Mirror : ResourceMirror<V1ConfigMap>, IHostedService, IHealthCheck
     {
-        private readonly ILogger<Mirror> _logger;
-
-        private readonly ConcurrentDictionary<KubernetesObjectId, List<KubernetesObjectId>> _mirrors =
-            new ConcurrentDictionary<KubernetesObjectId, List<KubernetesObjectId>>();
-
-        public Mirror(ILogger<Mirror> logger, IKubernetes client) : base(logger, client)
+        public Mirror(ILogger<Mirror> logger, IKubernetes client,
+            ManagedWatcher<V1ConfigMap> configMapWatcher,
+            ManagedWatcher<V1Namespace> namespaceWatcher)
+            : base(logger, client, configMapWatcher, namespaceWatcher)
         {
-            _logger = logger;
         }
 
-        public async Task Handle(WatcherEvent<V1ConfigMap> request, CancellationToken cancellationToken)
+
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
-            await OnWatcherEvent(request);
+            await WatchersStart();
         }
 
-        protected override Task<V1ConfigMap> GetRequest(IKubernetes apiClient, string name, string ns)
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
-            return apiClient.ReadNamespacedConfigMapAsync(name, ns);
+            await WatchersStop();
         }
 
-        protected override V1ObjectMeta GetMetadata(V1ConfigMap resource)
+
+        protected override async Task<HttpOperationResponse> OnResourceWatcher(IKubernetes client)
         {
-            return resource.Metadata;
+            return await client.ListConfigMapForAllNamespacesWithHttpMessagesAsync(watch: true);
         }
 
-        protected override async Task Patch(V1ConfigMap target, V1ConfigMap source)
+        protected override async Task<V1ConfigMap> OnResourceAutoReflect(IKubernetes client, V1ConfigMap item,
+            string ns)
+        {
+            return await client.CreateNamespacedConfigMapAsync(new V1ConfigMap
+            {
+                ApiVersion = item.ApiVersion,
+                Kind = item.Kind,
+                Data = item.Data,
+                BinaryData = item.BinaryData,
+                Metadata = new V1ObjectMeta
+                {
+                    Name = item.Metadata.Name,
+                    NamespaceProperty = ns,
+                    Annotations = new Dictionary<string, string>
+                    {
+                        [Annotations.Reflection.AutoReflects] = KubernetesObjectId.For(item.Metadata).ToString(),
+                        [Annotations.Reflection.Reflects] = KubernetesObjectId.For(item.Metadata).ToString(),
+                        [Annotations.Reflection.ReflectedVersion] = item.Metadata.ResourceVersion,
+                        [Annotations.Reflection.ReflectedAt] = JsonConvert.SerializeObject(DateTimeOffset.UtcNow)
+                    }
+                }
+            }, ns);
+        }
+
+        protected override Task OnResourceDelete(IKubernetes client, string name, string ns)
+        {
+            return client.DeleteNamespacedConfigMapAsync(name, ns);
+        }
+
+        protected override async Task<IList<V1ConfigMap>> OnResourceList(IKubernetes client,
+            string labelSelector = null, string fieldSelector = null)
+        {
+            return (await client.ListConfigMapForAllNamespacesAsync(fieldSelector: fieldSelector,
+                labelSelector: labelSelector)).Items;
+        }
+
+        protected override Task<V1ConfigMap> OnResourceGet(IKubernetes client, string name, string ns)
+        {
+            return client.ReadNamespacedConfigMapAsync(name, ns);
+        }
+
+        protected override async Task OnResourcePatch(IKubernetes client, V1ConfigMap target, V1ConfigMap source)
         {
             var patch = new JsonPatchDocument<V1ConfigMap>();
             patch.Replace(e => e.Metadata.Annotations, new Dictionary<string, string>(target.Metadata.Annotations)
             {
                 [Annotations.Reflection.ReflectedVersion] = source.Metadata.ResourceVersion,
-                [Annotations.Reflection.ReflectedAt] = DateTimeOffset.UtcNow.ToString()
+                [Annotations.Reflection.ReflectedAt] = JsonConvert.SerializeObject(DateTimeOffset.UtcNow)
             });
             patch.Replace(e => e.Data, source.Data);
             patch.Replace(e => e.BinaryData, source.BinaryData);
 
-            await Client.PatchNamespacedConfigMapAsync(new V1Patch(patch),
+            await client.PatchNamespacedConfigMapWithHttpMessagesAsync(new V1Patch(patch),
                 target.Metadata.Name, target.Metadata.NamespaceProperty);
+        }
+
+        public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = new CancellationToken())
+        {
+            return Task.FromResult(IsFaulted ? HealthCheckResult.Unhealthy() : HealthCheckResult.Healthy());
         }
     }
 }

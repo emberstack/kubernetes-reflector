@@ -34,9 +34,7 @@ namespace ES.Kubernetes.Reflector
 
             services.AddMediatR(Assembly.GetExecutingAssembly());
 
-            services.AddHealthChecks()
-                .AddCheck<CoreHealthCheck>("Core")
-                .AddCheck<CertManagerHealthCheck>("Extensions.CertManager");
+            services.AddHealthChecks();
         }
 
 

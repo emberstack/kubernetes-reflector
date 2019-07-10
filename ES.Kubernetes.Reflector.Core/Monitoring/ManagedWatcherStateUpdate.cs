@@ -2,9 +2,9 @@
 
 namespace ES.Kubernetes.Reflector.Core.Monitoring
 {
-    public class BroadcastWatcherStateUpdate
+    public class ManagedWatcherStateUpdate
     {
-        public BroadcastWatcherState State { get; set; }
+        public ManagedWatcherState State { get; set; }
         public Exception Exception { get; set; }
     }
 }

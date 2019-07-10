@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/managed-by: {{ .Release.Service }}
 rules:
   - apiGroups: [""]
-    resources: ["configmaps", "secrets"]
+    resources: ["*"]
     verbs: ["*"]
   - apiGroups: ["extensions"]
     resources: ["ingresses"]

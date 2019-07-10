@@ -23,7 +23,6 @@ The configuration parameters in this section control the resources requested and
 | ------------------------------------ | ------------------------------------------------ | ------------------------------------------------------- |
 | `nameOverride`                       | Overrides release name                           | `""`                                                    |
 | `fullnameOverride`                   | Overrides release fullname                       | `""`                                                    |
-| `replicaCount`                       | Number of replica.                               | `1`                                                     |
 | `image.repository`                   | Container image repository                       | `emberstack/es.kubernetes.reflector`                    |
 | `image.tag`                          | Container image tag                              | `latest`                                                |
 | `image.pullPolicy`                   | Container image pull policy                      | `Always` if `image.tag` is `latest`, else `IfNotPresent`|
