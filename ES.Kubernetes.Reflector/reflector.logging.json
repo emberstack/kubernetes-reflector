@@ -13,8 +13,7 @@
             {
                 "Name": "Console",
                 "Args": {
-                    "outputTemplate":
-                        "{Timestamp:HH:mm:ss.fff zzz} [{Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}"
+                    "outputTemplate": "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}"
                 }
             }
         ]
