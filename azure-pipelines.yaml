@@ -1,7 +1,11 @@
 name: $(coreVersion).$(Date:yy)$(DayOfYear).$(Rev:r)
 
+
+
 variables:
   coreVersion: 3
+  buildConfiguration: 'Release'
+  DOCKER_CLI_EXPERIMENTAL: 'enabled'
 
 trigger:
   branches:
@@ -11,9 +15,7 @@ trigger:
 pool:
   vmImage: 'Ubuntu-16.04'
 
-variables:
-  buildConfiguration: 'Release'
-  DOCKER_CLI_EXPERIMENTAL: 'enabled'
+
 
 steps:
 - script: |
