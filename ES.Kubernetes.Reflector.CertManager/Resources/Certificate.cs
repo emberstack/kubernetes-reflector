@@ -9,12 +9,14 @@ namespace ES.Kubernetes.Reflector.CertManager.Resources
         [JsonProperty(PropertyName = "metadata")]
         public V1ObjectMeta Metadata { get; set; }
 
-        [JsonProperty(PropertyName = "spec")] public SpecDefinition Spec { get; set; }
+        [JsonProperty(PropertyName = "spec")]
+        public SpecDefinition Spec { get; set; }
 
         [JsonProperty(PropertyName = "apiVersion")]
         public string ApiVersion { get; set; }
 
-        [JsonProperty(PropertyName = "kind")] public string Kind { get; set; }
+        [JsonProperty(PropertyName = "kind")]
+        public string Kind { get; set; }
 
         public class SpecDefinition
         {

@@ -144,6 +144,9 @@ $ kubectl apply -f https://github.com/EmberStack/ES.Kubernetes.Reflector/release
  - - - -
 
 ## (Optional) `cert-manager` extension
+
+> The current release supports `cert-manager` from version `0.11.0` or higher. If you're using an older version, please use Reflector version `v2.19193.2`
+
 Reflector can automatically annotate secrets created by cert-manager by annotating the `Certificate` object. This allows for issued certificates (example: wildcard certificates) to be reused in other namespaces and permit automatic updates of mirrors on certificate renewal.
   
   - Add `reflector.v1.k8s.emberstack.com/secret-reflection-allowed` to the certificate annotations. Reflector will automatically annotate the resulting secret with `reflector.v1.k8s.emberstack.com/reflection-allowed`.

@@ -16,28 +16,31 @@ using Microsoft.Rest;
 
 namespace ES.Kubernetes.Reflector.Core.Mirroring
 {
-    public abstract class ResourceMirror<T> where T : class, IKubernetesObject
+    public abstract class ResourceMirror<TResource, TResourceList> where TResource : class, IKubernetesObject
     {
         /// <summary>
-        /// Keeps track of resources with auto-reflection turned on.
+        ///     Keeps track of resources with auto-reflection turned on.
         /// </summary>
         private readonly ConcurrentDictionary<KubernetesObjectId, string> _autoReflections =
             new ConcurrentDictionary<KubernetesObjectId, string>();
+
         private readonly IKubernetes _client;
         private readonly FeederQueue<WatcherEvent> _eventQueue;
         private readonly ILogger _logger;
-        private readonly ManagedWatcher<V1Namespace> _namespaceWatcher;
+        private readonly ManagedWatcher<V1Namespace, V1NamespaceList> _namespaceWatcher;
+
         /// <summary>
-        /// Maps reflections to sources
+        ///     Maps reflections to sources
         /// </summary>
         private readonly ConcurrentDictionary<KubernetesObjectId, KubernetesObjectId> _reflections =
             new ConcurrentDictionary<KubernetesObjectId, KubernetesObjectId>();
 
-        private readonly ManagedWatcher<T> _resourceWatcher;
+        private readonly ManagedWatcher<TResource, TResourceList> _resourceWatcher;
 
 
-        protected ResourceMirror(ILogger logger, IKubernetes client, ManagedWatcher<T> resourceWatcher,
-            ManagedWatcher<V1Namespace> namespaceWatcher)
+        protected ResourceMirror(ILogger logger, IKubernetes client,
+            ManagedWatcher<TResource, TResourceList> resourceWatcher,
+            ManagedWatcher<V1Namespace, V1NamespaceList> namespaceWatcher)
         {
             _logger = logger;
             _client = client;
@@ -57,6 +60,8 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
                 await api.ListNamespaceWithHttpMessagesAsync(watch: true);
             _namespaceWatcher.OnStateChanged = OnWatcherStateChanged;
         }
+
+        protected bool IsFaulted => _namespaceWatcher.IsFaulted || _resourceWatcher.IsFaulted;
 
 
         protected async Task WatchersStart()
@@ -92,7 +97,7 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
             _logger.LogTrace("[{eventType}] {kind} {@id}", e.Type, e.Item.Kind, id);
             switch (e)
             {
-                case WatcherEvent<T> resourceEvent:
+                case WatcherEvent<TResource> resourceEvent:
                     await OnResourceWatcherEvent(resourceEvent);
                     break;
                 case WatcherEvent<V1Namespace> namespaceEvent:
@@ -102,22 +107,24 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
         }
 
 
-        private async Task OnWatcherStateChanged<TS>(ManagedWatcher<TS, WatcherEvent<TS>> sender,
-            ManagedWatcherStateUpdate update) where TS : class, IKubernetesObject
+        private async Task OnWatcherStateChanged<TGenericResource, TGenericResourceList>(
+            ManagedWatcher<TGenericResource, TGenericResourceList, WatcherEvent<TGenericResource>> sender,
+            ManagedWatcherStateUpdate update) where TGenericResource : class, IKubernetesObject
         {
             switch (update.State)
             {
                 case ManagedWatcherState.Closed:
-                    _logger.LogDebug("{type} watcher {state}", typeof(TS).Name, update.State);
+                    _logger.LogDebug("{type} watcher {state}", typeof(TGenericResource).Name, update.State);
                     await WatchersStop();
                     ReflectionsClear();
                     await WatchersStart();
                     break;
                 case ManagedWatcherState.Faulted:
-                    _logger.LogError(update.Exception, "{type} watcher {state}", typeof(TS).Name, update.State);
+                    _logger.LogError(update.Exception, "{type} watcher {state}", typeof(TGenericResource).Name,
+                        update.State);
                     break;
                 default:
-                    _logger.LogDebug("{type} watcher {state}", typeof(TS).Name, update.State);
+                    _logger.LogDebug("{type} watcher {state}", typeof(TGenericResource).Name, update.State);
                     break;
             }
         }
@@ -128,40 +135,32 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
             switch (request.Type)
             {
                 case WatchEventType.Added:
+                {
+                    var id = _autoReflections.Keys.ToList();
+                    foreach (var source in id)
                     {
-                        var id = _autoReflections.Keys.ToList();
-                        foreach (var source in id)
-                        {
-                            var item = await OnResourceGet(_client, source.Name, source.Namespace);
-                            await CheckAutoReflections(item);
-                        }
+                        var item = await OnResourceGet(_client, source.Name, source.Namespace);
+                        await CheckAutoReflections(item);
                     }
+                }
                     break;
                 case WatchEventType.Deleted:
-                    {
-                        var toRemove = _reflections.Keys
-                            .Where(s => s.Namespace.Equals(request.Item.Metadata.Name))
-                            .ToList();
-                        foreach (var id in toRemove)
-                        {
-                            _reflections.TryRemove(id, out _);
-                        }
+                {
+                    var toRemove = _reflections.Keys
+                        .Where(s => s.Namespace.Equals(request.Item.Metadata.Name))
+                        .ToList();
+                    foreach (var id in toRemove) _reflections.TryRemove(id, out _);
 
-                        toRemove = _autoReflections.Keys
-                            .Where(s => s.Namespace.Equals(request.Item.Metadata.Name))
-                            .ToList();
-                        foreach (var id in toRemove)
-                        {
-                            _autoReflections.TryRemove(id, out _);
-                        }
-                    }
+                    toRemove = _autoReflections.Keys
+                        .Where(s => s.Namespace.Equals(request.Item.Metadata.Name))
+                        .ToList();
+                    foreach (var id in toRemove) _autoReflections.TryRemove(id, out _);
+                }
                     break;
             }
-            if (request.Type != WatchEventType.Added) return;
-
         }
 
-        protected async Task OnResourceWatcherEvent(WatcherEvent<T> request)
+        protected async Task OnResourceWatcherEvent(WatcherEvent<TResource> request)
         {
             var item = request.Item;
             var eventType = request.Type;
@@ -172,28 +171,28 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
             {
                 case WatchEventType.Added:
                 case WatchEventType.Modified:
-                    {
-                        //Check if the source for auto reflection is still valid.
-                        if (await CheckAutoReflectionSource(item)) return;
+                {
+                    //Check if the source for auto reflection is still valid.
+                    if (await CheckAutoReflectionSource(item)) return;
 
-                        //Ensure auto reflections
-                        await CheckAutoReflections(item);
+                    //Ensure auto reflections
+                    await CheckAutoReflections(item);
 
-                        //Update current item. If updated, return (Update will be picked up by watcher)
-                        if (await ReflectSourceToSelf(item)) return;
+                    //Update current item. If updated, return (Update will be picked up by watcher)
+                    if (await ReflectSourceToSelf(item)) return;
 
-                        //Update all child reflections
-                        await ReflectSelfToReflections(item);
-                    }
+                    //Update all child reflections
+                    await ReflectSelfToReflections(item);
+                }
                     break;
                 case WatchEventType.Deleted:
-                    {
-                        _reflections.TryRemove(id, out _);
-                        _autoReflections.TryRemove(id, out _);
+                {
+                    _reflections.TryRemove(id, out _);
+                    _autoReflections.TryRemove(id, out _);
 
-                        //Remove all auto-reflections
-                        await UpdateAutoReflections(item, new List<string>());
-                    }
+                    //Remove all auto-reflections
+                    await UpdateAutoReflections(item, new List<string>());
+                }
                     break;
 
                 case WatchEventType.Error: break;
@@ -201,7 +200,7 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
             }
         }
 
-        private async Task<bool> CheckAutoReflectionSource(T item)
+        private async Task<bool> CheckAutoReflectionSource(TResource item)
         {
             var metadata = item.Metadata();
             var id = KubernetesObjectId.For(metadata);
@@ -233,7 +232,7 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
             return true;
         }
 
-        private async Task CheckAutoReflections(T item)
+        private async Task CheckAutoReflections(TResource item)
         {
             var metadata = item.Metadata();
             var id = KubernetesObjectId.For(metadata);
@@ -260,7 +259,7 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
             await UpdateAutoReflections(item, namespaces);
         }
 
-        private async Task UpdateAutoReflections(T item, List<string> namespaces)
+        private async Task UpdateAutoReflections(TResource item, List<string> namespaces)
         {
             var metadata = item.Metadata();
             var id = KubernetesObjectId.For(metadata);
@@ -285,7 +284,7 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
                 catch (HttpOperationException ex) when (ex.Response.StatusCode == HttpStatusCode.Conflict)
                 {
                     _logger.LogWarning(
-                        "Cannot create reflection {kind} {@reflectionId} for {@id}. Found conflicting {kind} with the same name",
+                        "Cannot create reflection {kind} {@reflectionId} for {@id}. Found conflicting {kind} with the same name.",
                         item.Kind, reflectionId, id, item.Kind);
                 }
             }
@@ -301,7 +300,7 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
             }
         }
 
-        private async Task<bool> ReflectSourceToSelf(T item)
+        private async Task<bool> ReflectSourceToSelf(TResource item)
         {
             var metadata = item.Metadata();
             var id = KubernetesObjectId.For(metadata);
@@ -314,7 +313,7 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
             {
                 _reflections[id] = sourceId;
 
-                T source = null;
+                TResource source = null;
                 try
                 {
                     source = await OnResourceGet(_client, sourceId.Name, sourceId.Namespace);
@@ -335,18 +334,16 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
             return false;
         }
 
-        private async Task ReflectSelfToReflections(T item)
+        private async Task ReflectSelfToReflections(TResource item)
         {
             var metadata = item.Metadata();
             var id = KubernetesObjectId.For(metadata);
             var reflections = _reflections.Where(s => s.Value.Equals(id)).Select(s => s.Key).ToList();
             foreach (var reflectionId in reflections)
-            {
                 try
                 {
                     var target = await OnResourceGet(_client, reflectionId.Name, reflectionId.Namespace);
                     await Reflect(item, target);
-
                 }
                 catch (HttpOperationException ex) when (ex.Response.StatusCode == HttpStatusCode.NotFound)
                 {
@@ -361,8 +358,6 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
                         "Could not reflect {@sourceId} to {@targetId} due to exception",
                         id, reflectionId, reflectionId);
                 }
-
-            }
         }
 
         private async Task<List<V1ObjectMeta>> FindAutoReflections(KubernetesObjectId id)
@@ -375,20 +370,20 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
         }
 
 
-        protected abstract Task<HttpOperationResponse> OnResourceWatcher(IKubernetes client);
+        protected abstract Task<HttpOperationResponse<TResourceList>> OnResourceWatcher(IKubernetes client);
 
-        protected abstract Task<T> OnResourceAutoReflect(IKubernetes client, T item, string ns);
+        protected abstract Task<TResource> OnResourceAutoReflect(IKubernetes client, TResource item, string ns);
 
         protected abstract Task OnResourceDelete(IKubernetes client, string name, string ns);
 
-        protected abstract Task<IList<T>> OnResourceList(IKubernetes client, string labelSelector = null,
+        protected abstract Task<IList<TResource>> OnResourceList(IKubernetes client, string labelSelector = null,
             string fieldSelector = null);
 
-        protected abstract Task<T> OnResourceGet(IKubernetes client, string name, string ns);
-        protected abstract Task OnResourcePatch(IKubernetes client, T target, T source);
+        protected abstract Task<TResource> OnResourceGet(IKubernetes client, string name, string ns);
+        protected abstract Task OnResourcePatch(IKubernetes client, TResource target, TResource source);
 
 
-        private async Task Reflect(T source, T target)
+        private async Task Reflect(TResource source, TResource target)
         {
             var sourceMeta = source.Metadata();
             var sourceId = KubernetesObjectId.For(sourceMeta);
@@ -438,7 +433,5 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
             _reflections.Clear();
             _autoReflections.Clear();
         }
-
-        protected bool IsFaulted => _namespaceWatcher.IsFaulted || _resourceWatcher.IsFaulted;
     }
 }

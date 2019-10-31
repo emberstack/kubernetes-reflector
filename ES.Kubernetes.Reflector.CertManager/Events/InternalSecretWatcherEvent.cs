@@ -1,10 +1,11 @@
-﻿using ES.Kubernetes.Reflector.Core.Events;
+﻿using System.Collections.Generic;
+using ES.Kubernetes.Reflector.Core.Events;
 using k8s.Models;
 
 namespace ES.Kubernetes.Reflector.CertManager.Events
 {
     public class InternalSecretWatcherEvent : WatcherEvent<V1Secret>
     {
-        public string CertificateResourceDefinitionVersion { get; set; }
+        public List<string> CertificateResourceDefinitionVersions { get; set; }
     }
 }
