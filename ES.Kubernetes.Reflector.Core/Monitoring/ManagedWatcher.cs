@@ -99,7 +99,7 @@ namespace ES.Kubernetes.Reflector.Core.Monitoring
                 _semaphore.Wait();
                 var request = await _requestFactory(_client);
 
-                _watcher = request.Watch<TResource, TResourceList>((eventType, item) =>
+                _watcher = request.Watch<TResource>((eventType, item) =>
                 {
                     var notification = new TNotification {Item = item, Type = eventType};
                     OnBeforePublish?.Invoke(notification);
