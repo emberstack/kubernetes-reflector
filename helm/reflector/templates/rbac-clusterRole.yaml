@@ -21,4 +21,7 @@ rules:
   - apiGroups: ["certmanager.k8s.io"]
     resources: ["certificates", "certificates/finalizers"]
     verbs: ["*"]
+  - apiGroups: ["cert-manager.io"]
+    resources: ["certificates", "certificates/finalizers"]
+    verbs: ["*"]
 {{- end }}
