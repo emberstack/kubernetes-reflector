@@ -2,7 +2,7 @@
     "Serilog": {
         "Using": ["Serilog.Sinks.Console"],
         "MinimumLevel": {
-            "Default": "Verbose",
+            "Default": "Debug",
             "Override": {
                 "Microsoft": "Warning",
                 "Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager": "Error",

@@ -1,4 +1,7 @@
-name: $(Build.Number.Major).$(Date:yy)$(DayOfYear).$(Rev:r)
+name: $(coreVersion).$(Date:yy)$(DayOfYear).$(Rev:r)
+
+variables:
+  coreVersion: 3
 
 trigger:
   branches:
