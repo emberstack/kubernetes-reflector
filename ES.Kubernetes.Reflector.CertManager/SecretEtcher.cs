@@ -74,21 +74,26 @@ namespace ES.Kubernetes.Reflector.CertManager
                     CertManagerConstants.CertificateKind, certificateId, secretId);
 
                 Certificate certificate = null;
-                try
-                {
-                    var certificateJObject = await _client.GetNamespacedCustomObjectAsync(CertManagerConstants.CrdGroup,
-                        notification.CertificateResourceDefinitionVersion, metadata.NamespaceProperty,
-                        CertManagerConstants.CertificatePlural,
-                        certificateName, cancellationToken);
-                    certificate = ((JObject) certificateJObject).ToObject<Certificate>();
-                }
-                catch (HttpOperationException exception) when (exception.Response.StatusCode == HttpStatusCode.NotFound)
-                {
-                    _logger.LogDebug("Could not find {kind} {@id}",
-                        CertManagerConstants.CertificateKind, certificateId);
-                }
+                foreach (var certificateResourceDefinitionVersion in notification.CertificateResourceDefinitionVersions)
+                    try
+                    {
+                        var certificateJObject = await _client.GetNamespacedCustomObjectAsync(
+                            CertManagerConstants.CrdGroup,
+                            certificateResourceDefinitionVersion, metadata.NamespaceProperty,
+                            CertManagerConstants.CertificatePlural,
+                            certificateName, cancellationToken);
+                        certificate = ((JObject) certificateJObject).ToObject<Certificate>();
+                    }
+                    catch (HttpOperationException exception) when (exception.Response.StatusCode ==
+                                                                   HttpStatusCode.NotFound)
+                    {
+                    }
 
-                if (certificate != null) await Annotate(secret, certificate);
+                if (certificate != null)
+                    await Annotate(secret, certificate);
+                else
+                    _logger.LogDebug("Could not find {kind} {@id}", CertManagerConstants.CertificateKind,
+                        certificateId);
             }
         }
 

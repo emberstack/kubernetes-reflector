@@ -5,6 +5,5 @@ namespace ES.Kubernetes.Reflector.CertManager.Events
 {
     public class InternalCertificateWatcherEvent : WatcherEvent<Certificate>
     {
-        public string CertificateResourceDefinitionVersion { get; set; }
     }
 }

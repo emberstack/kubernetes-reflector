@@ -17,13 +17,19 @@ using Newtonsoft.Json;
 
 namespace ES.Kubernetes.Reflector.ConfigMaps
 {
-    public class Mirror : ResourceMirror<V1ConfigMap>, IHostedService, IHealthCheck
+    public class Mirror : ResourceMirror<V1ConfigMap, V1ConfigMapList>, IHostedService, IHealthCheck
     {
         public Mirror(ILogger<Mirror> logger, IKubernetes client,
-            ManagedWatcher<V1ConfigMap> configMapWatcher,
-            ManagedWatcher<V1Namespace> namespaceWatcher)
+            ManagedWatcher<V1ConfigMap, V1ConfigMapList> configMapWatcher,
+            ManagedWatcher<V1Namespace, V1NamespaceList> namespaceWatcher)
             : base(logger, client, configMapWatcher, namespaceWatcher)
         {
+        }
+
+        public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,
+            CancellationToken cancellationToken = new CancellationToken())
+        {
+            return Task.FromResult(IsFaulted ? HealthCheckResult.Unhealthy() : HealthCheckResult.Healthy());
         }
 
 
@@ -38,7 +44,7 @@ namespace ES.Kubernetes.Reflector.ConfigMaps
         }
 
 
-        protected override async Task<HttpOperationResponse> OnResourceWatcher(IKubernetes client)
+        protected override async Task<HttpOperationResponse<V1ConfigMapList>> OnResourceWatcher(IKubernetes client)
         {
             return await client.ListConfigMapForAllNamespacesWithHttpMessagesAsync(watch: true);
         }
@@ -97,11 +103,6 @@ namespace ES.Kubernetes.Reflector.ConfigMaps
 
             await client.PatchNamespacedConfigMapWithHttpMessagesAsync(new V1Patch(patch),
                 target.Metadata.Name, target.Metadata.NamespaceProperty);
-        }
-
-        public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = new CancellationToken())
-        {
-            return Task.FromResult(IsFaulted ? HealthCheckResult.Unhealthy() : HealthCheckResult.Healthy());
         }
     }
 }

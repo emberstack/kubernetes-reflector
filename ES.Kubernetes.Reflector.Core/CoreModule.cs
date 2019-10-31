@@ -10,8 +10,8 @@ namespace ES.Kubernetes.Reflector.Core
     {
         protected override void Load(ContainerBuilder builder)
         {
-            builder.RegisterGeneric(typeof(ManagedWatcher<>));
             builder.RegisterGeneric(typeof(ManagedWatcher<,>));
+            builder.RegisterGeneric(typeof(ManagedWatcher<,,>));
 
 
             builder.Register(s =>

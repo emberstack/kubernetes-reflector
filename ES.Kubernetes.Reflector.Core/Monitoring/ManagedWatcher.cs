@@ -8,7 +8,8 @@ using Microsoft.Rest;
 
 namespace ES.Kubernetes.Reflector.Core.Monitoring
 {
-    public class ManagedWatcher<TResource> : ManagedWatcher<TResource, WatcherEvent<TResource>>
+    public class
+        ManagedWatcher<TResource, TResourceList> : ManagedWatcher<TResource, TResourceList, WatcherEvent<TResource>>
         where TResource : class, IKubernetesObject
     {
         public ManagedWatcher(IKubernetes apiClient) : base(apiClient)
@@ -17,7 +18,7 @@ namespace ES.Kubernetes.Reflector.Core.Monitoring
     }
 
 
-    public class ManagedWatcher<TResource, TNotification>
+    public class ManagedWatcher<TResource, TResourceList, TNotification>
         where TResource : class, IKubernetesObject
         where TNotification : WatcherEvent<TResource>, new()
     {
@@ -26,17 +27,20 @@ namespace ES.Kubernetes.Reflector.Core.Monitoring
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
         private Func<TNotification, Task> _eventHandlerFactory;
         private bool _isMonitoring;
-        private Func<IKubernetes, Task<HttpOperationResponse>> _requestFactory;
+        private Func<IKubernetes, Task<HttpOperationResponse<TResourceList>>> _requestFactory;
         private Watcher<TResource> _watcher;
         public Action<TNotification> OnBeforePublish;
 
-        public Func<ManagedWatcher<TResource, TNotification>, ManagedWatcherStateUpdate, Task> OnStateChanged;
+        public Func<ManagedWatcher<TResource, TResourceList, TNotification>, ManagedWatcherStateUpdate, Task>
+            OnStateChanged;
 
         public ManagedWatcher(IKubernetes client)
         {
             _client = client;
             _queue = new FeederQueue<TNotification>(item => EventHandlerFactory?.Invoke(item) ?? Task.CompletedTask);
         }
+
+        public string Tag { get; set; }
 
         public bool IsFaulted { get; set; }
 
@@ -62,7 +66,7 @@ namespace ES.Kubernetes.Reflector.Core.Monitoring
         }
 
 
-        public Func<IKubernetes, Task<HttpOperationResponse>> RequestFactory
+        public Func<IKubernetes, Task<HttpOperationResponse<TResourceList>>> RequestFactory
         {
             get => _requestFactory;
             set
@@ -95,7 +99,7 @@ namespace ES.Kubernetes.Reflector.Core.Monitoring
                 _semaphore.Wait();
                 var request = await _requestFactory(_client);
 
-                _watcher = request.Watch<TResource>((eventType, item) =>
+                _watcher = request.Watch<TResource, TResourceList>((eventType, item) =>
                 {
                     var notification = new TNotification {Item = item, Type = eventType};
                     OnBeforePublish?.Invoke(notification);
