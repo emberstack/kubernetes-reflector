@@ -11,9 +11,9 @@ keywords:
 - configmaps
 - cert-manager
 - certificates
-home: https://github.com/EmberStack/ES.Kubernetes.Reflector
+home: https://github.com/EmberStack/kubernetes-reflector
 sources:
-- https://github.com/EmberStack/ES.Kubernetes.Reflector
+- https://github.com/EmberStack/kubernetes-reflector
 maintainers:
 - name: winromulus
   email: helm-charts@emberstack.com

@@ -1,117 +1,190 @@
 name: $(coreVersion).$(Date:yy)$(DayOfYear).$(Rev:r)
 
-
-
 variables:
   coreVersion: 3
-  buildConfiguration: 'Release'
+  buildConfiguration: "Release"
+  imageRepository: "emberstack/kubernetes-reflector"
   DOCKER_CLI_EXPERIMENTAL: 'enabled'
 
 trigger:
   branches:
     include:
-      - '*'
-      
-pool:
-  vmImage: 'Ubuntu-16.04'
+      - "*"
+
+stages:
+
+  - stage: build
+    displayName: "Build"
+    jobs:
+      - job: build
+        displayName: "Build Job"
+        pool:
+          vmImage: "Ubuntu-16.04"
+        steps:
+          - script: |
+             mkdir -p artifacts/helm
+             mkdir -p artifacts/kubectl
+            workingDirectory: '$(Build.ArtifactStagingDirectory)'
+            displayName: 'Create Artifacts directories'
+
+          - task: HelmInstaller@0
+            displayName: 'Install Helm'
+            inputs:
+              helmVersion: 2.13.1
+              kubectlVersion: 1.10.11
+
+          - script: 'helm lint'
+            workingDirectory: helm/reflector
+            displayName: 'helm lint'
+
+          - task: HelmDeploy@0
+            displayName: 'helm package'
+            inputs:
+              connectionType: None
+              command: package
+              chartPath: helm/reflector
+              chartVersion: '$(Build.BuildNumber)'
+              destination: '$(Build.ArtifactStagingDirectory)/artifacts/helm'
+
+          - script: 'helm template --namespace kube-system --name reflector reflector > $(Build.ArtifactStagingDirectory)/artifacts/kubectl/reflector-$(Build.BuildNumber).yaml'
+            workingDirectory: helm
+            displayName: 'helm template'
+
+          - publish: '$(Build.ArtifactStagingDirectory)/artifacts/helm'
+            artifact: 'helm'
+
+          - publish: '$(Build.ArtifactStagingDirectory)/artifacts/kubectl'
+            artifact: 'kubectl'
+
+          - task: Docker@2
+            displayName: 'Build amd64 image'
+            inputs:
+              containerRegistry: 'Emberstack Docker Hub'
+              repository: $(imageRepository)
+              Dockerfile: ES.Kubernetes.Reflector/Dockerfile
+              command: build
+              buildContext: .
+              tags: 'build-$(Build.BuildNumber)-amd64'
+            
+          - task: Docker@2
+            displayName: 'Build arm32 image'
+            inputs:
+              containerRegistry: 'Emberstack Docker Hub'
+              repository: $(imageRepository)
+              Dockerfile: ES.Kubernetes.Reflector/Dockerfile_arch
+              buildContext: .
+              command: build
+              arguments: '--build-arg BASE_IMAGE=$(imageRepository):build-$(Build.BuildNumber)-amd64 --build-arg FINAL_IMAGE=mcr.microsoft.com/dotnet/core/aspnet:2.2-stretch-slim-arm32v7'
+              tags: 'build-$(Build.BuildNumber)-arm32'
+            
+          - task: Docker@2
+            displayName: 'Build arm64 image'
+            inputs:
+              containerRegistry: 'Emberstack Docker Hub'
+              repository: $(imageRepository)
+              Dockerfile: ES.Kubernetes.Reflector/Dockerfile_arch
+              buildContext: .
+              command: build
+              arguments: '--build-arg BASE_IMAGE=$(imageRepository):build-$(Build.BuildNumber)-amd64 --build-arg FINAL_IMAGE=mcr.microsoft.com/dotnet/core/aspnet:3.0-buster-slim-arm64v8'
+              tags: 'build-$(Build.BuildNumber)-arm64'
+
+          - task: Docker@2
+            displayName: "Push images"
+            inputs:
+              containerRegistry: "Emberstack Docker Hub"
+              repository: $(imageRepository)
+              command: push
+              tags: |
+                build-$(Build.BuildNumber)-amd64
+                build-$(Build.BuildNumber)-arm32
+                build-$(Build.BuildNumber)-arm64
+
+          - task: Docker@2
+            displayName: "Docker Hub Login"
+            inputs:
+              containerRegistry: "Emberstack Docker Hub"
+              command: login
+
+          - script: |
+              docker manifest create  $(imageRepository):build-$(Build.BuildNumber) $(imageRepository):build-$(Build.BuildNumber)-amd64 $(imageRepository):build-$(Build.BuildNumber)-arm32 $(imageRepository):build-$(Build.BuildNumber)-arm64
+              docker manifest inspect $(imageRepository):build-$(Build.BuildNumber)
+              docker manifest push    $(imageRepository):build-$(Build.BuildNumber)
+            displayName: "Create and push multi-arch manifest"
 
 
+  - stage: release
+    displayName: "Release"
+    dependsOn: 'build'
+    condition: and(succeeded(), in(variables['Build.Reason'], 'IndividualCI', 'Manual'), in(variables['Build.SourceBranchName'], 'master'))
+    jobs:
+      - job: release
+        displayName: "Release Job"
+        pool:
+          vmImage: "Ubuntu-16.04"
+        variables:
+          - group: "OpenSource.GitHub"
+        steps:
+          - checkout: none
 
-steps:
-- script: |
-   mkdir -p deploy/helm
-   mkdir -p deploy/manual
-  workingDirectory: '$(Build.ArtifactStagingDirectory)'
-  displayName: 'Create Artifacts directories'
-  
-- task: HelmInstaller@0
-  displayName: 'Install Helm'
-  inputs:
-    helmVersion: 2.13.1
-    kubectlVersion: 1.10.11
+          - download: current
+            artifact: 'helm'
+
+          - download: current
+            artifact: 'kubectl'            
+
+          - task: Docker@2
+            displayName: "Docker Login"
+            inputs:
+              containerRegistry: "Emberstack Docker Hub"
+              command: login
+
+          - task: HelmInstaller@0
+            displayName: 'Install Helm'
+            inputs:
+              helmVersion: 2.13.1
+              kubectlVersion: 1.10.11    
+
+          - script: |
+              docker pull $(imageRepository):build-$(Build.BuildNumber)-amd64
+              docker pull $(imageRepository):build-$(Build.BuildNumber)-arm32
+              docker pull $(imageRepository):build-$(Build.BuildNumber)-arm64
+              docker manifest create $(imageRepository):release-$(Build.BuildNumber) $(imageRepository):build-$(Build.BuildNumber)-amd64 $(imageRepository):build-$(Build.BuildNumber)-arm32 $(imageRepository):build-$(Build.BuildNumber)-arm64
+              docker manifest create $(imageRepository):latest                       $(imageRepository):build-$(Build.BuildNumber)-amd64 $(imageRepository):build-$(Build.BuildNumber)-arm32 $(imageRepository):build-$(Build.BuildNumber)-arm64
+              docker manifest push $(imageRepository):release-$(Build.BuildNumber)
+              docker manifest push $(imageRepository):latest
+            displayName: 'docker pull, tag and push'
+
+          - script: |
+              git config --global user.email "$(emberstack-agent-email)"
+              git config --global user.name "$(emberstack-agent-name)"
+              git clone https://$(emberstack-agent-username):$(emberstack-agent-pat)@github.com/EmberStack/helm-charts.git
+              
+              mkdir -p helm-charts/charts
+              cp $(Pipeline.Workspace)/helm/reflector-$(Build.BuildNumber).tgz  helm-charts/charts
+              
+              cd helm-charts
+              rm index.yaml
+              helm repo index ./
+              git add .
+              git status
+              git commit -m "Added reflector-$(Build.BuildNumber).tgz"
+              git push
+            displayName: 'Add chart to GitHub repository'            
+
+          - script: |
+              mkdir -p github
+              cp $(Pipeline.Workspace)/kubectl/reflector-$(Build.BuildNumber).yaml  github/reflector.yaml
+            displayName: 'Prepare GitHub Artifacts'
+
+          - task: GitHubRelease@1
+            displayName: 'GitHub release (create)'
+            inputs:
+              gitHubConnection: GitHub
+              repositoryName: 'EmberStack/kubernetes-reflector'
+              tagSource: userSpecifiedTag
+              tag: 'v$(Build.BuildNumber)'
+              title: 'Release v$(Build.BuildNumber)'
+              releaseNotesSource: inline
+              releaseNotes: 'The release process is automated.'
+              assets: '$(System.DefaultWorkingDirectory)/github/*.*'
     
-- script: 'helm lint'
-  workingDirectory: helm/reflector
-  displayName: 'helm lint'
-  
-- task: HelmDeploy@0
-  displayName: 'helm package'
-  inputs:
-    connectionType: None
-    command: package
-    chartPath: helm/reflector
-    chartVersion: '$(Build.BuildNumber)'
-    destination: '$(Build.ArtifactStagingDirectory)/deploy/helm'
-
-- script: 'helm template --namespace kube-system --name reflector reflector > $(Build.ArtifactStagingDirectory)/deploy/manual/reflector-$(Build.BuildNumber).yaml'
-  workingDirectory: helm
-  displayName: 'helm template'
-
-- task: Docker@2
-  displayName: 'Build amd64 image'
-  inputs:
-    containerRegistry: 'Emberstack Docker Hub'
-    repository: emberstack/es.kubernetes.reflector
-    Dockerfile: ES.Kubernetes.Reflector/Dockerfile
-    command: build
-    buildContext: .
-    tags: 'build-$(Build.BuildNumber)-amd64'
-  
-- task: Docker@2
-  displayName: 'Build arm32 image'
-  inputs:
-    containerRegistry: 'Emberstack Docker Hub'
-    repository: emberstack/es.kubernetes.reflector
-    Dockerfile: ES.Kubernetes.Reflector/Dockerfile_arch
-    buildContext: .
-    command: build
-    arguments: '--build-arg BASE_IMAGE=emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)-amd64 --build-arg FINAL_IMAGE=mcr.microsoft.com/dotnet/core/aspnet:2.2-stretch-slim-arm32v7'
-    tags: 'build-$(Build.BuildNumber)-arm32'
-
-- task: Docker@2
-  displayName: 'Build arm64 image'
-  inputs:
-    containerRegistry: 'Emberstack Docker Hub'
-    repository: emberstack/es.kubernetes.reflector
-    Dockerfile: ES.Kubernetes.Reflector/Dockerfile_arch
-    buildContext: .
-    command: build
-    arguments: '--build-arg BASE_IMAGE=emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)-amd64 --build-arg FINAL_IMAGE=mcr.microsoft.com/dotnet/core/aspnet:3.0-buster-slim-arm64v8'
-    tags: 'build-$(Build.BuildNumber)-arm64'
-
-
-- task: Docker@2
-  displayName: 'Push images'
-  inputs:
-    containerRegistry: 'Emberstack Docker Hub'
-    repository: emberstack/es.kubernetes.reflector
-    command: push
-    tags: |
-     build-$(Build.BuildNumber)-amd64
-     build-$(Build.BuildNumber)-arm32
-     build-$(Build.BuildNumber)-arm64
-    
-- task: Docker@2
-  displayName: 'Docker Hub login'
-  inputs:
-    containerRegistry: 'Emberstack Docker Hub'
-    command: login
-    
-- script: |
-   docker manifest create emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber) emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)-amd64 emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)-arm32 emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)-arm64
-   docker manifest inspect emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)
-   docker manifest push emberstack/es.kubernetes.reflector:build-$(Build.BuildNumber)
-  displayName: 'Create and push multi-arch manifest'
-
-
-- task: PublishBuildArtifacts@1
-  displayName: 'Publish Artifact: deploy-chart'
-  inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)/deploy/helm'
-    ArtifactName: deploy-chart
-    
-- task: PublishBuildArtifacts@1
-  displayName: 'Publish Artifact: deploy-manual'
-  inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)/deploy/manual'
-    ArtifactName: deploy-manual

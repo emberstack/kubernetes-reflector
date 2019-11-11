@@ -1,12 +1,12 @@
 # Introduction
-[Reflector](https://github.com/EmberStack/ES.Kubernetes.Reflector) is a Kubernetes addon designed monitor changes to resources (secrets and configmaps) and reflect changes to mirror resources in the same or other namespaces.
+[Reflector](https://github.com/EmberStack/kubernetes-reflector) is a Kubernetes addon designed monitor changes to resources (secrets and configmaps) and reflect changes to mirror resources in the same or other namespaces.
 
 > Supports `amd64`, `arm` and `arm64`
 
 ### Extensions
 Reflector includes a `cert-manager` extension used to automatically annotate created secrets and allow reflection.
 
-Please see a detailed usage guide on the [Reflector GitHub repository](https://github.com/EmberStack/ES.Kubernetes.Reflector).
+Please see a detailed usage guide on the [Reflector GitHub repository](https://github.com/EmberStack/kubernetes-reflector).
 
 ## Installing the Chart
 
@@ -23,7 +23,7 @@ The configuration parameters in this section control the resources requested and
 | ------------------------------------ | ------------------------------------------------ | ------------------------------------------------------- |
 | `nameOverride`                       | Overrides release name                           | `""`                                                    |
 | `fullnameOverride`                   | Overrides release fullname                       | `""`                                                    |
-| `image.repository`                   | Container image repository                       | `emberstack/es.kubernetes.reflector`                    |
+| `image.repository`                   | Container image repository                       | `emberstack/kubernetes-reflector`                       |
 | `image.tag`                          | Container image tag                              | `latest`                                                |
 | `image.pullPolicy`                   | Container image pull policy                      | `Always` if `image.tag` is `latest`, else `IfNotPresent`|
 | `extensions.certManager.enabled`     | `cert-manager` addon                             | `true`                                                  |
