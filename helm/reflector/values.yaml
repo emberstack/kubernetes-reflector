@@ -4,8 +4,8 @@
 
 image:
   repository: emberstack/es.kubernetes.reflector
-  tag: latest
-  pullPolicy: Always
+  tag: ""
+  pullPolicy: IfNotPresent
 
 nameOverride: ""
 fullnameOverride: ""
