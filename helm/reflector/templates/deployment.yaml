@@ -25,7 +25,7 @@ spec:
           {{- if .Values.image.tag }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           {{- else }}
-          image: "{{ .Values.image.repository }}:{{ .Chart.Version }}"
+          image: "{{ .Values.image.repository }}:release-{{ .Chart.Version }}"
           {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
