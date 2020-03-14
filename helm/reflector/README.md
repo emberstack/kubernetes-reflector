@@ -24,8 +24,8 @@ The configuration parameters in this section control the resources requested and
 | `nameOverride`                       | Overrides release name                           | `""`                                                    |
 | `fullnameOverride`                   | Overrides release fullname                       | `""`                                                    |
 | `image.repository`                   | Container image repository                       | `emberstack/kubernetes-reflector`                       |
-| `image.tag`                          | Container image tag                              | `latest`                                                |
-| `image.pullPolicy`                   | Container image pull policy                      | `Always` if `image.tag` is `latest`, else `IfNotPresent`|
+| `image.tag`                          | Container image tag                              | `Same as chart version`                                 |
+| `image.pullPolicy`                   | Container image pull policy                      | `IfNotPresent`                                          |
 | `extensions.certManager.enabled`     | `cert-manager` addon                             | `true`                                                  |
 | `configuration.logging.minimumLevel` | Logging minimum level                            | `Information`                                           |
 | `rbac.enabled`                       | Create and use RBAC resources                    | `true`                                                  |
