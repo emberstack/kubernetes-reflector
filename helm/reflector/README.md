@@ -1,12 +1,12 @@
 # Introduction
-[Reflector](https://github.com/EmberStack/kubernetes-reflector) is a Kubernetes addon designed monitor changes to resources (secrets and configmaps) and reflect changes to mirror resources in the same or other namespaces.
+[Reflector](https://github.com/emberstack/kubernetes-reflector) is a Kubernetes addon designed monitor changes to resources (secrets and configmaps) and reflect changes to mirror resources in the same or other namespaces.
 
-> Supports `amd64`, `arm` and `arm64`
+> Supports `amd64`, `arm`
 
 ### Extensions
 Reflector includes a `cert-manager` extension used to automatically annotate created secrets and allow reflection.
 
-Please see a detailed usage guide on the [Reflector GitHub repository](https://github.com/EmberStack/kubernetes-reflector).
+Please see a detailed usage guide on the [Reflector GitHub repository](https://github.com/emberstack/kubernetes-reflector).
 
 ## Installing the Chart
 

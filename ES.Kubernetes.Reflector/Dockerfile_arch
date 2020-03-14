@@ -1,9 +1,0 @@
-ARG BASE_IMAGE=emberstack/es.kubernetes.reflector
-ARG FINAL_IMAGE=emberstack/es.kubernetes.reflector
-
-FROM $BASE_IMAGE as base
-
-FROM $FINAL_IMAGE AS final
-WORKDIR /app
-COPY --from=base /app .
-ENTRYPOINT ["dotnet", "ES.Kubernetes.Reflector.dll"]

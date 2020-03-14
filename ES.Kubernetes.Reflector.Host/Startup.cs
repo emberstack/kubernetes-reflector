@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+using System.Net.Http;
+using System.Reflection;
 using Autofac;
 using ES.Kubernetes.Reflector.CertManager;
 using ES.Kubernetes.Reflector.ConfigMaps;
@@ -8,49 +9,52 @@ using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace ES.Kubernetes.Reflector
+namespace ES.Kubernetes.Reflector.Host
 {
     public class Startup
     {
-        private readonly ILogger<Startup> _logger;
 
-        public Startup(IConfiguration configuration, ILogger<Startup> logger)
+        public Startup(IConfiguration configuration)
         {
-            _logger = logger;
             Configuration = configuration;
         }
 
         public IConfiguration Configuration { get; }
 
-
+        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
-
+            services.AddHttpClient();
+            services.AddOptions();
+            services.AddHealthChecks();
             services.AddMediatR(Assembly.GetExecutingAssembly());
 
-            services.AddHealthChecks();
+            services.AddControllers();
         }
 
 
+        // This method gets called by convention to configure Autofac. 
         // ReSharper disable once UnusedMember.Global
         public void ConfigureContainer(ContainerBuilder builder)
         {
+            builder.Register(c => c.Resolve<IHttpClientFactory>().CreateClient()).AsSelf();
+
             builder.RegisterModule<CoreModule>();
             builder.RegisterModule<SecretsModule>();
             builder.RegisterModule<ConfigMapsModule>();
 
             var certManagerEnabled = bool.Parse(Configuration["Reflector:Extensions:CertManager:Enabled"]);
-            _logger.LogInformation("CertManager extension enabled: {certManagerEnabled}", certManagerEnabled);
             if (certManagerEnabled) builder.RegisterModule<CertManagerModule>();
         }
 
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+        // ReSharper disable once UnusedMember.Global
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             var forwardingOptions = new ForwardedHeadersOptions
             {
@@ -62,11 +66,22 @@ namespace ES.Kubernetes.Reflector
             forwardingOptions.KnownProxies.Clear();
             app.UseForwardedHeaders(forwardingOptions);
 
-            if (env.IsDevelopment()) app.UseDeveloperExceptionPage();
-
             app.UseHealthChecks("/healthz");
 
-            app.UseMvc();
+
+            if (env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+            }
+
+            app.UseRouting();
+
+            app.UseAuthorization();
+
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+            });
         }
     }
 }

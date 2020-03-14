@@ -92,19 +92,19 @@ namespace ES.Kubernetes.Reflector.Core.Monitoring
         {
             await Stop();
 
-            OnStateChanged?.Invoke(this, new ManagedWatcherStateUpdate {State = ManagedWatcherState.Starting});
+            OnStateChanged?.Invoke(this, new ManagedWatcherStateUpdate { State = ManagedWatcherState.Starting });
 
             try
             {
                 _semaphore.Wait();
                 var request = await _requestFactory(_client);
 
-                _watcher = request.Watch<TResource>((eventType, item) =>
-                {
-                    var notification = new TNotification {Item = item, Type = eventType};
-                    OnBeforePublish?.Invoke(notification);
-                    _queue.Feed(notification);
-                });
+                _watcher = request.Watch<TResource, TResourceList>((eventType, item) =>
+                   {
+                       var notification = new TNotification { Item = item, Type = eventType };
+                       OnBeforePublish?.Invoke(notification);
+                       _queue.Feed(notification);
+                   });
                 _watcher.OnError += OnWatcherError;
                 _watcher.OnClosed += OnWatcherClosed;
                 _isMonitoring = true;
@@ -113,7 +113,7 @@ namespace ES.Kubernetes.Reflector.Core.Monitoring
             {
                 IsFaulted = true;
                 OnStateChanged?.Invoke(this, new ManagedWatcherStateUpdate
-                    {State = ManagedWatcherState.Faulted, Exception = e});
+                { State = ManagedWatcherState.Faulted, Exception = e });
                 throw;
             }
             finally
@@ -122,19 +122,19 @@ namespace ES.Kubernetes.Reflector.Core.Monitoring
             }
 
 
-            OnStateChanged?.Invoke(this, new ManagedWatcherStateUpdate {State = ManagedWatcherState.Started});
+            OnStateChanged?.Invoke(this, new ManagedWatcherStateUpdate { State = ManagedWatcherState.Started });
         }
 
         private void OnWatcherClosed()
         {
-            OnStateChanged?.Invoke(this, new ManagedWatcherStateUpdate {State = ManagedWatcherState.Closed});
+            OnStateChanged?.Invoke(this, new ManagedWatcherStateUpdate { State = ManagedWatcherState.Closed });
         }
 
         private void OnWatcherError(Exception e)
         {
             IsFaulted = true;
             OnStateChanged?.Invoke(
-                this, new ManagedWatcherStateUpdate {State = ManagedWatcherState.Faulted, Exception = e});
+                this, new ManagedWatcherStateUpdate { State = ManagedWatcherState.Faulted, Exception = e });
         }
 
         public async Task Stop()
@@ -144,7 +144,7 @@ namespace ES.Kubernetes.Reflector.Core.Monitoring
             {
                 _semaphore.Wait();
                 if (!_isMonitoring) return;
-                OnStateChanged?.Invoke(this, new ManagedWatcherStateUpdate {State = ManagedWatcherState.Stopping});
+                OnStateChanged?.Invoke(this, new ManagedWatcherStateUpdate { State = ManagedWatcherState.Stopping });
                 _isMonitoring = false;
 
                 _watcher.OnError -= OnWatcherError;
@@ -159,7 +159,7 @@ namespace ES.Kubernetes.Reflector.Core.Monitoring
             }
 
 
-            OnStateChanged?.Invoke(this, new ManagedWatcherStateUpdate {State = ManagedWatcherState.Stopped});
+            OnStateChanged?.Invoke(this, new ManagedWatcherStateUpdate { State = ManagedWatcherState.Stopped });
         }
     }
 }

@@ -29,7 +29,7 @@ namespace ES.Kubernetes.Reflector.CertManager
         private readonly Dictionary<string, ManagedWatcher<Certificate, object>> _certificatesWatchers =
             new Dictionary<string, ManagedWatcher<Certificate, object>>();
 
-        private readonly ManagedWatcher<V1beta1CustomResourceDefinition, V1beta1CustomResourceDefinitionList> _crdWatcher;
+        private readonly ManagedWatcher<V1CustomResourceDefinition, V1CustomResourceDefinitionList> _crdWatcher;
         private readonly FeederQueue<WatcherEvent> _eventQueue;
         private readonly ILogger<Monitor> _logger;
         private readonly IMediator _mediator;
@@ -37,7 +37,7 @@ namespace ES.Kubernetes.Reflector.CertManager
         private readonly IKubernetes _apiClient;
 
         public Monitor(ILogger<Monitor> logger,
-            ManagedWatcher<V1beta1CustomResourceDefinition, V1beta1CustomResourceDefinitionList> crdWatcher,
+            ManagedWatcher<V1CustomResourceDefinition, V1CustomResourceDefinitionList> crdWatcher,
             Func<ManagedWatcher<Certificate, object>> certificatesWatcherFactory,
             ManagedWatcher<V1Secret, V1SecretList> secretsWatcher,
             IKubernetes apiClient,
@@ -73,16 +73,16 @@ namespace ES.Kubernetes.Reflector.CertManager
                 switch (update.State)
                 {
                     case ManagedWatcherState.Closed:
-                        _logger.LogDebug("{type} watcher {state}", typeof(V1beta1CustomResourceDefinition).Name,
+                        _logger.LogDebug("{type} watcher {state}", typeof(V1CustomResourceDefinition).Name,
                             update.State);
                         await sender.Start();
                         break;
                     case ManagedWatcherState.Faulted:
                         _logger.LogError(update.Exception, "{type} watcher {state}",
-                            typeof(V1beta1CustomResourceDefinition).Name, update.State);
+                            typeof(V1CustomResourceDefinition).Name, update.State);
                         break;
                     default:
-                        _logger.LogDebug("{type} watcher {state}", typeof(V1beta1CustomResourceDefinition).Name,
+                        _logger.LogDebug("{type} watcher {state}", typeof(V1CustomResourceDefinition).Name,
                             update.State);
                         break;
                 }
@@ -109,7 +109,7 @@ namespace ES.Kubernetes.Reflector.CertManager
             {
                 _logger.LogError(
                     "Current kubernetes version does not support {type} apiVersion {version}.",
-                    V1beta1CustomResourceDefinition.KubeKind, V1beta1CustomResourceDefinition.KubeApiVersion);
+                    V1CustomResourceDefinition.KubeKind, V1CustomResourceDefinition.KubeApiVersion);
             }
         }
 
@@ -169,7 +169,7 @@ namespace ES.Kubernetes.Reflector.CertManager
         }
 
 
-        private async Task OnCrdEvent(WatcherEvent<V1beta1CustomResourceDefinition> request)
+        private async Task OnCrdEvent(WatcherEvent<V1CustomResourceDefinition> request)
         {
             if (request.Type != WatchEventType.Added && request.Type != WatchEventType.Modified) return;
             if (request.Item.Spec?.Names == null) return;
@@ -180,7 +180,7 @@ namespace ES.Kubernetes.Reflector.CertManager
             if (versions.TrueForAll(s => _certificatesWatchers.ContainsKey(s))) return;
 
             _logger.LogInformation("{crdType} {kind} in group {group} versions updated to {versions}",
-                typeof(V1beta1CustomResourceDefinition).Name,
+                request.Item.GetType().Name,
                 request.Item.Spec.Names.Kind,
                 request.Item.Spec.Group,
                 versions);
