@@ -3,15 +3,12 @@ Reflector is a Kubernetes addon designed to monitor changes to resources (secret
 
 [![Build Status](https://dev.azure.com/emberstack/OpenSource/_apis/build/status/kubernetes-reflector?branchName=master)](https://dev.azure.com/emberstack/OpenSource/_build/latest?definitionId=12&branchName=master)
 [![Release](https://img.shields.io/github/release/emberstack/kubernetes-reflector.svg?style=flat-square)](https://github.com/emberstack/kubernetes-reflector/releases/latest)
-[![GitHub Tag](https://img.shields.io/github/tag/emberstack/kubernetes-reflector.svg?style=flat-square)](https://github.com/emberstack/kubernetes-reflector/releases/latest)
-[![Docker Image](https://images.microbadger.com/badges/image/emberstack/kubernetes-reflector.svg)](https://microbadger.com/images/emberstack/kubernetes-reflector)
-[![Docker Version](https://images.microbadger.com/badges/version/emberstack/kubernetes-reflector.svg)](https://microbadger.com/images/emberstack/kubernetes-reflector)
-[![Docker Pulls](https://img.shields.io/docker/pulls/emberstack/kubernetes-reflector.svg?style=flat-square)](https://hub.docker.com/r/emberstack/kubernetes-reflector)
-[![Docker Stars](https://img.shields.io/docker/stars/emberstack/kubernetes-reflector.svg?style=flat-square)](https://hub.docker.com/r/remberstack/kubernetes-reflector)
+[![Docker Image](https://img.shields.io/docker/image-size/emberstack/kubernetes-reflector/latest?style=flat-square)](https://hub.docker.com/r/emberstack/kubernetes-reflector)
+[![Docker Pulls](https://img.shields.io/docker/pulls/emberstack/kubernetes-reflector?style=flat-square)](https://hub.docker.com/r/emberstack/kubernetes-reflector)
 [![license](https://img.shields.io/github/license/emberstack/kubernetes-reflector.svg?style=flat-square)](LICENSE)
 
 
-> Supports `amd64`, `arm` and `arm64`
+> Supports `amd64`, `arm`
 
 ### Extensions
 Reflector includes a cert-manager extension used to automatically annotate created secrets and allow reflection. See the `cert-manager` extension usage below for more details.
@@ -56,10 +53,10 @@ You can customize the values of the helm deployment by using the following Value
 
 
 #### Manual deployment
-Each release (found on the [Releases](https://github.com/EmberStack/kubernetes-reflector/releases) GitHub page) contains the manual deployment file (`reflector.yaml`).
+Each release (found on the [Releases](https://github.com/emberstack/kubernetes-reflector/releases) GitHub page) contains the manual deployment file (`reflector.yaml`).
 
 ```shellsession
-$ kubectl apply -f https://github.com/EmberStack/kubernetes-reflector/releases/latest/download/reflector.yaml
+$ kubectl apply -f https://github.com/emberstack/kubernetes-reflector/releases/latest/download/reflector.yaml
 ```
 
 

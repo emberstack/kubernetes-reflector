@@ -1,17 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
-VisualStudioVersion = 16.0.28803.156
+VisualStudioVersion = 16.0.29905.134
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ES.Kubernetes.Reflector", "ES.Kubernetes.Reflector\ES.Kubernetes.Reflector.csproj", "{7FC880DB-5EF3-4B08-A894-8382A1FAEDE2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ES.Kubernetes.Reflector.Host", "ES.Kubernetes.Reflector.Host\ES.Kubernetes.Reflector.Host.csproj", "{2D118FB2-1BD8-4DFA-9755-EE33CEF5ADDF}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ES.Kubernetes.Reflector.Core", "ES.Kubernetes.Reflector.Core\ES.Kubernetes.Reflector.Core.csproj", "{4D9F3F79-E4DA-47C3-B2D4-6659478AF332}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ES.Kubernetes.Reflector.Core", "ES.Kubernetes.Reflector.Core\ES.Kubernetes.Reflector.Core.csproj", "{D07EEA42-6126-4127-BDBF-B63A59689EC6}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ES.Kubernetes.Reflector.CertManager", "ES.Kubernetes.Reflector.CertManager\ES.Kubernetes.Reflector.CertManager.csproj", "{D2F79489-BA06-451A-AA69-199616560299}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ES.Kubernetes.Reflector.CertManager", "ES.Kubernetes.Reflector.CertManager\ES.Kubernetes.Reflector.CertManager.csproj", "{C67769F4-D941-45B8-B59C-4A3CEC0043C8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ES.Kubernetes.Reflector.Secrets", "ES.Kubernetes.Reflector.Secrets\ES.Kubernetes.Reflector.Secrets.csproj", "{6065E02B-04CA-4936-9D93-A5C675DDBE50}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ES.Kubernetes.Reflector.ConfigMaps", "ES.Kubernetes.Reflector.ConfigMaps\ES.Kubernetes.Reflector.ConfigMaps.csproj", "{BBD0D278-D1AF-4138-856F-B8BD9497A688}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ES.Kubernetes.Reflector.ConfigMaps", "ES.Kubernetes.Reflector.ConfigMaps\ES.Kubernetes.Reflector.ConfigMaps.csproj", "{506F914C-E14B-4097-A3B0-380239ADB29E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ES.Kubernetes.Reflector.Secrets", "ES.Kubernetes.Reflector.Secrets\ES.Kubernetes.Reflector.Secrets.csproj", "{906CA080-D724-49E1-A979-6D297E562230}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,31 +19,31 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{7FC880DB-5EF3-4B08-A894-8382A1FAEDE2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7FC880DB-5EF3-4B08-A894-8382A1FAEDE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7FC880DB-5EF3-4B08-A894-8382A1FAEDE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7FC880DB-5EF3-4B08-A894-8382A1FAEDE2}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4D9F3F79-E4DA-47C3-B2D4-6659478AF332}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4D9F3F79-E4DA-47C3-B2D4-6659478AF332}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4D9F3F79-E4DA-47C3-B2D4-6659478AF332}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4D9F3F79-E4DA-47C3-B2D4-6659478AF332}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D2F79489-BA06-451A-AA69-199616560299}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D2F79489-BA06-451A-AA69-199616560299}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D2F79489-BA06-451A-AA69-199616560299}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D2F79489-BA06-451A-AA69-199616560299}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6065E02B-04CA-4936-9D93-A5C675DDBE50}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6065E02B-04CA-4936-9D93-A5C675DDBE50}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6065E02B-04CA-4936-9D93-A5C675DDBE50}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6065E02B-04CA-4936-9D93-A5C675DDBE50}.Release|Any CPU.Build.0 = Release|Any CPU
-		{506F914C-E14B-4097-A3B0-380239ADB29E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{506F914C-E14B-4097-A3B0-380239ADB29E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{506F914C-E14B-4097-A3B0-380239ADB29E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{506F914C-E14B-4097-A3B0-380239ADB29E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2D118FB2-1BD8-4DFA-9755-EE33CEF5ADDF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D118FB2-1BD8-4DFA-9755-EE33CEF5ADDF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D118FB2-1BD8-4DFA-9755-EE33CEF5ADDF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D118FB2-1BD8-4DFA-9755-EE33CEF5ADDF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D07EEA42-6126-4127-BDBF-B63A59689EC6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D07EEA42-6126-4127-BDBF-B63A59689EC6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D07EEA42-6126-4127-BDBF-B63A59689EC6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D07EEA42-6126-4127-BDBF-B63A59689EC6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C67769F4-D941-45B8-B59C-4A3CEC0043C8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C67769F4-D941-45B8-B59C-4A3CEC0043C8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C67769F4-D941-45B8-B59C-4A3CEC0043C8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C67769F4-D941-45B8-B59C-4A3CEC0043C8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BBD0D278-D1AF-4138-856F-B8BD9497A688}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BBD0D278-D1AF-4138-856F-B8BD9497A688}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BBD0D278-D1AF-4138-856F-B8BD9497A688}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BBD0D278-D1AF-4138-856F-B8BD9497A688}.Release|Any CPU.Build.0 = Release|Any CPU
+		{906CA080-D724-49E1-A979-6D297E562230}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{906CA080-D724-49E1-A979-6D297E562230}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{906CA080-D724-49E1-A979-6D297E562230}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{906CA080-D724-49E1-A979-6D297E562230}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {5713F678-0A8A-495D-9916-6F003DAB1C3C}
+		SolutionGuid = {84996B6F-E0F4-42FC-A988-CF5A3B6CF498}
 	EndGlobalSection
 EndGlobal
