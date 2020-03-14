@@ -4,7 +4,7 @@
         "MinimumLevel": {
             "Default": "Debug",
             "Override": {
-                "Microsoft": "Information",
+                "Microsoft": "Warning",
                 "Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager": "Error",
                 "System": "Warning"
             }
