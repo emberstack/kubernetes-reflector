@@ -112,5 +112,31 @@ namespace ES.Kubernetes.Reflector.Core.Extensions
                 .Select(pattern => Regex.Match(value, pattern))
                 .Any(match => match.Success && match.Value.Length == value.Length);
         }
+
+        public static bool FortiReflectionEnabled(this V1ObjectMeta metadata)
+        {
+            if (metadata.SafeAnnotations().TryGetValue(Annotations.Reflection.FortiEnabled, out var raw) &&
+                bool.TryParse(raw, out var value))
+                return value;
+            return false;
+        }
+
+        public static string[] FortiReflectionHosts(this V1ObjectMeta metadata)
+        {
+            return metadata.SafeAnnotations().TryGetValue(Annotations.Reflection.FortiHosts, out var raw)
+                ? string.IsNullOrWhiteSpace(raw) ? Array.Empty<string>() :
+                raw.Split(new[] {","}, StringSplitOptions.RemoveEmptyEntries)
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Select(s => s.Trim()).Distinct().ToArray()
+                : Array.Empty<string>();
+        }
+
+        public static string FortiCertificate(this V1ObjectMeta metadata)
+        {
+            return metadata.SafeAnnotations().TryGetValue(Annotations.Reflection.FortiCertificate, out var raw)
+                ? string.IsNullOrWhiteSpace(raw) ? null : raw
+                : null;
+        }
+
     }
 }

@@ -136,6 +136,18 @@ namespace ES.Kubernetes.Reflector.CertManager
                 {
                     Annotations.CertManagerCertificate.SecretReflectionAutoNamespaces,
                     Annotations.Reflection.AutoNamespaces
+                },
+                {
+                    Annotations.CertManagerCertificate.SecretFortiEnabled,
+                    Annotations.Reflection.FortiEnabled
+                },
+                {
+                    Annotations.CertManagerCertificate.SecretFortiHosts,
+                    Annotations.Reflection.FortiHosts
+                },
+                {
+                    Annotations.CertManagerCertificate.SecretFortiCertificate,
+                    Annotations.Reflection.FortiCertificate
                 }
             });
 
