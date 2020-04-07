@@ -37,11 +37,11 @@ stages:
               helmVersionToInstall: '3.1.1'
 
           - script: |
-             helm package --destination $(Build.ArtifactStagingDirectory)/artifacts/helm --version $(Build.BuildNumber) --app-version $(Build.BuildNumber) src/reflector
+             helm package --destination $(Build.ArtifactStagingDirectory)/artifacts/helm --version $(Build.BuildNumber) --app-version $(Build.BuildNumber) src/helm/reflector
             displayName: 'helm package'
 
           - script: 'helm template --namespace kube-system reflector reflector > $(Build.ArtifactStagingDirectory)/artifacts/kubectl/reflector-$(Build.BuildNumber).yaml'
-            workingDirectory: src
+            workingDirectory: src/helm
             displayName: 'helm template'
 
           - publish: '$(Build.ArtifactStagingDirectory)/artifacts/helm'
