@@ -191,7 +191,7 @@ stages:
 
           - task: HelmInstaller@1
             inputs:
-              helmVersionToInstall: 'latest'   
+              helmVersionToInstall: '3.1.1'   
 
           - script: |
               docker pull $(imageRepository):build-$(Build.BuildNumber)-amd64
