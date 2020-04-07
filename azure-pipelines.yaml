@@ -13,6 +13,7 @@ trigger:
   paths:
     include:
     - src/*
+    - azure-pipelines.yaml
 
 stages:
 
@@ -35,6 +36,10 @@ stages:
           - task: HelmInstaller@1
             inputs:
               helmVersionToInstall: '3.1.1'
+
+          - script: |
+             cp README.md src/helm/reflector/README.md
+            displayName: 'import README'
 
           - script: |
              helm package --destination $(Build.ArtifactStagingDirectory)/artifacts/helm --version $(Build.BuildNumber) --app-version $(Build.BuildNumber) src/helm/reflector

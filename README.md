@@ -6,6 +6,7 @@ Reflector is a Kubernetes addon designed to monitor changes to resources (secret
 [![Docker Image](https://img.shields.io/docker/image-size/emberstack/kubernetes-reflector/latest?style=flat-square)](https://hub.docker.com/r/emberstack/kubernetes-reflector)
 [![Docker Pulls](https://img.shields.io/docker/pulls/emberstack/kubernetes-reflector?style=flat-square)](https://hub.docker.com/r/emberstack/kubernetes-reflector)
 [![license](https://img.shields.io/github/license/emberstack/kubernetes-reflector.svg?style=flat-square)](LICENSE)
+[![slack](https://img.shields.io/badge/join-emberstack%20on%20Slack-gray.svg?style=flat-square&longCache=true&logo=slack&colorB=green)](https://join.slack.com/t/emberstack/shared_invite/zt-8qyutopg-9ghwTq3OnHSm2tY9Sk5ULA)
 
 
 > Supports `amd64`, `arm`
@@ -13,9 +14,20 @@ Reflector is a Kubernetes addon designed to monitor changes to resources (secret
 ### Extensions
 Reflector includes a cert-manager extension used to automatically annotate created secrets and allow reflection. See the `cert-manager` extension usage below for more details.
 
+
+## Support
+If you need help or found a bug, please feel free to open an Issue on GitHub (https://github.com/emberstack/kubernetes-reflector/issues).  
+  
+You can also join our Slack workspace and talk to us:  
+[![slack](https://img.shields.io/badge/join-emberstack%20on%20Slack-gray.svg?style=flat-square&longCache=true&logo=slack&colorB=green)](https://join.slack.com/t/emberstack/shared_invite/zt-8qyutopg-9ghwTq3OnHSm2tY9Sk5ULA)
+
+
 ## Deployment
 
 Reflector can be deployed either manually or using Helm (recommended).
+
+### Prerequisites
+- Kubernetes 1.14+
 
 #### Deployment using Helm
 
@@ -142,7 +154,7 @@ $ kubectl apply -f https://github.com/emberstack/kubernetes-reflector/releases/l
 
 ## (Optional) `cert-manager` extension
 
-> The current release supports `cert-manager` from version `0.11.0` or higher. If you're using an older version, please use Reflector version `v2.19193.2`
+> Supported `cert-manager` version: `0.11.0` or higher.
 
 Reflector can automatically annotate secrets created by cert-manager by annotating the `Certificate` object. This allows for issued certificates (example: wildcard certificates) to be reused in other namespaces and permit automatic updates of mirrors on certificate renewal.
   
@@ -154,7 +166,7 @@ Reflector can automatically annotate secrets created by cert-manager by annotati
 
 In the following example, the generated secret `certificate-secret` will be annotated with the `reflector.v1.k8s.emberstack.com/reflection-allowed` and `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces` based on the certificate annotations.
 ```yaml
-apiVersion: certmanager.k8s.io/v1alpha1
+apiVersion: cert-manager.io/v1alpha1
 kind: Certificate
 metadata:  
   name: some-certificate
