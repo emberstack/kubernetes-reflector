@@ -1,6 +1,6 @@
-apiVersion: certmanager.k8s.io/v1alpha1
+apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
-metadata:  
+metadata:
   name: {{ template "reflector-sample.fullname" $ }}-cert
   annotations:
     reflector.v1.k8s.emberstack.com/secret-reflection-allowed: "true"
@@ -11,10 +11,4 @@ spec:
     name: {{ template "reflector-sample.fullname" $ }}-someissuer
     kind: ClusterIssuer
   dnsNames:
-    - '*.dev.winromulus.com'
-  acme:
-    config:      
-      - dns01:
-          provider: someprovider
-        domains:
-          - '*.dev.winromulus.com'
+  - '*.dev.winromulus.com'

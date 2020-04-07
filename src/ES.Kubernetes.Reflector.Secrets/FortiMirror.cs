@@ -57,17 +57,7 @@ namespace ES.Kubernetes.Reflector.Secrets
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            try
-            {
-                await _apiClient.ListCustomResourceDefinitionAsync(cancellationToken: cancellationToken);
-                await _secretsWatcher.Start();
-            }
-            catch (HttpOperationException exception) when (exception.Response.StatusCode == HttpStatusCode.NotFound)
-            {
-                _logger.LogError(
-                    "Current kubernetes version does not support {type} apiVersion {version}.",
-                    V1CustomResourceDefinition.KubeKind, V1CustomResourceDefinition.KubeApiVersion);
-            }
+            await _secretsWatcher.Start();
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)

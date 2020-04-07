@@ -1,7 +1,7 @@
 name: $(version).$(Rev:r)
 
 variables:
-  version: 4.1
+  version: 4.2
   buildConfiguration: "Release"
   imageRepository: "emberstack/kubernetes-reflector"
   DOCKER_CLI_EXPERIMENTAL: 'enabled'
@@ -10,6 +10,9 @@ trigger:
   branches:
     include:
       - "*"
+  paths:
+    include:
+    - src/*
 
 stages:
 
@@ -31,14 +34,14 @@ stages:
 
           - task: HelmInstaller@1
             inputs:
-              helmVersionToInstall: 'latest'
+              helmVersionToInstall: '3.1.1'
 
           - script: |
-             helm package --destination $(Build.ArtifactStagingDirectory)/artifacts/helm --version $(Build.BuildNumber) --app-version $(Build.BuildNumber) helm/reflector
+             helm package --destination $(Build.ArtifactStagingDirectory)/artifacts/helm --version $(Build.BuildNumber) --app-version $(Build.BuildNumber) src/helm/reflector
             displayName: 'helm package'
 
           - script: 'helm template --namespace kube-system reflector reflector > $(Build.ArtifactStagingDirectory)/artifacts/kubectl/reflector-$(Build.BuildNumber).yaml'
-            workingDirectory: helm
+            workingDirectory: src/helm
             displayName: 'helm template'
 
           - publish: '$(Build.ArtifactStagingDirectory)/artifacts/helm'
@@ -81,9 +84,9 @@ stages:
             inputs: 
               containerRegistry: 'Emberstack Docker Hub' 
               repository: $(imageRepository) 
-              Dockerfile: ES.Kubernetes.Reflector.Host/Dockerfile 
+              Dockerfile: src/ES.Kubernetes.Reflector.Host/Dockerfile 
               command: build 
-              buildContext: . 
+              buildContext: src 
               tags: 'build-$(Build.BuildNumber)-arm32' 
  
           - task: Docker@2 
@@ -112,9 +115,9 @@ stages:
             inputs:
               containerRegistry: 'Emberstack Docker Hub'
               repository: $(imageRepository)
-              Dockerfile: ES.Kubernetes.Reflector.Host/Dockerfile
+              Dockerfile: src/ES.Kubernetes.Reflector.Host/Dockerfile
               command: build
-              buildContext: .
+              buildContext: src
               tags: 'build-$(Build.BuildNumber)-amd64'
 
           - task: Docker@2
@@ -188,7 +191,7 @@ stages:
 
           - task: HelmInstaller@1
             inputs:
-              helmVersionToInstall: 'latest'   
+              helmVersionToInstall: '3.1.1'   
 
           - script: |
               docker pull $(imageRepository):build-$(Build.BuildNumber)-amd64
