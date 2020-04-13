@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,6 +23,10 @@
     <ProjectReference Include="..\ES.Kubernetes.Reflector.ConfigMaps\ES.Kubernetes.Reflector.ConfigMaps.csproj" />
     <ProjectReference Include="..\ES.Kubernetes.Reflector.Core\ES.Kubernetes.Reflector.Core.csproj" />
     <ProjectReference Include="..\ES.Kubernetes.Reflector.Secrets\ES.Kubernetes.Reflector.Secrets.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
   </ItemGroup>
 
 
