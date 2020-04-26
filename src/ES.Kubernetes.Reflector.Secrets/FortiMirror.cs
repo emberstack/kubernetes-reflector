@@ -127,7 +127,10 @@ namespace ES.Kubernetes.Reflector.Secrets
                 string fortiPassword;
                 try
                 {
-                    var hostSecret = await _apiClient.ReadNamespacedSecretAsync(hostSecretId.Name, hostSecretId.Namespace);
+                    var hostSecret = await _apiClient.ReadNamespacedSecretAsync(hostSecretId.Name,
+                        string.IsNullOrWhiteSpace(hostSecretId.Namespace)
+                            ? e.Item.Metadata.NamespaceProperty
+                            : hostSecretId.Namespace);
                     if (hostSecret.Data is null || !hostSecret.Data.Keys.Any())
                     {
                         _logger.LogWarning("Cannot reflect {secretId} to {hostSecretId}. " +
