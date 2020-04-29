@@ -212,6 +212,12 @@ namespace ES.Kubernetes.Reflector.CertManager
         private async Task OnEventHandlingError(WatcherEvent e, Exception ex)
         {
             var id = KubernetesObjectId.For(e.Item.Metadata());
+
+            if(ex is Microsoft.Rest.HttpOperationException httpEx)
+            {
+                _logger.LogError($"Microsoft.Rest.HttpOperationException response: {httpEx.Response.Content}");
+            }
+
             _logger.LogError(ex, "Failed to process {eventType} {kind} {@id} due to exception",
                 e.Type, e.Item.Kind, id);
             await _secretsWatcher.Stop();
