@@ -180,9 +180,15 @@ stages:
           helmVersionToInstall: '3.1.1'   
       - script: |
           docker pull $(imageRepository):build-$(Build.BuildNumber)-amd64
+          docker tag  $(imageRepository):build-$(Build.BuildNumber)-amd64 $(imageRepository):$(Build.BuildNumber)-amd64
+          docker push $(imageRepository):$(Build.BuildNumber)-amd64
+
           docker pull $(imageRepository):build-$(Build.BuildNumber)-arm32
-          docker manifest create $(imageRepository):$(Build.BuildNumber) $(imageRepository):build-$(Build.BuildNumber)-amd64 $(imageRepository):build-$(Build.BuildNumber)-arm32
-          docker manifest create $(imageRepository):latest               $(imageRepository):build-$(Build.BuildNumber)-amd64 $(imageRepository):build-$(Build.BuildNumber)-arm32
+          docker tag  $(imageRepository):build-$(Build.BuildNumber)-arm32 $(imageRepository):$(Build.BuildNumber)-arm32
+          docker push $(imageRepository):$(Build.BuildNumber)-arm32
+
+          docker manifest create $(imageRepository):$(Build.BuildNumber) $(imageRepository):$(Build.BuildNumber)-amd64 $(imageRepository):$(Build.BuildNumber)-arm32
+          docker manifest create $(imageRepository):latest               $(imageRepository):$(Build.BuildNumber)-amd64 $(imageRepository):$(Build.BuildNumber)-arm32
           docker manifest push $(imageRepository):$(Build.BuildNumber)
           docker manifest push $(imageRepository):latest
         displayName: 'docker pull, tag and push'
