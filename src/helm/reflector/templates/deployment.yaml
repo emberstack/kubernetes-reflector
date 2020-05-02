@@ -2,40 +2,38 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "reflector.fullname" . }}
-  namespace: {{.Release.Namespace}}
+  namespace: {{ .Release.Namespace }}
   labels:
-    app.kubernetes.io/name: {{ include "reflector.name" . }}
-    helm.sh/chart: {{ include "reflector.chart" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    {{- include "reflector.labels" . | nindent 4 }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "reflector.name" . }}
-      app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- include "reflector.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ include "reflector.name" . }}
-        app.kubernetes.io/instance: {{ .Release.Name }}
+        {{- include "reflector.selectorLabels" . | nindent 8 }}
     spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      serviceAccountName: {{ include "reflector.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
-          {{- if .Values.image.tag }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          {{- else }}
-          image: "{{ .Values.image.repository }}:release-{{ .Chart.Version }}"
-          {{- end }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ include "reflector.imageTag" . }}"
+          imagePullPolicy: {{ include "reflector.imagePullPolicy" . }}
           env:
-            - name: ES_Reflector__Extensions__CertManager__Enabled
-              value: {{ .Values.extensions.certManager.enabled | quote }}
             - name: ES_Serilog__MinimumLevel__Default
               value: {{ .Values.configuration.logging.minimumLevel | quote }}
           ports:
             - name: http
-              containerPort: 80
+              containerPort: 25080
               protocol: TCP
           livenessProbe:
             httpGet:
@@ -51,13 +49,6 @@ spec:
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- with .Values.securityContext }}
-          securityContext:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-      {{- if .Values.rbac.enabled }}
-      serviceAccountName: {{ include "reflector.serviceAccountName" . }}
-      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

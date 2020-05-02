@@ -47,9 +47,7 @@ namespace ES.Kubernetes.Reflector.Host
             builder.RegisterModule<CoreModule>();
             builder.RegisterModule<SecretsModule>();
             builder.RegisterModule<ConfigMapsModule>();
-
-            var certManagerEnabled = bool.Parse(Configuration["Reflector:Extensions:CertManager:Enabled"]);
-            if (certManagerEnabled) builder.RegisterModule<CertManagerModule>();
+            builder.RegisterModule<CertManagerModule>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

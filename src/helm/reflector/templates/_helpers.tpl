@@ -31,6 +31,53 @@ Create chart name and version as used by the chart label.
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
+{{/*
+Common labels
+*/}}
+{{- define "reflector.labels" -}}
+helm.sh/chart: {{ include "reflector.chart" . }}
+{{ include "reflector.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end -}}
+
+{{/*
+Selector labels
+*/}}
+{{- define "reflector.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "reflector.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end -}}
+
+
+{{/*
+Image Tag
+*/}}
+{{- define "reflector.imageTag" -}}
+{{- if .Values.image.tag -}}
+    {{ default .Values.image.tag }}
+{{- else -}}
+    {{ default .Chart.AppVersion }}
+{{- end -}}
+{{- end -}}
+
+
+{{/*
+Image PullPolicy
+*/}}
+{{- define "reflector.imagePullPolicy" -}}
+{{- if .Values.image.pullPolicy -}}
+    {{ default .Values.image.pullPolicy }}
+{{- else -}}
+{{- if eq  (include "reflector.imageTag" .) "latest" -}}
+    {{ default "Always" }}
+{{- else -}}
+    {{ default "IfNotPresent" }}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 
 {{/*
 Create the name of the service account to use
