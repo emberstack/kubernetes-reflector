@@ -4,24 +4,21 @@ kind: ClusterRole
 metadata:
   name: {{ include "reflector.fullname" . }}
   labels:
-    app.kubernetes.io/name: {{ include "reflector.name" . }}
-    helm.sh/chart: {{ include "reflector.chart" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    {{- include "reflector.labels" . | nindent 4 }}
 rules:
   - apiGroups: [""]
-    resources: ["*"]
+    resources: ["configmaps", "secrets"]
     verbs: ["*"]
-  - apiGroups: ["extensions"]
-    resources: ["ingresses"]
-    verbs: ["*"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["watch", "list"]
   - apiGroups: ["apiextensions.k8s.io"]
     resources: ["customresourcedefinitions"]
-    verbs: ["*"]
+    verbs: ["watch", "list"]
   - apiGroups: ["certmanager.k8s.io"]
     resources: ["certificates", "certificates/finalizers"]
-    verbs: ["*"]
+    verbs: ["watch", "list"]
   - apiGroups: ["cert-manager.io"]
     resources: ["certificates", "certificates/finalizers"]
-    verbs: ["*"]
+    verbs: ["watch", "list"]
 {{- end }}

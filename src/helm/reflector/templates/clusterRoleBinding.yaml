@@ -4,10 +4,7 @@ kind: ClusterRoleBinding
 metadata:
   name: {{ include "reflector.fullname" . }}
   labels:
-    app.kubernetes.io/name: {{ include "reflector.name" . }}
-    helm.sh/chart: {{ include "reflector.chart" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    {{- include "reflector.labels" . | nindent 4 }}
 roleRef:
   kind: ClusterRole
   name: {{ include "reflector.fullname" . }}

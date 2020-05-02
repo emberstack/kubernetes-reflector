@@ -28,6 +28,7 @@ Reflector can be deployed either manually or using Helm (recommended).
 
 ### Prerequisites
 - Kubernetes 1.14+
+- Helm 3 (if deployed using Helm)
 
 #### Deployment using Helm
 
@@ -47,7 +48,6 @@ You can customize the values of the helm deployment by using the following Value
 | `image.repository`                   | Container image repository                       | `emberstack/kubernetes-reflector`                       |
 | `image.tag`                          | Container image tag                              | `Same as chart version`                                 |
 | `image.pullPolicy`                   | Container image pull policy                      | `IfNotPresent`                                          |
-| `extensions.certManager.enabled`     | `cert-manager` addon                             | `true`                                                  |
 | `configuration.logging.minimumLevel` | Logging minimum level                            | `Information`                                           |
 | `rbac.enabled`                       | Create and use RBAC resources                    | `true`                                                  |
 | `serviceAccount.create`              | Create ServiceAccount                            | `true`                                                  |
@@ -152,7 +152,7 @@ $ kubectl apply -f https://github.com/emberstack/kubernetes-reflector/releases/l
 
  - - - -
 
-## (Optional) `cert-manager` extension
+## `cert-manager` extension
 
 > Supported `cert-manager` version: `0.11.0` or higher.
 

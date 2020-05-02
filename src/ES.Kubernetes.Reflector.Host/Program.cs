@@ -45,7 +45,8 @@ namespace ES.Kubernetes.Reflector.Host
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder(args)
-                .UseEnvironment(Environment.GetEnvironmentVariable($"ES_{nameof(Environment)}") ?? Environments.Production)
+                .UseEnvironment(Environment.GetEnvironmentVariable($"ES_{nameof(Environment)}") ??
+                                Environments.Production)
                 //Add configuration
                 .ConfigureAppConfiguration((ctx, config) =>
                 {
@@ -59,7 +60,11 @@ namespace ES.Kubernetes.Reflector.Host
                     services.Configure<ConsoleLifetimeOptions>(opts => opts.SuppressStatusMessages = false))
                 //Configure dependency injection
                 .UseServiceProviderFactory(new AutofacServiceProviderFactory())
-                
-                .ConfigureWebHostDefaults(webBuilder => { webBuilder.UseStartup<Startup>(); });
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder
+                        .UseStartup<Startup>()
+                        .UseUrls("http://*:25080");
+                });
     }
 }
