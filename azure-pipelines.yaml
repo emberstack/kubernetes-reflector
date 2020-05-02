@@ -156,7 +156,7 @@ stages:
   - stage: release
     displayName: "Release"
     dependsOn: 'build'
-    condition: and(succeeded())
+    condition: succeeded()
     jobs:
     - job: release
       displayName: "Release Job"
