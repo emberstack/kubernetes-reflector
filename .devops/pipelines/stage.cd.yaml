@@ -21,6 +21,9 @@ stages:
       - download: current
         artifact: 'helm'
         displayName: "Download helm artifact"
+      - download: current
+        artifact: 'kubectl'
+        displayName: "Download kubectl artifact"
       - task: DockerInstaller@0
         displayName: 'Docker install'
         inputs:
@@ -62,9 +65,13 @@ stages:
           git status
           git commit -m "Added reflector-$(Build.BuildNumber).tgz"
           git push
-        displayName: 'Add chart to GitHub repository'
+        displayName: 'GitHub - Commit chart'
+      - script: | 
+          mkdir -p github 
+          cp $(Pipeline.Workspace)/kubectl/reflector-$(Build.BuildNumber).yaml  github/reflector.yaml 
+        displayName: 'GitHub - Prepare artifacts'
       - task: GitHubRelease@1
-        displayName: 'GitHub release (create)'
+        displayName: 'GitHub - Create release'
         inputs:
           gitHubConnection: GitHub
           repositoryName: 'emberstack/kubernetes-reflector'
@@ -73,3 +80,4 @@ stages:
           title: 'Release v$(Build.BuildNumber)'
           releaseNotesSource: inline
           releaseNotes: 'The release process is automated.'
+          assets: '$(System.DefaultWorkingDirectory)/github/*.*'
