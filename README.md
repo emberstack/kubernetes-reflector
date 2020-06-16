@@ -9,7 +9,7 @@ Reflector is a Kubernetes addon designed to monitor changes to resources (secret
 [![slack](https://img.shields.io/badge/join-emberstack%20on%20Slack-gray.svg?style=flat-square&longCache=true&logo=slack&colorB=green)](https://join.slack.com/t/emberstack/shared_invite/zt-8qyutopg-9ghwTq3OnHSm2tY9Sk5ULA)
 
 
-> Supports `amd64`, `arm`
+> Supports `amd64`, `arm` and `arm64`
 
 ### Extensions
 Reflector includes a cert-manager extension used to automatically annotate created secrets and allow reflection. See the `cert-manager` extension usage below for more details.
