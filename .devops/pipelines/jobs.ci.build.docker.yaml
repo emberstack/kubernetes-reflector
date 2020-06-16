@@ -1,0 +1,75 @@
+parameters:
+- name: pool
+  type: string
+  default: "<empty>"
+- name: arch
+  default: "<empty>"
+
+jobs:
+- job: build_docker_${{ parameters.arch }}
+  displayName: "Docker ${{ parameters.arch }} image"
+  pool:
+    ${{ if eq(parameters.pool, '<empty>') }}:
+      vmImage: "ubuntu-latest"
+    ${{ if ne(parameters.pool, '<empty>') }}:
+      name: "${{ parameters.pool }}"
+    ${{ if ne(parameters.arch, '<empty>') }}:
+      demands: 
+      - ${{ if eq(parameters.arch, 'amd64') }}:
+        - Agent.OSArchitecture -equals X64
+      - ${{ if eq(parameters.arch, 'arm') }}:
+        - Agent.OSArchitecture -equals ARM
+      - ${{ if eq(parameters.arch, 'arm64') }}:
+        - Agent.OSArchitecture -equals ARM64
+  variables:
+  - ${{ if eq(parameters.arch, 'amd64') }}:
+    - name: Docker.CLI.Architecture
+      value: amd64
+  - ${{ if eq(parameters.arch, 'arm64') }}:
+    - name: Docker.CLI.Architecture
+      value: arm64
+  - ${{ if eq(parameters.arch, 'arm') }}:
+    - name: Docker.CLI.Architecture
+      value: armhf
+  - name: Docker.Image.Architecture
+    value: ${{ parameters.arch }}
+
+  steps:
+  - script: |
+      docker version
+      if [ "$?" -ne "0" ]; then
+        apt-get update
+        apt-get install \
+         apt-transport-https \
+         ca-certificates \
+         curl \
+         gnupg2 \
+         software-properties-common
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+        add-apt-repository \
+         "deb [arch=$(Docker.CLI.Architecture)] https://download.docker.com/linux/ubuntu \
+         $(lsb_release -cs) \
+         stable"
+        apt-get update
+        apt-get install docker-ce docker-ce-cli containerd.io
+      fi
+    displayName: "Docker install"
+
+  - task: Docker@2 
+    displayName: 'Build image' 
+    inputs: 
+      containerRegistry: 'Emberstack Docker Hub' 
+      repository: $(imageRepository) 
+      Dockerfile: src/ES.Kubernetes.Reflector.Host/Dockerfile 
+      command: build 
+      buildContext: src
+      tags: 'build-$(Build.BuildNumber)-$(Docker.Image.Architecture)'
+
+  - task: Docker@2 
+    displayName: "Push image" 
+    inputs: 
+      containerRegistry: "Emberstack Docker Hub" 
+      repository: $(imageRepository) 
+      command: push 
+      tags: | 
+        build-$(Build.BuildNumber)-$(Docker.Image.Architecture)
