@@ -18,7 +18,7 @@ stages:
         displayName: 'Create Artifacts directories'
       - task: HelmInstaller@1
         inputs:
-          helmVersionToInstall: '3.1.1'
+          helmVersionToInstall: '3.2.4'
         displayName: "Helm install"
       - script: |
          cp README.md src/helm/reflector/README.md
