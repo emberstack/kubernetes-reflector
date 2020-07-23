@@ -1,83 +1,82 @@
 parameters:
   architectures: []
 
-
 stages:
-- stage: cd
-  displayName: "CD"
-  dependsOn: 'ci'
-  condition: and(succeeded(), in(variables['Build.Reason'], 'IndividualCI', 'Manual'), in(variables['Build.SourceBranchName'], 'master'))
-  jobs:
-  - job: release
-    displayName: "Release"
-    pool:
-      vmImage: ubuntu-latest
-    variables:
-      - group: "OpenSource.GitHub"
-      - name: "manifest.images"
-        value: ""
-    steps:
-      - checkout: none
-      - download: current
-        artifact: 'helm'
-        displayName: "Download helm artifact"
-      - download: current
-        artifact: 'kubectl'
-        displayName: "Download kubectl artifact"
-      - task: DockerInstaller@0
-        displayName: 'Docker install'
-        inputs:
-          dockerVersion: '19.03.5'    
-      - task: Docker@2
-        displayName: "Docker login"
-        inputs:
-          containerRegistry: "Emberstack Docker Hub"
-          command: login
-      - task: HelmInstaller@1
-        inputs:
-          helmVersionToInstall: '3.1.1'
-        displayName: "Helm install"
-      - ${{ each architecture in parameters.architectures }}:
-        - script: |
-            docker pull $(imageRepository):build-$(Build.BuildNumber)-${{ architecture.arch }}
-            echo '##vso[task.setvariable variable=manifest.images]$(manifest.images)  $(imageRepository):build-$(Build.BuildNumber)-${{ architecture.arch }}'
-            docker tag $(imageRepository):build-$(Build.BuildNumber)-${{ architecture.arch }} $(imageRepository):$(Build.BuildNumber)-${{ architecture.arch }}
-            docker push $(imageRepository):$(Build.BuildNumber)-${{ architecture.arch }}
-          displayName: "Retag ${{ architecture.arch }} image"
-      - script: |
-          docker manifest create  $(imageRepository):$(Build.BuildNumber) $(manifest.images)
-          docker manifest push    $(imageRepository):$(Build.BuildNumber)
-          docker manifest create  $(imageRepository):latest               $(manifest.images)
-          docker manifest push    $(imageRepository):latest
-        displayName: 'Create and push multi-arch manifest'
-      - script: |
-          git config --global user.email "$(emberstack-agent-email)"
-          git config --global user.name "$(emberstack-agent-name)"
-          git clone https://$(emberstack-agent-username):$(emberstack-agent-pat)@github.com/emberstack/helm-charts.git
-          
-          mkdir -p helm-charts/charts
-          cp $(Pipeline.Workspace)/helm/reflector-$(Build.BuildNumber).tgz  helm-charts/charts
-          
-          cd helm-charts
-          rm index.yaml
-          helm repo index ./
-          git add .
-          git status
-          git commit -m "Added reflector-$(Build.BuildNumber).tgz"
-          git push
-        displayName: 'GitHub - Commit chart'
-      - script: | 
-          mkdir -p github 
-          cp $(Pipeline.Workspace)/kubectl/reflector-$(Build.BuildNumber).yaml  github/reflector.yaml 
-        displayName: 'GitHub - Prepare artifacts'
-      - task: GitHubRelease@1
-        displayName: 'GitHub - Create release'
-        inputs:
-          gitHubConnection: GitHub
-          repositoryName: 'emberstack/kubernetes-reflector'
-          tagSource: userSpecifiedTag
-          tag: 'v$(Build.BuildNumber)'
-          title: 'Release v$(Build.BuildNumber)'
-          releaseNotesSource: inline
-          releaseNotes: 'The release process is automated.'
-          assets: '$(System.DefaultWorkingDirectory)/github/*.*'
+  - stage: cd
+    displayName: "CD"
+    dependsOn: "ci"
+    condition: and(succeeded(), in(variables['Build.Reason'], 'IndividualCI', 'Manual'), in(variables['Build.SourceBranchName'], 'master'))
+    jobs:
+      - job: release
+        displayName: "Release"
+        pool:
+          vmImage: ubuntu-latest
+        variables:
+          - group: "OpenSource.GitHub"
+          - name: "manifest.images"
+            value: ""
+        steps:
+          - checkout: none
+          - download: current
+            artifact: "helm"
+            displayName: "Download helm artifact"
+          - download: current
+            artifact: "kubectl"
+            displayName: "Download kubectl artifact"
+          - task: DockerInstaller@0
+            displayName: "Docker install"
+            inputs:
+              dockerVersion: "19.03.5"
+          - task: Docker@2
+            displayName: "Docker login"
+            inputs:
+              containerRegistry: "Emberstack Docker Hub"
+              command: login
+          - task: HelmInstaller@1
+            inputs:
+              helmVersionToInstall: "3.1.1"
+            displayName: "Helm install"
+          - ${{ each architecture in parameters.architectures }}:
+              - script: |
+                  docker pull $(imageRepository):build-$(Build.BuildNumber)-${{ architecture.arch }}
+                  echo '##vso[task.setvariable variable=manifest.images]$(manifest.images)  $(imageRepository):build-$(Build.BuildNumber)-${{ architecture.arch }}'
+                  docker tag $(imageRepository):build-$(Build.BuildNumber)-${{ architecture.arch }} $(imageRepository):$(Build.BuildNumber)-${{ architecture.arch }}
+                  docker push $(imageRepository):$(Build.BuildNumber)-${{ architecture.arch }}
+                displayName: "Retag ${{ architecture.arch }} image"
+          - script: |
+              docker manifest create  $(imageRepository):$(Build.BuildNumber) $(manifest.images)
+              docker manifest push    $(imageRepository):$(Build.BuildNumber)
+              docker manifest create  $(imageRepository):latest               $(manifest.images)
+              docker manifest push    $(imageRepository):latest
+            displayName: "Create and push multi-arch manifest"
+          - script: |
+              git config --global user.email "$(emberstack-agent-email)"
+              git config --global user.name "$(emberstack-agent-name)"
+              git clone https://$(emberstack-agent-username):$(emberstack-agent-pat)@github.com/emberstack/helm-charts.git
+
+              mkdir -p helm-charts/charts
+              cp $(Pipeline.Workspace)/helm/reflector-$(Build.BuildNumber).tgz  helm-charts/charts
+
+              cd helm-charts
+              rm index.yaml
+              helm repo index ./
+              git add .
+              git status
+              git commit -m "Added reflector-$(Build.BuildNumber).tgz"
+              git push
+            displayName: "GitHub - Commit chart"
+          - script: |
+              mkdir -p github 
+              cp $(Pipeline.Workspace)/kubectl/reflector-$(Build.BuildNumber).yaml  github/reflector.yaml
+            displayName: "GitHub - Prepare artifacts"
+          - task: GitHubRelease@1
+            displayName: "GitHub - Create release"
+            inputs:
+              gitHubConnection: GitHub
+              repositoryName: "emberstack/kubernetes-reflector"
+              tagSource: userSpecifiedTag
+              tag: "v$(Build.BuildNumber)"
+              title: "Release v$(Build.BuildNumber)"
+              releaseNotesSource: inline
+              releaseNotes: "The release process is automated."
+              assets: "$(System.DefaultWorkingDirectory)/github/*.*"

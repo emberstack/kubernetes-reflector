@@ -4,7 +4,7 @@ variables:
   version: 5.1
   buildConfiguration: "Release"
   imageRepository: "emberstack/kubernetes-reflector"
-  DOCKER_CLI_EXPERIMENTAL: 'enabled'
+  DOCKER_CLI_EXPERIMENTAL: "enabled"
 
 trigger:
   branches:
@@ -12,25 +12,24 @@ trigger:
       - "*"
   paths:
     include:
-    - src/*
-    - .devops/*
-    - azure-pipelines.yaml
+      - src/*
+      - .devops/*
+      - azure-pipelines.yaml
 
 stages:
-- template: .devops/pipelines/stage.ci.yaml
-  parameters:
-    architectures:
-    - arch: amd64
-      pool: winromulus-devops
-    - arch: arm
-      pool: winromulus-devops
-    - arch: arm64
-      pool: winromulus-devops
+  - template: .devops/pipelines/stage.ci.yaml
+    parameters:
+      architectures:
+        - arch: amd64
+          pool: winromulus-devops
+        - arch: arm
+          pool: winromulus-devops
+        - arch: arm64
+          pool: winromulus-devops
 
-
-- template: .devops/pipelines/stage.cd.yaml
-  parameters:
-    architectures:
-    - arch: amd64
-    - arch: arm
-    - arch: arm64
+  - template: .devops/pipelines/stage.cd.yaml
+    parameters:
+      architectures:
+        - arch: amd64
+        - arch: arm
+        - arch: arm64

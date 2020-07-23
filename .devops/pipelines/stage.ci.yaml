@@ -1,76 +1,73 @@
 parameters:
   architectures: []
 
-
 stages:
-- stage: ci
-  displayName: "CI"
-  jobs:
-  - job: build_helm
-    displayName: "Helm"
-    pool:
-      vmImage: ubuntu-latest
-    steps:
-      - script: |
-         mkdir -p artifacts/helm
-         mkdir -p artifacts/kubectl
-        workingDirectory: '$(Build.ArtifactStagingDirectory)'
-        displayName: 'Create Artifacts directories'
-      - task: HelmInstaller@1
-        inputs:
-          helmVersionToInstall: '3.1.1'
-        displayName: "Helm install"
-      - script: |
-         cp README.md src/helm/reflector/README.md
-        displayName: 'import README'
-      - script: |
-         helm package --destination $(Build.ArtifactStagingDirectory)/artifacts/helm --version $(Build.BuildNumber) --app-version $(Build.BuildNumber) src/helm/reflector
-        displayName: 'Helm package chart'
-      - script: 'helm template --namespace kube-system reflector $(Build.ArtifactStagingDirectory)/artifacts/helm/reflector-$(Build.BuildNumber).tgz > $(Build.ArtifactStagingDirectory)/artifacts/kubectl/reflector-$(Build.BuildNumber).yaml' 
-        workingDirectory: src/helm 
-        displayName: 'Helm template chart'
-      - publish: '$(Build.ArtifactStagingDirectory)/artifacts/helm'
-        artifact: 'helm'
-        displayName: "Publish helm artifact"
-      - publish: '$(Build.ArtifactStagingDirectory)/artifacts/kubectl'
-        artifact: 'kubectl'
-        displayName: "Publish kubectl artifact"
+  - stage: ci
+    displayName: "CI"
+    jobs:
+      - job: build_helm
+        displayName: "Helm"
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - script: |
+              mkdir -p artifacts/helm
+              mkdir -p artifacts/kubectl
+            workingDirectory: "$(Build.ArtifactStagingDirectory)"
+            displayName: "Create Artifacts directories"
+          - task: HelmInstaller@1
+            inputs:
+              helmVersionToInstall: "3.1.1"
+            displayName: "Helm install"
+          - script: |
+              cp README.md src/helm/reflector/README.md
+            displayName: "import README"
+          - script: |
+              helm package --destination $(Build.ArtifactStagingDirectory)/artifacts/helm --version $(Build.BuildNumber) --app-version $(Build.BuildNumber) src/helm/reflector
+            displayName: "Helm package chart"
+          - script: "helm template --namespace kube-system reflector $(Build.ArtifactStagingDirectory)/artifacts/helm/reflector-$(Build.BuildNumber).tgz > $(Build.ArtifactStagingDirectory)/artifacts/kubectl/reflector-$(Build.BuildNumber).yaml"
+            workingDirectory: src/helm
+            displayName: "Helm template chart"
+          - publish: "$(Build.ArtifactStagingDirectory)/artifacts/helm"
+            artifact: "helm"
+            displayName: "Publish helm artifact"
+          - publish: "$(Build.ArtifactStagingDirectory)/artifacts/kubectl"
+            artifact: "kubectl"
+            displayName: "Publish kubectl artifact"
 
-
-  - ${{ each architecture in parameters.architectures }}:
-    - template: jobs.ci.build.docker.yaml
-      parameters:
-        arch: ${{ architecture.arch }}
-        pool: ${{ architecture.pool }}
-
-
-  - job: build_docker_multiarch
-    displayName: "Docker multiarch image"
-    pool:
-      vmImage: ubuntu-latest
-    dependsOn: 
-    - ${{ each architecture in parameters.architectures }}:
-      - build_docker_${{ architecture.arch}}
-    variables:
-    - name: "manifest.images"
-      value: ""
-    steps:
-      - task: DockerInstaller@0
-        displayName: 'Docker install'
-        inputs:
-          dockerVersion: '19.03.5'
-      - task: Docker@2
-        displayName: "Docker login"
-        inputs:
-          containerRegistry: "Emberstack Docker Hub"
-          command: login
       - ${{ each architecture in parameters.architectures }}:
-        - script: |
-            docker pull $(imageRepository):build-$(Build.BuildNumber)-${{ architecture.arch }}
-            echo '##vso[task.setvariable variable=manifest.images]$(manifest.images)  $(imageRepository):build-$(Build.BuildNumber)-${{ architecture.arch }}'
-          displayName: "Pull ${{ architecture.arch }} image"   
-      - script: |
-          docker manifest create  $(imageRepository):build-$(Build.BuildNumber) $(manifest.images)
-          docker manifest inspect $(imageRepository):build-$(Build.BuildNumber)
-          docker manifest push    $(imageRepository):build-$(Build.BuildNumber)
-        displayName: "Create and push multi-arch manifest"
+          - template: jobs.ci.build.docker.yaml
+            parameters:
+              arch: ${{ architecture.arch }}
+              pool: ${{ architecture.pool }}
+
+      - job: build_docker_multiarch
+        displayName: "Docker multiarch image"
+        pool:
+          vmImage: ubuntu-latest
+        dependsOn:
+          - ${{ each architecture in parameters.architectures }}:
+              - build_docker_${{ architecture.arch}}
+        variables:
+          - name: "manifest.images"
+            value: ""
+        steps:
+          - task: DockerInstaller@0
+            displayName: "Docker install"
+            inputs:
+              dockerVersion: "19.03.5"
+          - task: Docker@2
+            displayName: "Docker login"
+            inputs:
+              containerRegistry: "Emberstack Docker Hub"
+              command: login
+          - ${{ each architecture in parameters.architectures }}:
+              - script: |
+                  docker pull $(imageRepository):build-$(Build.BuildNumber)-${{ architecture.arch }}
+                  echo '##vso[task.setvariable variable=manifest.images]$(manifest.images)  $(imageRepository):build-$(Build.BuildNumber)-${{ architecture.arch }}'
+                displayName: "Pull ${{ architecture.arch }} image"
+          - script: |
+              docker manifest create  $(imageRepository):build-$(Build.BuildNumber) $(manifest.images)
+              docker manifest inspect $(imageRepository):build-$(Build.BuildNumber)
+              docker manifest push    $(imageRepository):build-$(Build.BuildNumber)
+            displayName: "Create and push multi-arch manifest"
