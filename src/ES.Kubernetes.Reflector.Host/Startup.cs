@@ -1,3 +1,4 @@
+using System;
 using System.Net.Http;
 using System.Reflection;
 using Autofac;
@@ -5,6 +6,7 @@ using ES.Kubernetes.Reflector.CertManager;
 using ES.Kubernetes.Reflector.ConfigMaps;
 using ES.Kubernetes.Reflector.Core;
 using ES.Kubernetes.Reflector.Secrets;
+using k8s;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -35,6 +37,18 @@ namespace ES.Kubernetes.Reflector.Host
             services.AddMediatR(Assembly.GetExecutingAssembly());
 
             services.AddControllers();
+
+            services.AddSingleton(KubernetesClientConfiguration.BuildDefaultConfig());
+            services.AddHttpClient("kubernetes")
+                .AddTypedClient<IKubernetes>((httpClient, serviceProvider) =>
+                {
+                    httpClient.Timeout=TimeSpan.FromSeconds(30);
+                    return new k8s.Kubernetes(
+                        serviceProvider.GetRequiredService<KubernetesClientConfiguration>(), httpClient);
+                })
+                .ConfigurePrimaryHttpMessageHandler(s =>
+                    s.GetRequiredService<KubernetesClientConfiguration>().CreateDefaultHttpClientHandler())
+                .AddHttpMessageHandler(KubernetesClientConfiguration.CreateWatchHandler);
         }
 
 
