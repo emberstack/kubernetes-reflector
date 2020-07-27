@@ -40,12 +40,8 @@ namespace ES.Kubernetes.Reflector.Host
 
             services.AddSingleton(KubernetesClientConfiguration.BuildDefaultConfig());
             services.AddHttpClient("kubernetes")
-                .AddTypedClient<IKubernetes>((httpClient, serviceProvider) =>
-                {
-                    httpClient.Timeout=TimeSpan.FromSeconds(30);
-                    return new k8s.Kubernetes(
-                        serviceProvider.GetRequiredService<KubernetesClientConfiguration>(), httpClient);
-                })
+                .AddTypedClient<IKubernetes>((httpClient, serviceProvider) => new k8s.Kubernetes(
+                    serviceProvider.GetRequiredService<KubernetesClientConfiguration>(), httpClient))
                 .ConfigurePrimaryHttpMessageHandler(s =>
                     s.GetRequiredService<KubernetesClientConfiguration>().CreateDefaultHttpClientHandler())
                 .AddHttpMessageHandler(KubernetesClientConfiguration.CreateWatchHandler);
