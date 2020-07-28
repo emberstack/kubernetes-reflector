@@ -4,6 +4,7 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ES.Kubernetes.Reflector.Core.Constants;
 using ES.Kubernetes.Reflector.Core.Events;
 using ES.Kubernetes.Reflector.Core.Extensions;
 using ES.Kubernetes.Reflector.Core.Monitoring;
@@ -21,11 +22,11 @@ namespace ES.Kubernetes.Reflector.Secrets
 {
     public class FortiMirror : IHostedService, IHealthCheck
     {
+        private readonly IKubernetes _apiClient;
 
         private readonly FeederQueue<WatcherEvent<V1Secret>> _eventQueue;
         private readonly ILogger<FortiMirror> _logger;
         private readonly ManagedWatcher<V1Secret, V1SecretList> _secretsWatcher;
-        private readonly IKubernetes _apiClient;
 
         public FortiMirror(ILogger<FortiMirror> logger,
             ManagedWatcher<V1Secret, V1SecretList> secretsWatcher,
@@ -41,10 +42,8 @@ namespace ES.Kubernetes.Reflector.Secrets
             _secretsWatcher.OnStateChanged = OnWatcherStateChanged;
             _secretsWatcher.EventHandlerFactory = e => _eventQueue.FeedAsync(e);
             _secretsWatcher.RequestFactory = async c =>
-                await c.ListSecretForAllNamespacesWithHttpMessagesAsync(watch: true);
-
-
-
+                await c.ListSecretForAllNamespacesWithHttpMessagesAsync(watch: true,
+                    timeoutSeconds: Requests.DefaultTimeout);
         }
 
         public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,
@@ -104,7 +103,7 @@ namespace ES.Kubernetes.Reflector.Secrets
             var caCrt = Encoding.Default.GetString(item.Data["ca.crt"]);
             var tlsCrt = Encoding.Default.GetString(item.Data["tls.crt"]);
             var tlsKey = Encoding.Default.GetString(item.Data["tls.key"]);
-            var tlsCerts = tlsCrt.Split(new[] { "-----END CERTIFICATE-----" }, StringSplitOptions.RemoveEmptyEntries)
+            var tlsCerts = tlsCrt.Split(new[] {"-----END CERTIFICATE-----"}, StringSplitOptions.RemoveEmptyEntries)
                 .Select(s => s.TrimStart())
                 .Where(s => !string.IsNullOrWhiteSpace(s))
                 .Select(s => $"{s}-----END CERTIFICATE-----")
@@ -151,7 +150,8 @@ namespace ES.Kubernetes.Reflector.Secrets
                 }
                 catch (HttpOperationException ex) when (ex.Response.StatusCode == HttpStatusCode.NotFound)
                 {
-                    _logger.LogWarning("Cannot reflect {secretId} to {hostSecretId}. Host secret {hostSecretId} not found.",
+                    _logger.LogWarning(
+                        "Cannot reflect {secretId} to {hostSecretId}. Host secret {hostSecretId} not found.",
                         id, hostSecretId, hostSecretId);
 
                     continue;
@@ -167,25 +167,24 @@ namespace ES.Kubernetes.Reflector.Secrets
                     continue;
                 }
 
-                var hostParts = fortiHost.Split(new[] { ":" }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim())
+                var hostParts = fortiHost.Split(new[] {":"}, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(s => s.Trim())
                     .Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
                 if (!hostParts.Any() || hostParts.Count > 2)
-                {
                     _logger.LogWarning(
                         "Cannot reflect {secretId} to FortiOS device using host secret {hostSecretId}. " +
                         "Host secret {hostSecretId} contains invalid 'host' data. " +
                         "'host' must be in the format 'host:port' where port is optional.",
                         id, hostSecretId, hostSecretId);
-                }
 
                 var hostPort = hostParts.Count < 2 ? 22 : int.TryParse(hostParts.Last(), out var port) ? port : 22;
 
                 using var client = new SshClient(hostParts.First(), hostPort, fortiUsername, fortiPassword)
                 {
                     ConnectionInfo =
-                {
-                    Timeout = TimeSpan.FromSeconds(10)
-                }
+                    {
+                        Timeout = TimeSpan.FromSeconds(10)
+                    }
                 };
 
                 try
@@ -200,7 +199,6 @@ namespace ES.Kubernetes.Reflector.Secrets
                         id, hostSecretId);
                     continue;
                 }
-
 
 
                 _logger.LogDebug("Checking for certificate {certId} on FortiOS device {host}", fortiCertId, fortiHost);
@@ -219,20 +217,16 @@ namespace ES.Kubernetes.Reflector.Secrets
                         lastLine = shell.ReadLine();
                         outputBuilder.AppendLine(lastLine);
                     }
+
                     shell.Close();
                     checkOutput = outputBuilder.ToString();
-
                 }
 
                 var localCertificateUpToDate = true;
 
                 if (!string.IsNullOrWhiteSpace(tlsKey))
-                {
                     if (checkOutput.Contains("unset private-key"))
-                    {
                         localCertificateUpToDate = false;
-                    }
-                }
 
                 if (!checkOutput.Contains("set certificate", StringComparison.InvariantCultureIgnoreCase))
                 {
@@ -249,9 +243,7 @@ namespace ES.Kubernetes.Reflector.Secrets
                     remoteCertificate = remoteCertificate.Replace("\r", string.Empty);
 
                     if (!tlsCerts.Select(s => s.Replace("\r", string.Empty)).Contains(remoteCertificate))
-                    {
                         localCertificateUpToDate = false;
-                    }
                 }
 
                 var success = true;
@@ -286,7 +278,8 @@ namespace ES.Kubernetes.Reflector.Secrets
 
                         var commandBuilder = new StringBuilder();
                         commandBuilder.AppendLine("config vpn certificate ca");
-                        commandBuilder.AppendLine($"edit {fortiCertId}_CA{(caId == 0 ? string.Empty : caId.ToString())}");
+                        commandBuilder.AppendLine(
+                            $"edit {fortiCertId}_CA{(caId == 0 ? string.Empty : caId.ToString())}");
                         commandBuilder.AppendLine($"set ca \"{tlsCerts[i]}\"");
                         commandBuilder.AppendLine("end");
                         var command = client.RunCommand(commandBuilder.ToString());
@@ -298,7 +291,8 @@ namespace ES.Kubernetes.Reflector.Secrets
 
                         if (command.Error.Contains("This CA certificate is duplicated."))
                         {
-                            _logger.LogWarning("Skipping CA certificate {index} since it is duplicated by another certificate.",
+                            _logger.LogWarning(
+                                "Skipping CA certificate {index} since it is duplicated by another certificate.",
                                 i + i);
                         }
                         else if (command.Error.Contains("Input is not a valid CA certificate."))
@@ -313,20 +307,16 @@ namespace ES.Kubernetes.Reflector.Secrets
                             success = false;
                         }
                     }
-
                 }
 
 
                 if (!success)
-                {
-                    _logger.LogError("Reflecting {secretId} to FortiOS device using host secret {hostSecretId} completed with errors.",
+                    _logger.LogError(
+                        "Reflecting {secretId} to FortiOS device using host secret {hostSecretId} completed with errors.",
                         id, hostSecretId);
-                }
                 else if (!localCertificateUpToDate)
-                {
                     _logger.LogInformation("Reflected {secretId} to FortiOS device using host secret {hostSecretId}.",
                         id, hostSecretId);
-                }
             }
         }
 
@@ -342,7 +332,5 @@ namespace ES.Kubernetes.Reflector.Secrets
             await _secretsWatcher.Start();
             _logger.LogTrace("Watchers restarted");
         }
-
-
     }
 }

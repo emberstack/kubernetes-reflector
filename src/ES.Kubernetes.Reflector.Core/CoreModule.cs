@@ -1,8 +1,5 @@
-﻿using System;
-using Autofac;
+﻿using Autofac;
 using ES.Kubernetes.Reflector.Core.Monitoring;
-using k8s;
-using Microsoft.Extensions.Logging;
 
 namespace ES.Kubernetes.Reflector.Core
 {

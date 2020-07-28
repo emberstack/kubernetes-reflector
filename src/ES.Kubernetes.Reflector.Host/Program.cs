@@ -43,15 +43,16 @@ namespace ES.Kubernetes.Reflector.Host
             }
         }
 
-        public static IHostBuilder CreateHostBuilder(string[] args) =>
-            Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder(args)
+        public static IHostBuilder CreateHostBuilder(string[] args)
+        {
+            return Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder(args)
                 .UseEnvironment(Environment.GetEnvironmentVariable($"ES_{nameof(Environment)}") ??
                                 Environments.Production)
                 //Add configuration
                 .ConfigureAppConfiguration((ctx, config) =>
                 {
-                    config.AddJsonFile($"reflector.appsettings.json", false, true);
-                    config.AddJsonFile($"reflector.logging.json", false, true);
+                    config.AddJsonFile("reflector.appsettings.json", false, true);
+                    config.AddJsonFile("reflector.logging.json", false, true);
                 })
                 //Use Serilog
                 .UseSerilog()
@@ -66,5 +67,6 @@ namespace ES.Kubernetes.Reflector.Host
                         .UseStartup<Startup>()
                         .UseUrls("http://*:25080");
                 });
+        }
     }
 }

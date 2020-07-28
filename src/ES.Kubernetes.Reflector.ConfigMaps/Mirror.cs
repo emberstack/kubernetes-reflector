@@ -46,7 +46,8 @@ namespace ES.Kubernetes.Reflector.ConfigMaps
 
         protected override async Task<HttpOperationResponse<V1ConfigMapList>> OnResourceWatcher(IKubernetes client)
         {
-            return await client.ListConfigMapForAllNamespacesWithHttpMessagesAsync(watch: true);
+            return await client.ListConfigMapForAllNamespacesWithHttpMessagesAsync(watch: true,
+                timeoutSeconds: Requests.DefaultTimeout);
         }
 
         protected override async Task<V1ConfigMap> OnResourceAutoReflect(IKubernetes client, V1ConfigMap item,

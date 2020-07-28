@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using ES.Kubernetes.Reflector.Core.Constants;
 using ES.Kubernetes.Reflector.Core.Events;
 using ES.Kubernetes.Reflector.Core.Extensions;
 using ES.Kubernetes.Reflector.Core.Monitoring;
@@ -57,7 +58,8 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
 
             _namespaceWatcher.EventHandlerFactory = e => _eventQueue.FeedAsync(e);
             _namespaceWatcher.RequestFactory = async api =>
-                await api.ListNamespaceWithHttpMessagesAsync(watch: true);
+                await api.ListNamespaceWithHttpMessagesAsync(watch: true,
+                    timeoutSeconds: Requests.DefaultTimeout);
             _namespaceWatcher.OnStateChanged = OnWatcherStateChanged;
         }
 

@@ -137,6 +137,5 @@ namespace ES.Kubernetes.Reflector.Core.Extensions
                 ? string.IsNullOrWhiteSpace(raw) ? null : raw
                 : null;
         }
-
     }
 }

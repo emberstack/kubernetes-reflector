@@ -46,7 +46,8 @@ namespace ES.Kubernetes.Reflector.Secrets
 
         protected override async Task<HttpOperationResponse<V1SecretList>> OnResourceWatcher(IKubernetes client)
         {
-            return await client.ListSecretForAllNamespacesWithHttpMessagesAsync(watch: true);
+            return await client.ListSecretForAllNamespacesWithHttpMessagesAsync(watch: true,
+                timeoutSeconds: Requests.DefaultTimeout);
         }
 
         protected override async Task<V1Secret> OnResourceAutoReflect(IKubernetes client, V1Secret item, string ns)

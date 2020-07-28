@@ -1,6 +1,6 @@
 {
     "Serilog": {
-        "Using": [ "Serilog.Sinks.Console" ],
+        "Using": ["Serilog.Sinks.Console"],
         "MinimumLevel": {
             "Default": "Debug",
             "Override": {
@@ -13,7 +13,8 @@
             {
                 "Name": "Console",
                 "Args": {
-                    "outputTemplate": "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}"
+                    "outputTemplate":
+                        "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}"
                 }
             }
         ]

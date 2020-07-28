@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using ES.Kubernetes.Reflector.CertManager.Constants;
 using ES.Kubernetes.Reflector.CertManager.Events;
 using ES.Kubernetes.Reflector.CertManager.Resources;
+using ES.Kubernetes.Reflector.Core.Constants;
 using ES.Kubernetes.Reflector.Core.Events;
 using ES.Kubernetes.Reflector.Core.Extensions;
 using ES.Kubernetes.Reflector.Core.Monitoring;
@@ -25,6 +26,7 @@ namespace ES.Kubernetes.Reflector.CertManager
 {
     public class Monitor : IHostedService, IHealthCheck
     {
+        private readonly IKubernetes _apiClient;
         private readonly Func<ManagedWatcher<Certificate, object>> _certificatesWatcherFactory;
 
         private readonly Dictionary<string, ManagedWatcher<Certificate, object>> _certificatesWatchers =
@@ -36,7 +38,6 @@ namespace ES.Kubernetes.Reflector.CertManager
         private readonly ILogger<Monitor> _logger;
         private readonly IMediator _mediator;
         private readonly ManagedWatcher<V1Secret, V1SecretList> _secretsWatcher;
-        private readonly IKubernetes _apiClient;
 
         private readonly Timer _v1Beta1CrdMonitorTimer = new Timer();
         private bool _v1Beta1CrdMonitorTimerFaulted;
@@ -67,15 +68,17 @@ namespace ES.Kubernetes.Reflector.CertManager
                     CertificateResourceDefinitionVersions = _certificatesWatchers.Keys.ToList()
                 });
             _secretsWatcher.RequestFactory = async c =>
-                await c.ListSecretForAllNamespacesWithHttpMessagesAsync(watch: true);
+                await c.ListSecretForAllNamespacesWithHttpMessagesAsync(watch: true,
+                    timeoutSeconds: Requests.DefaultTimeout);
 
 
             _crdV1Watcher.EventHandlerFactory = OnCrdEventV1;
             _crdV1Watcher.RequestFactory = async c =>
-                await c.ListCustomResourceDefinitionWithHttpMessagesAsync(watch: true);
+                await c.ListCustomResourceDefinitionWithHttpMessagesAsync(watch: true,
+                    timeoutSeconds: Requests.DefaultTimeout);
             _crdV1Watcher.OnStateChanged = OnCrdWatcherStateChanged;
 
-            _v1Beta1CrdMonitorTimer.Elapsed += (_,__)=> Onv1Beta1CrdRefresh();
+            _v1Beta1CrdMonitorTimer.Elapsed += (_, __) => Onv1Beta1CrdRefresh();
             _v1Beta1CrdMonitorTimer.Interval = 30_000;
         }
 
@@ -121,7 +124,7 @@ namespace ES.Kubernetes.Reflector.CertManager
             {
                 _logger.LogDebug(
                     "Updating {type} {kind} in group {group}",
-                    typeof(V1beta1CustomResourceDefinition).Name,
+                    nameof(V1beta1CustomResourceDefinition),
                     CertManagerConstants.CertificateKind, CertManagerConstants.CrdGroup);
 
                 _v1Beta1CrdMonitorTimerFaulted = false;
@@ -133,8 +136,6 @@ namespace ES.Kubernetes.Reflector.CertManager
                 if (crd == null) return;
                 OnCrdVersionUpdate(crd.GetType().Name, crd.Spec.Names.Kind,
                     crd.Spec.Group, crd.Spec.Names.Plural, crd.Spec.Versions.Select(s => s.Name).ToList()).Wait();
-
-                
             }
             catch (HttpOperationException exception) when (exception.Response.StatusCode == HttpStatusCode.NotFound)
             {
@@ -152,8 +153,6 @@ namespace ES.Kubernetes.Reflector.CertManager
                     "Error occured while getting {kind} version {version}",
                     V1beta1CustomResourceDefinition.KubeKind, V1beta1CustomResourceDefinition.KubeApiVersion);
             }
-
-
         }
 
         private async Task OnCrdWatcherStateChanged<TResource, TResourceList>(
@@ -176,7 +175,8 @@ namespace ES.Kubernetes.Reflector.CertManager
             }
         }
 
-        private async Task OnWatcherStateChanged<TResource, TResourceList>(ManagedWatcher<TResource, TResourceList, WatcherEvent<TResource>> sender,
+        private async Task OnWatcherStateChanged<TResource, TResourceList>(
+            ManagedWatcher<TResource, TResourceList, WatcherEvent<TResource>> sender,
             ManagedWatcherStateUpdate update) where TResource : class, IKubernetesObject
         {
             var tag = sender.Tag ?? string.Empty;
@@ -239,7 +239,8 @@ namespace ES.Kubernetes.Reflector.CertManager
                 request.Item.Spec.Names.Plural, versions);
         }
 
-        private async Task OnCrdVersionUpdate(string crdType, string crdKind, string crdGroup, string crdPlural, List<string> versions)
+        private async Task OnCrdVersionUpdate(string crdType, string crdKind, string crdGroup, string crdPlural,
+            List<string> versions)
         {
             if (versions.TrueForAll(s => _certificatesWatchers.ContainsKey(s))) return;
 
@@ -257,10 +258,10 @@ namespace ES.Kubernetes.Reflector.CertManager
                 watcher.Tag = version;
                 watcher.OnStateChanged = OnWatcherStateChanged;
                 watcher.EventHandlerFactory = e =>
-                    _eventQueue.FeedAsync(new InternalCertificateWatcherEvent { Item = e.Item, Type = e.Type });
+                    _eventQueue.FeedAsync(new InternalCertificateWatcherEvent {Item = e.Item, Type = e.Type});
                 watcher.RequestFactory = async client => await client.ListClusterCustomObjectWithHttpMessagesAsync(
                     crdGroup, version, crdPlural, watch: true,
-                    timeoutSeconds: (int)TimeSpan.FromHours(1).TotalSeconds);
+                    timeoutSeconds: Requests.DefaultTimeout);
                 _certificatesWatchers.Add(version, watcher);
             }
 
