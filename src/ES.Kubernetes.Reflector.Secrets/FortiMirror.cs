@@ -43,7 +43,7 @@ namespace ES.Kubernetes.Reflector.Secrets
             _secretsWatcher.EventHandlerFactory = e => _eventQueue.FeedAsync(e);
             _secretsWatcher.RequestFactory = async c =>
                 await c.ListSecretForAllNamespacesWithHttpMessagesAsync(watch: true,
-                    timeoutSeconds: Requests.DefaultTimeout);
+                    timeoutSeconds: Requests.WatcherTimeout);
         }
 
         public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,

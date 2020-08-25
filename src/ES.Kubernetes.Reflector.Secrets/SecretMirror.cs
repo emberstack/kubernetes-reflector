@@ -17,9 +17,9 @@ using Newtonsoft.Json;
 
 namespace ES.Kubernetes.Reflector.Secrets
 {
-    public class Mirror : ResourceMirror<V1Secret, V1SecretList>, IHostedService, IHealthCheck
+    public class SecretMirror : ResourceMirror<V1Secret, V1SecretList>, IHostedService, IHealthCheck
     {
-        public Mirror(ILogger<Mirror> logger, IKubernetes client,
+        public SecretMirror(ILogger<SecretMirror> logger, IKubernetes client,
             ManagedWatcher<V1Secret, V1SecretList> secretWatcher,
             ManagedWatcher<V1Namespace, V1NamespaceList> namespaceWatcher)
             : base(logger, client, secretWatcher, namespaceWatcher)
@@ -47,7 +47,7 @@ namespace ES.Kubernetes.Reflector.Secrets
         protected override async Task<HttpOperationResponse<V1SecretList>> OnResourceWatcher(IKubernetes client)
         {
             return await client.ListSecretForAllNamespacesWithHttpMessagesAsync(watch: true,
-                timeoutSeconds: Requests.DefaultTimeout);
+                timeoutSeconds: Requests.WatcherTimeout);
         }
 
         protected override async Task<V1Secret> OnResourceAutoReflect(IKubernetes client, V1Secret item, string ns)
@@ -102,6 +102,13 @@ namespace ES.Kubernetes.Reflector.Secrets
 
             await client.PatchNamespacedSecretWithHttpMessagesAsync(new V1Patch(patch),
                 target.Metadata.Name, target.Metadata.NamespaceProperty);
+        }
+
+        protected override Task<bool> OnResourceIgnoreCheck(V1Secret item)
+        {
+            //Skip helm version secrets. This can cause a terrible amount of traffic.
+            var ignore = item.Type.StartsWith("helm.sh");
+            return Task.FromResult(ignore);
         }
     }
 }

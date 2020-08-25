@@ -4,6 +4,6 @@ namespace ES.Kubernetes.Reflector.Core.Constants
 {
     public static class Requests
     {
-        public static int DefaultTimeout { get; } = (int) TimeSpan.FromHours(1).TotalSeconds;
+        public static int WatcherTimeout { get; } = (int) TimeSpan.FromMinutes(30).TotalSeconds;
     }
 }

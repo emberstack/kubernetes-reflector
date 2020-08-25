@@ -96,7 +96,7 @@ namespace ES.Kubernetes.Reflector.Core.Monitoring
 
             try
             {
-                _semaphore.Wait();
+                await _semaphore.WaitAsync();
                 var request = await _requestFactory(_client);
 
                 _watcher = request.Watch<TResource, TResourceList>((eventType, item) =>
@@ -142,7 +142,7 @@ namespace ES.Kubernetes.Reflector.Core.Monitoring
             IsFaulted = false;
             try
             {
-                _semaphore.Wait();
+                await _semaphore.WaitAsync();
                 if (!_isMonitoring) return;
                 OnStateChanged?.Invoke(this, new ManagedWatcherStateUpdate {State = ManagedWatcherState.Stopping});
                 _isMonitoring = false;

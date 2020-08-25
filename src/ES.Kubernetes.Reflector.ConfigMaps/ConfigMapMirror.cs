@@ -17,9 +17,9 @@ using Newtonsoft.Json;
 
 namespace ES.Kubernetes.Reflector.ConfigMaps
 {
-    public class Mirror : ResourceMirror<V1ConfigMap, V1ConfigMapList>, IHostedService, IHealthCheck
+    public class ConfigMapMirror : ResourceMirror<V1ConfigMap, V1ConfigMapList>, IHostedService, IHealthCheck
     {
-        public Mirror(ILogger<Mirror> logger, IKubernetes client,
+        public ConfigMapMirror(ILogger<ConfigMapMirror> logger, IKubernetes client,
             ManagedWatcher<V1ConfigMap, V1ConfigMapList> configMapWatcher,
             ManagedWatcher<V1Namespace, V1NamespaceList> namespaceWatcher)
             : base(logger, client, configMapWatcher, namespaceWatcher)
@@ -47,7 +47,7 @@ namespace ES.Kubernetes.Reflector.ConfigMaps
         protected override async Task<HttpOperationResponse<V1ConfigMapList>> OnResourceWatcher(IKubernetes client)
         {
             return await client.ListConfigMapForAllNamespacesWithHttpMessagesAsync(watch: true,
-                timeoutSeconds: Requests.DefaultTimeout);
+                timeoutSeconds: Requests.WatcherTimeout);
         }
 
         protected override async Task<V1ConfigMap> OnResourceAutoReflect(IKubernetes client, V1ConfigMap item,

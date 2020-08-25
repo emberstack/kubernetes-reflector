@@ -59,7 +59,7 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
             _namespaceWatcher.EventHandlerFactory = e => _eventQueue.FeedAsync(e);
             _namespaceWatcher.RequestFactory = async api =>
                 await api.ListNamespaceWithHttpMessagesAsync(watch: true,
-                    timeoutSeconds: Requests.DefaultTimeout);
+                    timeoutSeconds: Requests.WatcherTimeout);
             _namespaceWatcher.OnStateChanged = OnWatcherStateChanged;
         }
 
@@ -116,14 +116,12 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
             switch (update.State)
             {
                 case ManagedWatcherState.Closed:
-                    _logger.LogDebug("{type} watcher {state}", typeof(TGenericResource).Name, update.State);
+                case ManagedWatcherState.Faulted:
+                    _logger.Log(update.State == ManagedWatcherState.Closed ? LogLevel.Debug : LogLevel.Warning,
+                        update.Exception, "{type} watcher {state}", typeof(TGenericResource).Name, update.State);
                     await WatchersStop();
                     ReflectionsClear();
                     await WatchersStart();
-                    break;
-                case ManagedWatcherState.Faulted:
-                    _logger.LogError(update.Exception, "{type} watcher {state}", typeof(TGenericResource).Name,
-                        update.State);
                     break;
                 default:
                     _logger.LogDebug("{type} watcher {state}", typeof(TGenericResource).Name, update.State);
@@ -169,6 +167,9 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
             var metadata = item.Metadata();
             var id = KubernetesObjectId.For(metadata);
 
+            if (await OnResourceIgnoreCheck(item))
+                return;
+
             switch (eventType)
             {
                 case WatchEventType.Added:
@@ -200,6 +201,11 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
                 case WatchEventType.Error: break;
                 default: throw new ArgumentOutOfRangeException();
             }
+        }
+
+        protected virtual Task<bool> OnResourceIgnoreCheck(TResource item)
+        {
+            return Task.FromResult(false);
         }
 
         private async Task<bool> CheckAutoReflectionSource(TResource item)
@@ -265,6 +271,7 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
         {
             var metadata = item.Metadata();
             var id = KubernetesObjectId.For(metadata);
+
             var autoReflections = await FindAutoReflections(id);
 
             var reflectionsToCreate = namespaces
@@ -286,7 +293,8 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
                 catch (HttpOperationException ex) when (ex.Response.StatusCode == HttpStatusCode.Conflict)
                 {
                     _logger.LogWarning(
-                        "Cannot create reflection {kind} {@reflectionId} for {@id}. Found conflicting {kind} with the same name.",
+                        "Cannot create reflection {kind} {@reflectionId} for {@id}. " +
+                        $"Found conflicting {{kind}} with the same name which was not created by {nameof(Reflector)}",
                         item.Kind, reflectionId, id, item.Kind);
                 }
             }

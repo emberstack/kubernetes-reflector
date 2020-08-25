@@ -7,8 +7,8 @@ namespace ES.Kubernetes.Reflector.ConfigMaps
     {
         protected override void Load(ContainerBuilder builder)
         {
-            builder.RegisterType<Mirror>().AsImplementedInterfaces().AsSelf().SingleInstance();
-            builder.AddHealthCheck<Mirror>();
+            builder.RegisterType<ConfigMapMirror>().AsImplementedInterfaces().AsSelf().SingleInstance();
+            builder.AddHealthCheck<ConfigMapMirror>();
         }
     }
 }

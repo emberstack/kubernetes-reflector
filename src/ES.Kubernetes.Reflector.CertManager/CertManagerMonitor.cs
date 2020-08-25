@@ -24,7 +24,7 @@ using Timer = System.Timers.Timer;
 
 namespace ES.Kubernetes.Reflector.CertManager
 {
-    public class Monitor : IHostedService, IHealthCheck
+    public class CertManagerMonitor : IHostedService, IHealthCheck
     {
         private readonly IKubernetes _apiClient;
         private readonly Func<ManagedWatcher<Certificate, object>> _certificatesWatcherFactory;
@@ -35,14 +35,14 @@ namespace ES.Kubernetes.Reflector.CertManager
         private readonly ManagedWatcher<V1CustomResourceDefinition, V1CustomResourceDefinitionList> _crdV1Watcher;
 
         private readonly FeederQueue<WatcherEvent> _eventQueue;
-        private readonly ILogger<Monitor> _logger;
+        private readonly ILogger<CertManagerMonitor> _logger;
         private readonly IMediator _mediator;
         private readonly ManagedWatcher<V1Secret, V1SecretList> _secretsWatcher;
 
         private readonly Timer _v1Beta1CrdMonitorTimer = new Timer();
         private bool _v1Beta1CrdMonitorTimerFaulted;
 
-        public Monitor(ILogger<Monitor> logger,
+        public CertManagerMonitor(ILogger<CertManagerMonitor> logger,
             ManagedWatcher<V1CustomResourceDefinition, V1CustomResourceDefinitionList> crdV1Watcher,
             Func<ManagedWatcher<Certificate, object>> certificatesWatcherFactory,
             ManagedWatcher<V1Secret, V1SecretList> secretsWatcher,
@@ -69,13 +69,13 @@ namespace ES.Kubernetes.Reflector.CertManager
                 });
             _secretsWatcher.RequestFactory = async c =>
                 await c.ListSecretForAllNamespacesWithHttpMessagesAsync(watch: true,
-                    timeoutSeconds: Requests.DefaultTimeout);
+                    timeoutSeconds: Requests.WatcherTimeout);
 
 
             _crdV1Watcher.EventHandlerFactory = OnCrdEventV1;
             _crdV1Watcher.RequestFactory = async c =>
                 await c.ListCustomResourceDefinitionWithHttpMessagesAsync(watch: true,
-                    timeoutSeconds: Requests.DefaultTimeout);
+                    timeoutSeconds: Requests.WatcherTimeout);
             _crdV1Watcher.OnStateChanged = OnCrdWatcherStateChanged;
 
             _v1Beta1CrdMonitorTimer.Elapsed += (_, __) => Onv1Beta1CrdRefresh();
@@ -261,7 +261,7 @@ namespace ES.Kubernetes.Reflector.CertManager
                     _eventQueue.FeedAsync(new InternalCertificateWatcherEvent {Item = e.Item, Type = e.Type});
                 watcher.RequestFactory = async client => await client.ListClusterCustomObjectWithHttpMessagesAsync(
                     crdGroup, version, crdPlural, watch: true,
-                    timeoutSeconds: Requests.DefaultTimeout);
+                    timeoutSeconds: Requests.WatcherTimeout);
                 _certificatesWatchers.Add(version, watcher);
             }
 
