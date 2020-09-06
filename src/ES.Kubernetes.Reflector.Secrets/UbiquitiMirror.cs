@@ -174,8 +174,6 @@ namespace ES.Kubernetes.Reflector.Secrets
                     continue;
                 }
 
-                // SSH
-
                 var hostParts = hostAddress.Split(new[] {":"}, StringSplitOptions.RemoveEmptyEntries)
                     .Select(s => s.Trim())
                     .Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
@@ -194,6 +192,7 @@ namespace ES.Kubernetes.Reflector.Secrets
                             ? p
                             : 22;
 
+                // SSH
                 using var client = new SshClient(host, port, username, password);
                 client.ErrorOccurred += delegate(object sender, ExceptionEventArgs exceptionEventArgs)
                 {
