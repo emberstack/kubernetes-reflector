@@ -137,5 +137,34 @@ namespace ES.Kubernetes.Reflector.Core.Extensions
                 ? string.IsNullOrWhiteSpace(raw) ? null : raw
                 : null;
         }
+
+        #region Ubiquiti
+
+        public static bool UbiquitiReflectionEnabled(this V1ObjectMeta metadata)
+        {
+            if (metadata.SafeAnnotations().TryGetValue(Annotations.Reflection.UbiquitiEnabled, out var raw) &&
+                bool.TryParse(raw, out var value))
+                return value;
+            return false;
+        }
+
+        public static string[] UbiquitiReflectionHosts(this V1ObjectMeta metadata)
+        {
+            return metadata.SafeAnnotations().TryGetValue(Annotations.Reflection.UbiquitiHosts, out var raw)
+                ? string.IsNullOrWhiteSpace(raw) ? Array.Empty<string>() :
+                raw.Split(new[] {","}, StringSplitOptions.RemoveEmptyEntries)
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Select(s => s.Trim()).Distinct().ToArray()
+                : Array.Empty<string>();
+        }
+
+        public static string UbiquitiCertificate(this V1ObjectMeta metadata)
+        {
+            return metadata.SafeAnnotations().TryGetValue(Annotations.Reflection.UbiquitiCertificate, out var raw)
+                ? string.IsNullOrWhiteSpace(raw) ? null : raw
+                : null;
+        }
+
+        #endregion
     }
 }

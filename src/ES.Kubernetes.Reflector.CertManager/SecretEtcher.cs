@@ -148,6 +148,18 @@ namespace ES.Kubernetes.Reflector.CertManager
                 {
                     Annotations.CertManagerCertificate.SecretFortiCertificate,
                     Annotations.Reflection.FortiCertificate
+                },
+                {
+                    Annotations.CertManagerCertificate.SecretUbiquitiEnabled,
+                    Annotations.Reflection.UbiquitiEnabled
+                },
+                {
+                    Annotations.CertManagerCertificate.SecretUbiquitiHosts,
+                    Annotations.Reflection.UbiquitiHosts
+                },
+                {
+                    Annotations.CertManagerCertificate.SecretUbiquitiCertificate,
+                    Annotations.Reflection.UbiquitiCertificate
                 }
             });
 

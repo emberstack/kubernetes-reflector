@@ -9,8 +9,10 @@ namespace ES.Kubernetes.Reflector.Secrets
         {
             builder.RegisterType<SecretMirror>().AsImplementedInterfaces().AsSelf().SingleInstance();
             builder.RegisterType<FortiMirror>().AsImplementedInterfaces().AsSelf().SingleInstance();
+            builder.RegisterType<UbiquitiMirror>().AsImplementedInterfaces().AsSelf().SingleInstance();
             builder.AddHealthCheck<SecretMirror>();
             builder.AddHealthCheck<FortiMirror>();
+            builder.AddHealthCheck<UbiquitiMirror>();
         }
     }
 }
