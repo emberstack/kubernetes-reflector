@@ -18,6 +18,13 @@
             public static string FortiHosts => $"{Prefix}/reflection-forti-hosts";
             public static string FortiCertificate => $"{Prefix}/reflection-forti-certificate";
 
+            #region Ubiquiti
+
+            public static string UbiquitiEnabled => $"{Prefix}/reflection-ubiquiti-enabled";
+            public static string UbiquitiHosts => $"{Prefix}/reflection-ubiquiti-hosts";
+            public static string UbiquitiCertificate => $"{Prefix}/reflection-ubiquiti-certificate";
+
+            #endregion
 
             public static string AutoReflects => $"{Prefix}/auto-reflects";
             public static string Reflects => $"{Prefix}/reflects";
@@ -36,6 +43,14 @@
             public static string SecretFortiEnabled => $"{Prefix}/secret-reflection-forti-enabled";
             public static string SecretFortiHosts => $"{Prefix}/secret-reflection-forti-hosts";
             public static string SecretFortiCertificate => $"{Prefix}/secret-reflection-forti-certificate";
+
+            #region Ubiquiti
+
+            public static string SecretUbiquitiEnabled => $"{Prefix}/secret-reflection-ubiquiti-enabled";
+            public static string SecretUbiquitiHosts => $"{Prefix}/secret-reflection-ubiquiti-hosts";
+            public static string SecretUbiquitiCertificate => $"{Prefix}/secret-reflection-ubiquiti-certificate";
+
+            #endregion
         }
     }
 }
