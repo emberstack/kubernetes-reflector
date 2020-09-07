@@ -204,6 +204,16 @@ namespace ES.Kubernetes.Reflector.Secrets
                 _logger.LogDebug("Connecting to Ubiquiti device at {host}", hostAddress);
                 client.Connect();
 
+                _logger.LogDebug("Check certificate on Ubiquiti device at {host}", hostAddress);
+                var catCommand = client.RunCommand("cat /etc/ssl/private/cloudkey.crt");
+                if (catCommand.Result.Contains(tlsCrt))
+                {
+                    _logger.LogDebug(
+                        "Skip reflecting {secretId} to Ubiquiti device using host secret {hostSecretId}. Already exists.",
+                        secretId, hostSecretId);
+                    return;
+                }
+                
                 _logger.LogDebug("Configuring new Let's Encrypt certs on Ubiquiti device at {host}", hostAddress);
                 client.RunCommand($"echo \"{tlsCrt}\" > /etc/ssl/private/cloudkey.crt");
                 client.RunCommand($"echo \"{tlsKey}\" > /etc/ssl/private/cloudkey.key");
