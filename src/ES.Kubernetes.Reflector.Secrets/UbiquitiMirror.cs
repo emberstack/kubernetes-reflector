@@ -107,21 +107,11 @@ namespace ES.Kubernetes.Reflector.Secrets
             if (!e.Item.Metadata.ReflectionAllowed() || !e.Item.Metadata.UbiquitiReflectionEnabled()) return;
             if (!e.Item.Type.Equals("kubernetes.io/tls", StringComparison.InvariantCultureIgnoreCase)) return;
 
-
-            var caCrt = Encoding.Default.GetString(item.Data["ca.crt"]);
             var tlsCrt = Encoding.Default.GetString(item.Data["tls.crt"]);
             var tlsKey = Encoding.Default.GetString(item.Data["tls.key"]);
-            var tlsCerts = tlsCrt.Split(new[] {"-----END CERTIFICATE-----"}, StringSplitOptions.RemoveEmptyEntries)
-                .Select(s => s.TrimStart())
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => $"{s}-----END CERTIFICATE-----")
-                .ToList();
 
             var hostSecretIds = item.Metadata.UbiquitiReflectionHosts().Select(s => new KubernetesObjectId(s)).ToList();
             var certName = item.Metadata.UbiquitiCertificate();
-            var certId = !string.IsNullOrWhiteSpace(certName)
-                ? certName
-                : item.Metadata.Name.Substring(0, Math.Min(item.Metadata.Name.Length, 30));
 
             foreach (var hostSecretId in hostSecretIds)
             {
