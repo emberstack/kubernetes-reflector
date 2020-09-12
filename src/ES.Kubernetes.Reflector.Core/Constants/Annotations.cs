@@ -25,6 +25,14 @@
             public static string UbiquitiCertificate => $"{Prefix}/reflection-ubiquiti-certificate";
 
             #endregion
+            
+            #region VMware
+
+            public static string VMwareEnabled => $"{Prefix}/reflection-vmware-enabled";
+            public static string VMwareHosts => $"{Prefix}/reflection-vmware-hosts";
+            public static string VMwareCertificate => $"{Prefix}/reflection-vmware-certificate";
+
+            #endregion
 
             public static string AutoReflects => $"{Prefix}/auto-reflects";
             public static string Reflects => $"{Prefix}/reflects";
@@ -49,6 +57,14 @@
             public static string SecretUbiquitiEnabled => $"{Prefix}/secret-reflection-ubiquiti-enabled";
             public static string SecretUbiquitiHosts => $"{Prefix}/secret-reflection-ubiquiti-hosts";
             public static string SecretUbiquitiCertificate => $"{Prefix}/secret-reflection-ubiquiti-certificate";
+
+            #endregion
+            
+            #region VMware
+
+            public static string SecretVMwareEnabled => $"{Prefix}/secret-reflection-vmware-enabled";
+            public static string SecretVMwareHosts => $"{Prefix}/secret-reflection-vmware-hosts";
+            public static string SecretVMwareCertificate => $"{Prefix}/secret-reflection-vmware-certificate";
 
             #endregion
         }
