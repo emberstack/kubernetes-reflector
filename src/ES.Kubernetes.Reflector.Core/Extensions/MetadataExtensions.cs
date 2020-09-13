@@ -166,5 +166,34 @@ namespace ES.Kubernetes.Reflector.Core.Extensions
         }
 
         #endregion
+        
+        #region VMware
+
+        public static bool VMwareReflectionEnabled(this V1ObjectMeta metadata)
+        {
+            if (metadata.SafeAnnotations().TryGetValue(Annotations.Reflection.VMwareEnabled, out var raw) &&
+                bool.TryParse(raw, out var value))
+                return value;
+            return false;
+        }
+
+        public static string[] VMwareReflectionHosts(this V1ObjectMeta metadata)
+        {
+            return metadata.SafeAnnotations().TryGetValue(Annotations.Reflection.VMwareHosts, out var raw)
+                ? string.IsNullOrWhiteSpace(raw) ? Array.Empty<string>() :
+                raw.Split(new[] {","}, StringSplitOptions.RemoveEmptyEntries)
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Select(s => s.Trim()).Distinct().ToArray()
+                : Array.Empty<string>();
+        }
+
+        public static string VMwareCertificate(this V1ObjectMeta metadata)
+        {
+            return metadata.SafeAnnotations().TryGetValue(Annotations.Reflection.VMwareCertificate, out var raw)
+                ? string.IsNullOrWhiteSpace(raw) ? null : raw
+                : null;
+        }
+
+        #endregion
     }
 }

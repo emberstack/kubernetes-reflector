@@ -107,21 +107,15 @@ namespace ES.Kubernetes.Reflector.Secrets
             if (!e.Item.Metadata.ReflectionAllowed() || !e.Item.Metadata.UbiquitiReflectionEnabled()) return;
             if (!e.Item.Type.Equals("kubernetes.io/tls", StringComparison.InvariantCultureIgnoreCase)) return;
 
-
-            var caCrt = Encoding.Default.GetString(item.Data["ca.crt"]);
+            _logger.LogDebug("Ubiquiti enabled using host secret {secretId}.", secretId);
+            
             var tlsCrt = Encoding.Default.GetString(item.Data["tls.crt"]);
             var tlsKey = Encoding.Default.GetString(item.Data["tls.key"]);
-            var tlsCerts = tlsCrt.Split(new[] {"-----END CERTIFICATE-----"}, StringSplitOptions.RemoveEmptyEntries)
-                .Select(s => s.TrimStart())
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => $"{s}-----END CERTIFICATE-----")
-                .ToList();
 
-            var hostSecretIds = item.Metadata.UbiquitiReflectionHosts().Select(s => new KubernetesObjectId(s)).ToList();
-            var certName = item.Metadata.UbiquitiCertificate();
-            var certId = !string.IsNullOrWhiteSpace(certName)
-                ? certName
-                : item.Metadata.Name.Substring(0, Math.Min(item.Metadata.Name.Length, 30));
+            var hostSecretIds =
+                item.Metadata.UbiquitiReflectionHosts()
+                    .Select(s => new KubernetesObjectId(s))
+                    .ToList();
 
             foreach (var hostSecretId in hostSecretIds)
             {
@@ -213,23 +207,26 @@ namespace ES.Kubernetes.Reflector.Secrets
                         secretId, hostSecretId);
                     return;
                 }
-                
+
                 _logger.LogDebug("Configuring new Let's Encrypt certs on Ubiquiti device at {host}", hostAddress);
                 client.RunCommand($"echo \"{tlsCrt}\" > /etc/ssl/private/cloudkey.crt");
                 client.RunCommand($"echo \"{tlsKey}\" > /etc/ssl/private/cloudkey.key");
 
-                client.RunCommand("rm -f /etc/ssl/private/cert.tar /etc/ssl/private/unifi.keystore.jks /etc/ssl/private/ssl-cert-snakeoil.key /etc/ssl/private/fullchain.pem");
+                client.RunCommand(
+                    "rm -f /etc/ssl/private/cert.tar /etc/ssl/private/unifi.keystore.jks /etc/ssl/private/ssl-cert-snakeoil.key /etc/ssl/private/fullchain.pem");
 
-                client.RunCommand("openssl pkcs12 -export -in /etc/ssl/private/cloudkey.crt -inkey /etc/ssl/private/cloudkey.key -out /etc/ssl/private/cloudkey.p12 -name unifi -password pass:aircontrolenterprise");
+                client.RunCommand(
+                    "openssl pkcs12 -export -in /etc/ssl/private/cloudkey.crt -inkey /etc/ssl/private/cloudkey.key -out /etc/ssl/private/cloudkey.p12 -name unifi -password pass:aircontrolenterprise");
 
-                client.RunCommand("keytool -importkeystore -deststorepass aircontrolenterprise -destkeypass aircontrolenterprise -destkeystore /usr/lib/unifi/data/keystore -srckeystore /etc/ssl/private/cloudkey.p12 -srcstoretype PKCS12 -srcstorepass aircontrolenterprise -alias unifi");
+                client.RunCommand(
+                    "keytool -importkeystore -deststorepass aircontrolenterprise -destkeypass aircontrolenterprise -destkeystore /usr/lib/unifi/data/keystore -srckeystore /etc/ssl/private/cloudkey.p12 -srcstoretype PKCS12 -srcstorepass aircontrolenterprise -alias unifi");
 
                 client.RunCommand("rm -f /etc/ssl/private/cloudkey.p12");
                 client.RunCommand("tar -cvf /etc/ssl/private/cert.tar /etc/ssl/private/*");
                 client.RunCommand("chown root:ssl-cert /etc/ssl/private/*");
                 client.RunCommand("chmod 640 /etc/ssl/private/*");
 
-                _logger.LogDebug("Testing Nginx and restarting on Ubiquiti device at {host}", hostAddress);
+                _logger.LogDebug("Restarting on Ubiquiti device at {host}", hostAddress);
                 client.RunCommand("systemctl restart nginx; systemctl restart unifi");
 
                 client.Disconnect();

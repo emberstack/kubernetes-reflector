@@ -160,6 +160,18 @@ namespace ES.Kubernetes.Reflector.CertManager
                 {
                     Annotations.CertManagerCertificate.SecretUbiquitiCertificate,
                     Annotations.Reflection.UbiquitiCertificate
+                },
+                {
+                    Annotations.CertManagerCertificate.SecretVMwareEnabled,
+                    Annotations.Reflection.VMwareEnabled
+                },
+                {
+                    Annotations.CertManagerCertificate.SecretVMwareHosts,
+                    Annotations.Reflection.VMwareHosts
+                },
+                {
+                    Annotations.CertManagerCertificate.SecretVMwareCertificate,
+                    Annotations.Reflection.VMwareCertificate
                 }
             });
 
