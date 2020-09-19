@@ -11,10 +11,12 @@ namespace ES.Kubernetes.Reflector.Secrets
             builder.RegisterType<FortiMirror>().AsImplementedInterfaces().AsSelf().SingleInstance();
             builder.RegisterType<UbiquitiMirror>().AsImplementedInterfaces().AsSelf().SingleInstance();
             builder.RegisterType<VMwareMirror>().AsImplementedInterfaces().AsSelf().SingleInstance();
+            builder.RegisterType<FreeNasMirror>().AsImplementedInterfaces().AsSelf().SingleInstance();
             builder.AddHealthCheck<SecretMirror>();
             builder.AddHealthCheck<FortiMirror>();
             builder.AddHealthCheck<UbiquitiMirror>();
             builder.AddHealthCheck<VMwareMirror>();
+            builder.AddHealthCheck<FreeNasMirror>();
         }
     }
 }

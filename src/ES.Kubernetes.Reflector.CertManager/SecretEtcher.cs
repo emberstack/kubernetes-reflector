@@ -172,6 +172,18 @@ namespace ES.Kubernetes.Reflector.CertManager
                 {
                     Annotations.CertManagerCertificate.SecretVMwareCertificate,
                     Annotations.Reflection.VMwareCertificate
+                },
+                {
+                    Annotations.CertManagerCertificate.SecretFreeNasEnabled,
+                    Annotations.Reflection.FreeNasEnabled
+                },
+                {
+                    Annotations.CertManagerCertificate.SecretFreeNasHosts,
+                    Annotations.Reflection.FreeNasHosts
+                },
+                {
+                    Annotations.CertManagerCertificate.SecretFreeNasCertificate,
+                    Annotations.Reflection.FreeNasCertificate
                 }
             });
 

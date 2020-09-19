@@ -34,6 +34,14 @@
 
             #endregion
 
+            #region FreeNAS
+
+            public static string FreeNasEnabled => $"{Prefix}/reflection-freenas-enabled";
+            public static string FreeNasHosts => $"{Prefix}/reflection-freenas-hosts";
+            public static string FreeNasCertificate => $"{Prefix}/reflection-freenas-certificate";
+
+            #endregion
+            
             public static string AutoReflects => $"{Prefix}/auto-reflects";
             public static string Reflects => $"{Prefix}/reflects";
             public static string ReflectedVersion => $"{Prefix}/reflected-version";
@@ -65,6 +73,14 @@
             public static string SecretVMwareEnabled => $"{Prefix}/secret-reflection-vmware-enabled";
             public static string SecretVMwareHosts => $"{Prefix}/secret-reflection-vmware-hosts";
             public static string SecretVMwareCertificate => $"{Prefix}/secret-reflection-vmware-certificate";
+
+            #endregion
+            
+            #region FreeNAS
+
+            public static string SecretFreeNasEnabled => $"{Prefix}/secret-reflection-freenas-enabled";
+            public static string SecretFreeNasHosts => $"{Prefix}/secret-reflection-freenas-hosts";
+            public static string SecretFreeNasCertificate => $"{Prefix}/secret-reflection-freenas-certificate";
 
             #endregion
         }
