@@ -195,5 +195,34 @@ namespace ES.Kubernetes.Reflector.Core.Extensions
         }
 
         #endregion
+        
+        #region FreeNAS
+
+        public static bool FreeNasReflectionEnabled(this V1ObjectMeta metadata)
+        {
+            if (metadata.SafeAnnotations().TryGetValue(Annotations.Reflection.FreeNasEnabled, out var raw) &&
+                bool.TryParse(raw, out var value))
+                return value;
+            return false;
+        }
+
+        public static string[] FreeNasReflectionHosts(this V1ObjectMeta metadata)
+        {
+            return metadata.SafeAnnotations().TryGetValue(Annotations.Reflection.FreeNasHosts, out var raw)
+                ? string.IsNullOrWhiteSpace(raw) ? Array.Empty<string>() :
+                raw.Split(new[] {","}, StringSplitOptions.RemoveEmptyEntries)
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Select(s => s.Trim()).Distinct().ToArray()
+                : Array.Empty<string>();
+        }
+
+        public static string FreeNasCertificate(this V1ObjectMeta metadata)
+        {
+            return metadata.SafeAnnotations().TryGetValue(Annotations.Reflection.FreeNasCertificate, out var raw)
+                ? string.IsNullOrWhiteSpace(raw) ? null : raw
+                : null;
+        }
+
+        #endregion
     }
 }
