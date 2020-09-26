@@ -8,8 +8,8 @@ namespace ES.Kubernetes.Reflector.Core.Queuing
     {
         private readonly Func<T, Task> _handler;
         private readonly Func<T, Exception, Task> _onError;
-        private Task _currentHandler;
         private Channel<T> _channel;
+        private Task _currentHandler;
 
         public FeederQueue(Func<T, Task> handler, Func<T, Exception, Task> onError = null)
         {
@@ -37,7 +37,7 @@ namespace ES.Kubernetes.Reflector.Core.Queuing
         private void InitializeAndStart()
         {
             var channel = Channel.CreateUnbounded<T>(new UnboundedChannelOptions
-            { SingleReader = true, SingleWriter = false });
+                {SingleReader = true, SingleWriter = false});
 
             async Task ReadChannel()
             {
@@ -55,6 +55,7 @@ namespace ES.Kubernetes.Reflector.Core.Queuing
                     }
                 }
             }
+
             var _ = ReadChannel();
             _channel = channel;
         }

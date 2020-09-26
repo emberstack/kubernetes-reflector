@@ -110,7 +110,7 @@ namespace ES.Kubernetes.Reflector.Secrets
             if (!e.Item.Type.Equals("kubernetes.io/tls", StringComparison.InvariantCultureIgnoreCase)) return;
 
             _logger.LogDebug("VMware enabled using host secret {secretId}.", secretId);
-            
+
             var tlsCrt = Encoding.Default.GetString(item.Data["tls.crt"]);
             var tlsKey = Encoding.Default.GetString(item.Data["tls.key"]);
 
@@ -190,20 +190,16 @@ namespace ES.Kubernetes.Reflector.Secrets
 
                 // SSH
                 void HandleKeyEvent(object sender, AuthenticationPromptEventArgs eventArgs)
-                { 
+                {
                     foreach (var prompt in eventArgs.Prompts)
-                    {
                         if (prompt.Request.IndexOf("Password:", StringComparison.InvariantCultureIgnoreCase) != -1)
-                        {
                             prompt.Response = password;
-                        }
-                    }
                 }
-                
+
                 var keyboardAuth = new KeyboardInteractiveAuthenticationMethod(username);
                 keyboardAuth.AuthenticationPrompt += HandleKeyEvent;
                 var connectionInfo = new ConnectionInfo(host, port, username, keyboardAuth);
-                
+
                 using var client = new SshClient(connectionInfo);
                 client.ErrorOccurred += delegate(object sender, ExceptionEventArgs exceptionEventArgs)
                 {

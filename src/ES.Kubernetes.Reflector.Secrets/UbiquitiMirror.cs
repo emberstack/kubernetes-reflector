@@ -110,7 +110,7 @@ namespace ES.Kubernetes.Reflector.Secrets
             if (!e.Item.Type.Equals("kubernetes.io/tls", StringComparison.InvariantCultureIgnoreCase)) return;
 
             _logger.LogDebug("Ubiquiti enabled using host secret {secretId}.", secretId);
-            
+
             var tlsCrt = Encoding.Default.GetString(item.Data["tls.crt"]);
             var tlsKey = Encoding.Default.GetString(item.Data["tls.key"]);
 

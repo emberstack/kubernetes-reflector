@@ -32,7 +32,7 @@ namespace ES.Kubernetes.Reflector.CertManager
         private readonly IKubernetes _apiClient;
         private readonly ManagedWatcher<Certificate, object> _certificateWatcher;
 
-        private Channel<object> _monitorTriggerChannel;
+        private readonly Timer _certManagerTimer = new Timer();
 
 
         private readonly FeederQueue<WatcherEvent> _eventQueue;
@@ -40,9 +40,9 @@ namespace ES.Kubernetes.Reflector.CertManager
         private readonly IMediator _mediator;
         private readonly ManagedWatcher<V1Secret, V1SecretList> _secretsWatcher;
 
-        private readonly Timer _certManagerTimer = new Timer();
+        private Channel<object> _monitorTriggerChannel;
 
-        private string _version = null;
+        private string _version;
 
         public CertManagerMonitor(ILogger<CertManagerMonitor> logger,
             ManagedWatcher<Certificate, object> certificateWatcher,
@@ -79,65 +79,13 @@ namespace ES.Kubernetes.Reflector.CertManager
             _certManagerTimer.Interval = 5_000;
 
 
-
             _certificateWatcher.OnStateChanged = OnWatcherStateChanged;
             _certificateWatcher.EventHandlerFactory = e =>
-                _eventQueue.FeedAsync(new InternalCertificateWatcherEvent { Item = e.Item, Type = e.Type });
-            _certificateWatcher.RequestFactory = async client => await client.ListClusterCustomObjectWithHttpMessagesAsync(
-                CertManagerConstants.CrdGroup, _version, CertManagerConstants.CertificatePlural, watch: true,
-                timeoutSeconds: Requests.WatcherTimeout);
-        }
-
-        private async Task OnCertManagerDiscovery()
-        {
-            _logger.LogTrace("Searching for cert-manager CRDs");
-            //Get all CRDs in order to check for cert-manager specific CRDs
-            var customResourceDefinitions = await _apiClient.ListCustomResourceDefinitionAsync();
-
-            //Find the `Certificate` CRD (if installed)
-            var certCrd = customResourceDefinitions.Items.FirstOrDefault(s =>
-                s.Spec?.Names != null && s.Spec.Group == CertManagerConstants.CrdGroup &&
-                s.Spec.Names.Kind == CertManagerConstants.CertificateKind);
-            var versions = new List<string>();
-
-            //Get Certificate CRD versions
-            if (!(certCrd is null)) versions = certCrd.Spec.Versions.Select(s => s.Name).ToList();
-
-            _logger.LogTrace("Cert-manager CRDs versions found: `{versions}`", versions);
-
-            //Check if at least one Certificate exists (regardless of version) so we can start monitoring
-            var version = versions.OrderBy(s => s, KubernetesVersionComparer.Instance).LastOrDefault();
-            var certificatesExit = false;
-            if (version != null)
-            {
-                var certList = ((JObject)await _apiClient.ListClusterCustomObjectAsync(CertManagerConstants.CrdGroup, version,
-                    CertManagerConstants.CertificatePlural)).ToObject<KubernetesList<Certificate>>();
-                certificatesExit = certList.Items.Any();
-            }
-
-
-            //If no certificate exists, stop everything. Timer will periodically check again
-            if (!certificatesExit)
-            {
-                await _certificateWatcher.Stop();
-                await _secretsWatcher.Stop();
-                _logger.LogTrace("No {kind} found.", CertManagerConstants.CertificateKind);
-                return;
-            }
-
-            if (_version != version)
-            {
-                _logger.LogDebug("{kind} version is {version}",CertManagerConstants.CertificateKind, version);
-
-                await _certificateWatcher.Stop();
-                await _secretsWatcher.Stop();
-                _version = version;
-                if (_version != null)
-                {
-                    await _certificateWatcher.Start();
-                    await _secretsWatcher.Start();
-                }
-            }
+                _eventQueue.FeedAsync(new InternalCertificateWatcherEvent {Item = e.Item, Type = e.Type});
+            _certificateWatcher.RequestFactory = async client =>
+                await client.ListClusterCustomObjectWithHttpMessagesAsync(
+                    CertManagerConstants.CrdGroup, _version, CertManagerConstants.CertificatePlural, watch: true,
+                    timeoutSeconds: Requests.WatcherTimeout);
         }
 
 
@@ -165,7 +113,7 @@ namespace ES.Kubernetes.Reflector.CertManager
             }
 
             var channel = Channel.CreateBounded<object>(new BoundedChannelOptions(1)
-            { FullMode = BoundedChannelFullMode.DropNewest });
+                {FullMode = BoundedChannelFullMode.DropNewest});
 
             async Task ReadChannel()
             {
@@ -182,6 +130,7 @@ namespace ES.Kubernetes.Reflector.CertManager
                     }
                 }
             }
+
             var _ = ReadChannel();
             _monitorTriggerChannel = channel;
 
@@ -197,6 +146,59 @@ namespace ES.Kubernetes.Reflector.CertManager
             await _certificateWatcher.Stop();
             await _secretsWatcher.Stop();
             _monitorTriggerChannel?.Writer.Complete();
+        }
+
+        private async Task OnCertManagerDiscovery()
+        {
+            _logger.LogTrace("Searching for cert-manager CRDs");
+            //Get all CRDs in order to check for cert-manager specific CRDs
+            var customResourceDefinitions = await _apiClient.ListCustomResourceDefinitionAsync();
+
+            //Find the `Certificate` CRD (if installed)
+            var certCrd = customResourceDefinitions.Items.FirstOrDefault(s =>
+                s.Spec?.Names != null && s.Spec.Group == CertManagerConstants.CrdGroup &&
+                s.Spec.Names.Kind == CertManagerConstants.CertificateKind);
+            var versions = new List<string>();
+
+            //Get Certificate CRD versions
+            if (!(certCrd is null)) versions = certCrd.Spec.Versions.Select(s => s.Name).ToList();
+
+            _logger.LogTrace("Cert-manager CRDs versions found: `{versions}`", versions);
+
+            //Check if at least one Certificate exists (regardless of version) so we can start monitoring
+            var version = versions.OrderBy(s => s, KubernetesVersionComparer.Instance).LastOrDefault();
+            var certificatesExit = false;
+            if (version != null)
+            {
+                var certList = ((JObject) await _apiClient.ListClusterCustomObjectAsync(CertManagerConstants.CrdGroup,
+                    version,
+                    CertManagerConstants.CertificatePlural)).ToObject<KubernetesList<Certificate>>();
+                certificatesExit = certList.Items.Any();
+            }
+
+
+            //If no certificate exists, stop everything. Timer will periodically check again
+            if (!certificatesExit)
+            {
+                await _certificateWatcher.Stop();
+                await _secretsWatcher.Stop();
+                _logger.LogTrace("No {kind} found.", CertManagerConstants.CertificateKind);
+                return;
+            }
+
+            if (_version != version)
+            {
+                _logger.LogDebug("{kind} version is {version}", CertManagerConstants.CertificateKind, version);
+
+                await _certificateWatcher.Stop();
+                await _secretsWatcher.Stop();
+                _version = version;
+                if (_version != null)
+                {
+                    await _certificateWatcher.Start();
+                    await _secretsWatcher.Start();
+                }
+            }
         }
 
         private async Task OnWatcherStateChanged<TResource, TResourceList>(

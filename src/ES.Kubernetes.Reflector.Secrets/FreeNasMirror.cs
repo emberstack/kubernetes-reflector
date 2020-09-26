@@ -4,7 +4,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -106,6 +105,8 @@ namespace ES.Kubernetes.Reflector.Secrets
 
         private async Task OnEvent(WatcherEvent<V1Secret> e)
         {
+            if (e.Item.Type.StartsWith("helm.sh")) return;
+
             var secretId = KubernetesObjectId.For(e.Item.Metadata());
             var item = e.Item;
 
@@ -223,7 +224,6 @@ namespace ES.Kubernetes.Reflector.Secrets
                     .SingleOrDefault(x => x.Name == name);
                 var certExists = !(cert is null);
                 if (certExists)
-                {
                     if (tlsCrt.Contains(cert.Certificate))
                     {
                         _logger.LogDebug(
@@ -231,7 +231,6 @@ namespace ES.Kubernetes.Reflector.Secrets
                             secretId, hostSecretId);
                         return;
                     }
-                }
 
                 // Create the certificate
                 var bodyCreate = JsonSerializer.Serialize(new FreeNasCertificateCreateImported
@@ -246,11 +245,11 @@ namespace ES.Kubernetes.Reflector.Secrets
                 var certId = certExists
                     ? cert.Id
                     : certificates.Single(x => x.Name == name).Id;
-                
+
                 var bodyGeneral = JsonSerializer.Serialize(new FreeNasSystemGeneral
                     {Ui_certificate = certId}, options);
                 await client.PutAsync("system/general/", new StringContent(bodyGeneral));
-                
+
                 _logger.LogInformation("Reflected {secretId} to FreeNas device using host secret {hostSecretId}.",
                     secretId, hostSecretId);
             }

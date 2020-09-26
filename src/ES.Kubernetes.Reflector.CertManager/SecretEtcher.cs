@@ -82,7 +82,7 @@ namespace ES.Kubernetes.Reflector.CertManager
                         metadata.NamespaceProperty,
                         CertManagerConstants.CertificatePlural,
                         certificateName, cancellationToken);
-                    certificate = ((JObject)certificateJObject).ToObject<Certificate>();
+                    certificate = ((JObject) certificateJObject).ToObject<Certificate>();
                 }
                 catch (HttpOperationException exception) when (exception.Response.StatusCode ==
                                                                HttpStatusCode.NotFound)

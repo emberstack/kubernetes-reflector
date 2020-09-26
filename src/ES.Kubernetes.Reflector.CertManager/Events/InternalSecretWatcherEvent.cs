@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using ES.Kubernetes.Reflector.Core.Events;
+﻿using ES.Kubernetes.Reflector.Core.Events;
 using k8s.Models;
 
 namespace ES.Kubernetes.Reflector.CertManager.Events
