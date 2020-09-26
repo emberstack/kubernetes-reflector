@@ -1,7 +1,7 @@
 name: $(version).$(Rev:r)
 
 variables:
-  version: 5.3
+  version: 5.4
   buildConfiguration: "Release"
   imageRepository: "emberstack/kubernetes-reflector"
   DOCKER_CLI_EXPERIMENTAL: "enabled"

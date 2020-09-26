@@ -182,6 +182,7 @@ namespace ES.Kubernetes.Reflector.CertManager
             {
                 await _certificateWatcher.Stop();
                 await _secretsWatcher.Stop();
+                _version = null;
                 _logger.LogTrace("No {kind} found.", CertManagerConstants.CertificateKind);
                 return;
             }
