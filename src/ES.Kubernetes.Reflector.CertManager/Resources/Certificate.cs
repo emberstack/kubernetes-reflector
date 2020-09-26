@@ -4,11 +4,8 @@ using Newtonsoft.Json;
 
 namespace ES.Kubernetes.Reflector.CertManager.Resources
 {
-    public class Certificate : IKubernetesObject
+    public class Certificate : IKubernetesObject, IMetadata<V1ObjectMeta>
     {
-        [JsonProperty(PropertyName = "metadata")]
-        public V1ObjectMeta Metadata { get; set; }
-
         [JsonProperty(PropertyName = "spec")]
         public SpecDefinition Spec { get; set; }
 
@@ -17,6 +14,9 @@ namespace ES.Kubernetes.Reflector.CertManager.Resources
 
         [JsonProperty(PropertyName = "kind")]
         public string Kind { get; set; }
+
+        [JsonProperty(PropertyName = "metadata")]
+        public V1ObjectMeta Metadata { get; set; }
 
         public class SpecDefinition
         {

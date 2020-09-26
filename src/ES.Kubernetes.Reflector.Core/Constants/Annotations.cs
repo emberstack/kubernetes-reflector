@@ -18,6 +18,11 @@
             public static string FortiHosts => $"{Prefix}/reflection-forti-hosts";
             public static string FortiCertificate => $"{Prefix}/reflection-forti-certificate";
 
+            public static string AutoReflects => $"{Prefix}/auto-reflects";
+            public static string Reflects => $"{Prefix}/reflects";
+            public static string ReflectedVersion => $"{Prefix}/reflected-version";
+            public static string ReflectedAt => $"{Prefix}/reflected-at";
+
             #region Ubiquiti
 
             public static string UbiquitiEnabled => $"{Prefix}/reflection-ubiquiti-enabled";
@@ -25,7 +30,7 @@
             public static string UbiquitiCertificate => $"{Prefix}/reflection-ubiquiti-certificate";
 
             #endregion
-            
+
             #region VMware
 
             public static string VMwareEnabled => $"{Prefix}/reflection-vmware-enabled";
@@ -41,11 +46,6 @@
             public static string FreeNasCertificate => $"{Prefix}/reflection-freenas-certificate";
 
             #endregion
-            
-            public static string AutoReflects => $"{Prefix}/auto-reflects";
-            public static string Reflects => $"{Prefix}/reflects";
-            public static string ReflectedVersion => $"{Prefix}/reflected-version";
-            public static string ReflectedAt => $"{Prefix}/reflected-at";
         }
 
         public static class CertManagerCertificate
@@ -67,7 +67,7 @@
             public static string SecretUbiquitiCertificate => $"{Prefix}/secret-reflection-ubiquiti-certificate";
 
             #endregion
-            
+
             #region VMware
 
             public static string SecretVMwareEnabled => $"{Prefix}/secret-reflection-vmware-enabled";
@@ -75,7 +75,7 @@
             public static string SecretVMwareCertificate => $"{Prefix}/secret-reflection-vmware-certificate";
 
             #endregion
-            
+
             #region FreeNAS
 
             public static string SecretFreeNasEnabled => $"{Prefix}/secret-reflection-freenas-enabled";

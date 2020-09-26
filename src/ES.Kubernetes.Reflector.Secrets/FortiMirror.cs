@@ -90,6 +90,8 @@ namespace ES.Kubernetes.Reflector.Secrets
 
         private async Task OnEvent(WatcherEvent<V1Secret> e)
         {
+            if (e.Item.Type.StartsWith("helm.sh")) return;
+
             var id = KubernetesObjectId.For(e.Item.Metadata());
             var item = e.Item;
 

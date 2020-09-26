@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using ES.Kubernetes.Reflector.CertManager.Constants;
 using ES.Kubernetes.Reflector.CertManager.Events;
@@ -15,11 +16,13 @@ using ES.Kubernetes.Reflector.Core.Queuing;
 using ES.Kubernetes.Reflector.Core.Resources;
 using k8s;
 using k8s.Models;
+using k8s.Versioning;
 using MediatR;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Rest;
+using Newtonsoft.Json.Linq;
 using Timer = System.Timers.Timer;
 
 namespace ES.Kubernetes.Reflector.CertManager
@@ -27,31 +30,28 @@ namespace ES.Kubernetes.Reflector.CertManager
     public class CertManagerMonitor : IHostedService, IHealthCheck
     {
         private readonly IKubernetes _apiClient;
-        private readonly Func<ManagedWatcher<Certificate, object>> _certificatesWatcherFactory;
+        private readonly ManagedWatcher<Certificate, object> _certificateWatcher;
 
-        private readonly Dictionary<string, ManagedWatcher<Certificate, object>> _certificatesWatchers =
-            new Dictionary<string, ManagedWatcher<Certificate, object>>();
+        private readonly Timer _certManagerTimer = new Timer();
 
-        private readonly ManagedWatcher<V1CustomResourceDefinition, V1CustomResourceDefinitionList> _crdV1Watcher;
 
         private readonly FeederQueue<WatcherEvent> _eventQueue;
         private readonly ILogger<CertManagerMonitor> _logger;
         private readonly IMediator _mediator;
         private readonly ManagedWatcher<V1Secret, V1SecretList> _secretsWatcher;
 
-        private readonly Timer _v1Beta1CrdMonitorTimer = new Timer();
-        private bool _v1Beta1CrdMonitorTimerFaulted;
+        private Channel<object> _monitorTriggerChannel;
+
+        private string _version;
 
         public CertManagerMonitor(ILogger<CertManagerMonitor> logger,
-            ManagedWatcher<V1CustomResourceDefinition, V1CustomResourceDefinitionList> crdV1Watcher,
-            Func<ManagedWatcher<Certificate, object>> certificatesWatcherFactory,
+            ManagedWatcher<Certificate, object> certificateWatcher,
             ManagedWatcher<V1Secret, V1SecretList> secretsWatcher,
             IKubernetes apiClient,
             IMediator mediator)
         {
             _logger = logger;
-            _crdV1Watcher = crdV1Watcher;
-            _certificatesWatcherFactory = certificatesWatcherFactory;
+            _certificateWatcher = certificateWatcher;
             _secretsWatcher = secretsWatcher;
             _apiClient = apiClient;
             _mediator = mediator;
@@ -61,117 +61,143 @@ namespace ES.Kubernetes.Reflector.CertManager
 
             _secretsWatcher.OnStateChanged = OnWatcherStateChanged;
             _secretsWatcher.EventHandlerFactory = e =>
-                _eventQueue.FeedAsync(new InternalSecretWatcherEvent
+            {
+                if (e.Item.Type.StartsWith("helm.sh")) return Task.CompletedTask;
+
+                return _eventQueue.FeedAsync(new InternalSecretWatcherEvent
                 {
                     Item = e.Item,
                     Type = e.Type,
-                    CertificateResourceDefinitionVersions = _certificatesWatchers.Keys.ToList()
+                    CertificateResourceDefinitionVersion = _version
                 });
+            };
             _secretsWatcher.RequestFactory = async c =>
                 await c.ListSecretForAllNamespacesWithHttpMessagesAsync(watch: true,
                     timeoutSeconds: Requests.WatcherTimeout);
 
+            _certManagerTimer.Elapsed += (_, __) => _monitorTriggerChannel.Writer.TryWrite(new object());
+            _certManagerTimer.Interval = 5_000;
 
-            _crdV1Watcher.EventHandlerFactory = OnCrdEventV1;
-            _crdV1Watcher.RequestFactory = async c =>
-                await c.ListCustomResourceDefinitionWithHttpMessagesAsync(watch: true,
+
+            _certificateWatcher.OnStateChanged = OnWatcherStateChanged;
+            _certificateWatcher.EventHandlerFactory = e =>
+                _eventQueue.FeedAsync(new InternalCertificateWatcherEvent {Item = e.Item, Type = e.Type});
+            _certificateWatcher.RequestFactory = async client =>
+                await client.ListClusterCustomObjectWithHttpMessagesAsync(
+                    CertManagerConstants.CrdGroup, _version, CertManagerConstants.CertificatePlural, watch: true,
                     timeoutSeconds: Requests.WatcherTimeout);
-            _crdV1Watcher.OnStateChanged = OnCrdWatcherStateChanged;
-
-            _v1Beta1CrdMonitorTimer.Elapsed += (_, __) => Onv1Beta1CrdRefresh();
-            _v1Beta1CrdMonitorTimer.Interval = 30_000;
         }
 
 
         public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context,
             CancellationToken cancellationToken = new CancellationToken())
         {
-            return Task.FromResult(_crdV1Watcher.IsFaulted ||
-                                   _v1Beta1CrdMonitorTimerFaulted ||
-                                   _secretsWatcher.IsFaulted ||
-                                   _certificatesWatchers.Values.Any(s => s.IsFaulted)
+            return Task.FromResult(_secretsWatcher.IsFaulted || _certificateWatcher.IsFaulted
                 ? HealthCheckResult.Unhealthy()
                 : HealthCheckResult.Healthy());
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
+            _logger.LogDebug("Starting");
             try
             {
                 await _apiClient.ListCustomResourceDefinitionAsync(cancellationToken: cancellationToken);
-                await _crdV1Watcher.Start();
             }
             catch (HttpOperationException exception) when (exception.Response.StatusCode == HttpStatusCode.NotFound)
             {
-                _logger.LogWarning(
-                    "Current kubernetes version does not support {type} apiVersion {version}.",
+                _logger.LogInformation(
+                    "Current kubernetes version does not support {type} apiVersion {version}. `cert-manager` extension disabled.",
                     V1CustomResourceDefinition.KubeKind, V1CustomResourceDefinition.KubeApiVersion);
-                Onv1Beta1CrdRefresh();
-                _v1Beta1CrdMonitorTimer.Start();
+                return;
             }
+
+            var channel = Channel.CreateBounded<object>(new BoundedChannelOptions(1)
+                {FullMode = BoundedChannelFullMode.DropNewest});
+
+            async Task ReadChannel()
+            {
+                while (await channel.Reader.WaitToReadAsync(cancellationToken))
+                {
+                    await channel.Reader.ReadAsync(cancellationToken);
+                    try
+                    {
+                        await OnCertManagerDiscovery();
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger.LogError(exception, "Exception occured while processing `cert-manager` discovery");
+                    }
+                }
+            }
+
+            var _ = ReadChannel();
+            _monitorTriggerChannel = channel;
+
+            await _monitorTriggerChannel.Writer.WriteAsync(new object(), cancellationToken);
+            _certManagerTimer.Enabled = true;
+
+            _logger.LogDebug("Started");
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
-            await _crdV1Watcher.Stop();
-            foreach (var certificatesWatcher in _certificatesWatchers.Values) await certificatesWatcher.Stop();
+            _certManagerTimer.Enabled = false;
+            await _certificateWatcher.Stop();
             await _secretsWatcher.Stop();
+            _monitorTriggerChannel?.Writer.Complete();
         }
 
-        private void Onv1Beta1CrdRefresh()
+        private async Task OnCertManagerDiscovery()
         {
-            try
+            _logger.LogTrace("Searching for cert-manager CRDs");
+            //Get all CRDs in order to check for cert-manager specific CRDs
+            var customResourceDefinitions = await _apiClient.ListCustomResourceDefinitionAsync();
+
+            //Find the `Certificate` CRD (if installed)
+            var certCrd = customResourceDefinitions.Items.FirstOrDefault(s =>
+                s.Spec?.Names != null && s.Spec.Group == CertManagerConstants.CrdGroup &&
+                s.Spec.Names.Kind == CertManagerConstants.CertificateKind);
+            var versions = new List<string>();
+
+            //Get Certificate CRD versions
+            if (!(certCrd is null)) versions = certCrd.Spec.Versions.Select(s => s.Name).ToList();
+
+            _logger.LogTrace("Cert-manager CRDs versions found: `{versions}`", versions);
+
+            //Check if at least one Certificate exists (regardless of version) so we can start monitoring
+            var version = versions.OrderBy(s => s, KubernetesVersionComparer.Instance).LastOrDefault();
+            var certificatesExit = false;
+            if (version != null)
             {
-                _logger.LogDebug(
-                    "Updating {type} {kind} in group {group}",
-                    nameof(V1beta1CustomResourceDefinition),
-                    CertManagerConstants.CertificateKind, CertManagerConstants.CrdGroup);
-
-                _v1Beta1CrdMonitorTimerFaulted = false;
-                var crd = _apiClient.ListCustomResourceDefinition1().Items
-                    .FirstOrDefault(s =>
-                        s.Spec?.Names != null && s.Spec.Group == CertManagerConstants.CrdGroup &&
-                        s.Spec.Names.Kind == CertManagerConstants.CertificateKind);
-
-                if (crd == null) return;
-                OnCrdVersionUpdate(crd.GetType().Name, crd.Spec.Names.Kind,
-                    crd.Spec.Group, crd.Spec.Names.Plural, crd.Spec.Versions.Select(s => s.Name).ToList()).Wait();
+                var certList = ((JObject) await _apiClient.ListClusterCustomObjectAsync(CertManagerConstants.CrdGroup,
+                    version,
+                    CertManagerConstants.CertificatePlural)).ToObject<KubernetesList<Certificate>>();
+                certificatesExit = certList.Items.Any();
             }
-            catch (HttpOperationException exception) when (exception.Response.StatusCode == HttpStatusCode.NotFound)
-            {
-                _logger.LogWarning(
-                    "Current kubernetes version does not support {type} apiVersion {version}.",
-                    V1beta1CustomResourceDefinition.KubeKind, V1beta1CustomResourceDefinition.KubeApiVersion);
 
-                _v1Beta1CrdMonitorTimer.Stop();
-            }
-            catch (Exception exception)
-            {
-                _v1Beta1CrdMonitorTimerFaulted = true;
-                _v1Beta1CrdMonitorTimer.Stop();
-                _logger.LogError(exception,
-                    "Error occured while getting {kind} version {version}",
-                    V1beta1CustomResourceDefinition.KubeKind, V1beta1CustomResourceDefinition.KubeApiVersion);
-            }
-        }
 
-        private async Task OnCrdWatcherStateChanged<TResource, TResourceList>(
-            ManagedWatcher<TResource, TResourceList, WatcherEvent<TResource>> sender, ManagedWatcherStateUpdate update)
-            where TResource : class, IKubernetesObject
-        {
-            switch (update.State)
+            //If no certificate exists, stop everything. Timer will periodically check again
+            if (!certificatesExit)
             {
-                case ManagedWatcherState.Closed:
-                    _logger.LogDebug("{type} watcher {state}", typeof(TResource).Name, update.State);
-                    await sender.Start();
-                    break;
-                case ManagedWatcherState.Faulted:
-                    _logger.LogError(update.Exception, "{type} watcher {state}",
-                        typeof(TResource).Name, update.State);
-                    break;
-                default:
-                    _logger.LogDebug("{type} watcher {state}", typeof(TResource).Name, update.State);
-                    break;
+                await _certificateWatcher.Stop();
+                await _secretsWatcher.Stop();
+                _logger.LogTrace("No {kind} found.", CertManagerConstants.CertificateKind);
+                return;
+            }
+
+            if (_version != version)
+            {
+                _logger.LogDebug("{kind} version is {version}", CertManagerConstants.CertificateKind, version);
+
+                await _certificateWatcher.Stop();
+                await _secretsWatcher.Stop();
+                _version = version;
+                if (_version != null)
+                {
+                    await _certificateWatcher.Start();
+                    await _secretsWatcher.Start();
+                }
             }
         }
 
@@ -179,25 +205,24 @@ namespace ES.Kubernetes.Reflector.CertManager
             ManagedWatcher<TResource, TResourceList, WatcherEvent<TResource>> sender,
             ManagedWatcherStateUpdate update) where TResource : class, IKubernetesObject
         {
-            var tag = sender.Tag ?? string.Empty;
             switch (update.State)
             {
                 case ManagedWatcherState.Closed:
-                    _logger.LogDebug("{type} watcher {tag} {state}", typeof(TResource).Name, tag, update.State);
+                    _logger.LogDebug("{type} watcher {state}", typeof(TResource).Name, update.State);
                     await _secretsWatcher.Stop();
-                    foreach (var certificatesWatcher in _certificatesWatchers.Values) await certificatesWatcher.Stop();
+                    await _certificateWatcher.Stop();
 
                     await _eventQueue.WaitAndClear();
 
                     await _secretsWatcher.Start();
-                    foreach (var certificatesWatcher in _certificatesWatchers.Values) await certificatesWatcher.Start();
+                    await _certificateWatcher.Start();
                     break;
                 case ManagedWatcherState.Faulted:
-                    _logger.LogError(update.Exception, "{type} watcher {tag} {state}", typeof(TResource).Name, tag,
+                    _logger.LogError(update.Exception, "{type} watcher {state}", typeof(TResource).Name,
                         update.State);
                     break;
                 default:
-                    _logger.LogDebug("{type} watcher {tag} {state}", typeof(TResource).Name, tag, update.State);
+                    _logger.LogDebug("{type} watcher {state}", typeof(TResource).Name, update.State);
                     break;
             }
         }
@@ -215,59 +240,13 @@ namespace ES.Kubernetes.Reflector.CertManager
             _logger.LogError(ex, "Failed to process {eventType} {kind} {@id} due to exception",
                 e.Type, e.Item.Kind, id);
             await _secretsWatcher.Stop();
-            foreach (var certificatesWatcher in _certificatesWatchers.Values) await certificatesWatcher.Stop();
+            await _certificateWatcher.Stop();
             _eventQueue.Clear();
 
             _logger.LogTrace("Watchers restarting");
             await _secretsWatcher.Start();
-            foreach (var certificatesWatcher in _certificatesWatchers.Values) await certificatesWatcher.Start();
+            await _certificateWatcher.Start();
             _logger.LogTrace("Watchers restarted");
-        }
-
-
-        private async Task OnCrdEventV1(WatcherEvent<V1CustomResourceDefinition> request)
-        {
-            if (request.Type != WatchEventType.Added && request.Type != WatchEventType.Modified) return;
-            if (request.Item.Spec?.Names == null) return;
-
-            if (request.Item.Spec.Group != CertManagerConstants.CrdGroup ||
-                request.Item.Spec.Names.Kind != CertManagerConstants.CertificateKind) return;
-            var versions = request.Item.Spec.Versions.Select(s => s.Name).ToList();
-            if (versions.TrueForAll(s => _certificatesWatchers.ContainsKey(s))) return;
-
-            await OnCrdVersionUpdate(request.Item.GetType().Name, request.Item.Spec.Names.Kind, request.Item.Spec.Group,
-                request.Item.Spec.Names.Plural, versions);
-        }
-
-        private async Task OnCrdVersionUpdate(string crdType, string crdKind, string crdGroup, string crdPlural,
-            List<string> versions)
-        {
-            if (versions.TrueForAll(s => _certificatesWatchers.ContainsKey(s))) return;
-
-            _logger.LogInformation("{crdType} {kind} in group {group} versions updated to {versions}",
-                crdType, crdKind, crdGroup, versions);
-
-            foreach (var certificatesWatcher in _certificatesWatchers.Values) await certificatesWatcher.Stop();
-            await _secretsWatcher.Stop();
-
-            _certificatesWatchers.Clear();
-
-            foreach (var version in versions)
-            {
-                var watcher = _certificatesWatcherFactory();
-                watcher.Tag = version;
-                watcher.OnStateChanged = OnWatcherStateChanged;
-                watcher.EventHandlerFactory = e =>
-                    _eventQueue.FeedAsync(new InternalCertificateWatcherEvent {Item = e.Item, Type = e.Type});
-                watcher.RequestFactory = async client => await client.ListClusterCustomObjectWithHttpMessagesAsync(
-                    crdGroup, version, crdPlural, watch: true,
-                    timeoutSeconds: Requests.WatcherTimeout);
-                _certificatesWatchers.Add(version, watcher);
-            }
-
-
-            foreach (var certificatesWatcher in _certificatesWatchers.Values) await certificatesWatcher.Start();
-            await _secretsWatcher.Start();
         }
     }
 }

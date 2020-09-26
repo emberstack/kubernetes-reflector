@@ -166,7 +166,7 @@ namespace ES.Kubernetes.Reflector.Core.Extensions
         }
 
         #endregion
-        
+
         #region VMware
 
         public static bool VMwareReflectionEnabled(this V1ObjectMeta metadata)
@@ -195,7 +195,7 @@ namespace ES.Kubernetes.Reflector.Core.Extensions
         }
 
         #endregion
-        
+
         #region FreeNAS
 
         public static bool FreeNasReflectionEnabled(this V1ObjectMeta metadata)
