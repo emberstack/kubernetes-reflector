@@ -126,7 +126,7 @@ namespace ES.Kubernetes.Reflector.CertManager
                     }
                     catch (Exception exception)
                     {
-                        _logger.LogError(exception, "Exception occured while processing `cert-manager` discovery");
+                        _logger.LogError(exception, "Exception occurred while processing `cert-manager` discovery");
                     }
                 }
             }
@@ -142,10 +142,14 @@ namespace ES.Kubernetes.Reflector.CertManager
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
+            _logger.LogDebug("Stopping");
+
             _certManagerTimer.Enabled = false;
             await _certificateWatcher.Stop();
             await _secretsWatcher.Stop();
             _monitorTriggerChannel?.Writer.Complete();
+
+            _logger.LogDebug("Stopped");
         }
 
         private async Task OnCertManagerDiscovery()
