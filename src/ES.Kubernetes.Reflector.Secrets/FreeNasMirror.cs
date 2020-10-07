@@ -247,7 +247,7 @@ namespace ES.Kubernetes.Reflector.Secrets
                     : certificates.Single(x => x.Name == name).Id;
 
                 var bodyGeneral = JsonSerializer.Serialize(new FreeNasSystemGeneral
-                    {Ui_certificate = certId}, options);
+                    {UiCertificate = certId}, options);
                 await client.PutAsync("system/general/", new StringContent(bodyGeneral));
 
                 _logger.LogInformation("Reflected {secretId} to FreeNas device using host secret {hostSecretId}.",
@@ -271,12 +271,12 @@ namespace ES.Kubernetes.Reflector.Secrets
 
     internal class FreeNasSystemGeneral
     {
-        public int Ui_certificate { get; set; }
+        public int UiCertificate { get; set; }
     }
 
     internal class FreeNasCertificateCreateImported
     {
-        public string create_type => "CERTIFICATE_CREATE_IMPORTED";
+        public string CreateType => "CERTIFICATE_CREATE_IMPORTED";
         public string Name { get; set; }
         public string Certificate { get; set; }
         public string Privatekey { get; set; }
