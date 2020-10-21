@@ -105,6 +105,7 @@ namespace ES.Kubernetes.Reflector.Core.Monitoring
                     OnBeforePublish?.Invoke(notification);
                     _queue.Feed(notification);
                 });
+
                 _watcher.OnError += OnWatcherError;
                 _watcher.OnClosed += OnWatcherClosed;
                 _isMonitoring = true;

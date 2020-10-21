@@ -297,6 +297,13 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring
                         $"Found conflicting {{kind}} with the same name which was not created by {nameof(Reflector)}",
                         item.Kind, reflectionId, id, item.Kind);
                 }
+                catch (HttpOperationException ex) when (ex.Response.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    _logger.LogWarning(
+                        "Cannot create reflection {kind} {@reflectionId} for {@id}. " +
+                        "Access to namespace forbidden.",
+                        item.Kind, reflectionId, id, item.Kind);
+                }
             }
 
 
