@@ -30,16 +30,9 @@ serviceAccount:
 rbac:
   enabled: true
 
-podSecurityContext:
-  fsGroup: 2000
+podSecurityContext: {}
 
-securityContext:
-  capabilities:
-    drop:
-    - ALL
-  readOnlyRootFilesystem: false
-  runAsNonRoot: true
-  runAsUser: 1000
+securityContext: {}
 
 livenessProbe:
   initialDelaySeconds: 5
