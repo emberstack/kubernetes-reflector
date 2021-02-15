@@ -61,7 +61,7 @@ You can customize the values of the helm deployment by using the following Value
 | `tolerations`                        | Toleration labels for pod assignment             | `[]`                                                    |
 | `affinity`                           | Node affinity for pod assignment                 | `{}`                                                    |
 
-> Find us on [Helm Hub](https://hub.helm.sh/charts/emberstack)
+> Find us on [Artifact Hub](https://artifacthub.io/packages/helm/emberstack/reflector)
 
 
 #### Manual deployment
