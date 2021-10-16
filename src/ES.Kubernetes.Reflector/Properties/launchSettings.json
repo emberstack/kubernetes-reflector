@@ -1,0 +1,19 @@
+{
+  "profiles": {
+    "HOST": {
+      "commandName": "Project",
+      "launchBrowser": false,
+      "environmentVariables": {
+        "ES_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "http://localhost:5000",
+      "dotnetRunMessages": false
+    },
+    "Docker": {
+      "commandName": "Docker",
+      "launchBrowser": true,
+      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
+      "publishAllPorts": true
+    }
+  }
+}

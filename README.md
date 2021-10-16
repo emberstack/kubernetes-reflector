@@ -1,26 +1,17 @@
 # Reflector
 Reflector is a Kubernetes addon designed to monitor changes to resources (secrets and configmaps) and reflect changes to mirror resources in the same or other namespaces.
 
-[![Build Status](https://dev.azure.com/emberstack/OpenSource/_apis/build/status/kubernetes-reflector?branchName=master)](https://dev.azure.com/emberstack/OpenSource/_build/latest?definitionId=12&branchName=master)
+[![Build Status](https://dev.azure.com/emberstack/OpenSource/_apis/build/status/kubernetes-reflector?branchName=main)](https://dev.azure.com/emberstack/OpenSource/_apis/build/status/kubernetes-reflector?branchName=main)
 [![Release](https://img.shields.io/github/release/emberstack/kubernetes-reflector.svg?style=flat-square)](https://github.com/emberstack/kubernetes-reflector/releases/latest)
 [![Docker Image](https://img.shields.io/docker/image-size/emberstack/kubernetes-reflector/latest?style=flat-square)](https://hub.docker.com/r/emberstack/kubernetes-reflector)
 [![Docker Pulls](https://img.shields.io/docker/pulls/emberstack/kubernetes-reflector?style=flat-square)](https://hub.docker.com/r/emberstack/kubernetes-reflector)
 [![license](https://img.shields.io/github/license/emberstack/kubernetes-reflector.svg?style=flat-square)](LICENSE)
-[![slack](https://img.shields.io/badge/join-emberstack%20on%20Slack-gray.svg?style=flat-square&longCache=true&logo=slack&colorB=green)](https://join.slack.com/t/emberstack/shared_invite/zt-8qyutopg-9ghwTq3OnHSm2tY9Sk5ULA)
 
 
 > Supports `amd64`, `arm` and `arm64`
 
-### Extensions
-Reflector includes a cert-manager extension used to automatically annotate created secrets and allow reflection. See the `cert-manager` extension usage below for more details.
-
-
 ## Support
 If you need help or found a bug, please feel free to open an Issue on GitHub (https://github.com/emberstack/kubernetes-reflector/issues).  
-  
-You can also join our Slack workspace and talk to us:  
-[![slack](https://img.shields.io/badge/join-emberstack%20on%20Slack-gray.svg?style=flat-square&longCache=true&logo=slack&colorB=green)](https://join.slack.com/t/emberstack/shared_invite/zt-8qyutopg-9ghwTq3OnHSm2tY9Sk5ULA)
-
 
 ## Deployment
 
@@ -61,28 +52,28 @@ You can customize the values of the helm deployment by using the following Value
 | `tolerations`                        | Toleration labels for pod assignment             | `[]`                                                    |
 | `affinity`                           | Node affinity for pod assignment                 | `{}`                                                    |
 
-> Find us on [Helm Hub](https://hub.helm.sh/charts/emberstack)
+> Find us on [Artifact Hub](https://artifacthub.io/packages/helm/emberstack/reflector)
 
 
 #### Manual deployment
 Each release (found on the [Releases](https://github.com/emberstack/kubernetes-reflector/releases) GitHub page) contains the manual deployment file (`reflector.yaml`).
 
 ```shellsession
-$ kubectl apply -f https://github.com/emberstack/kubernetes-reflector/releases/latest/download/reflector.yaml
+$ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-reflector/releases/latest/download/reflector.yaml
 ```
 
 
 ## Usage
 
-### 1. Annotate the source secret or configmap
+### 1. Annotate the source `secret` or `configmap`
   
   - Add `reflector.v1.k8s.emberstack.com/reflection-allowed: "true"` to the resource annotations to permit reflection to mirrors.
-  - Add `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "<list>"` to the resource annotations to permit reflection from only the list of comma separated namespaces or regular expressions. If this annotation is omitted or is empty, all namespaces are allowed.
+  - Add `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "<list>"` to the resource annotations to permit reflection from only the list of comma separated namespaces or regular expressions. Note: If this annotation is omitted or is empty, all namespaces are allowed.
 
   #### Automatic mirror creation:
   Reflector can create mirrors with the same name in other namespaces automatically. The following annotations control if and how the mirrors are created:
   - Add `reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"` to the resource annotations to automatically create mirrors in other namespaces. Note: Requires `reflector.v1.k8s.emberstack.com/reflection-allowed` to be `true` since mirrors need to able to reflect the source.
-  - Add `reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "<list>"` to the resource annotations specify in which namespaces to automatically create mirrors. If this annotation is omitted or is empty, all namespaces are allowed. Note: Namespaces in this list will also be checked by `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces` since mirrors need to be in namespaces from where reflection is permitted.
+  - Add `reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "<list>"` to the resource annotations specify in which namespaces to automatically create mirrors. Note: If this annotation is omitted or is empty, all namespaces are allowed. Namespaces in this list will also be checked by `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces` since mirrors need to be in namespaces from where reflection is permitted.
 
   > Important: If the `source` is deleted, automatic mirrors are deleted. Also if either reflection or automirroring is turned off or the automatic mirror's namespace is no longer a valid match for the allowed namespaces, the automatic mirror is deleted.
 
@@ -152,40 +143,20 @@ $ kubectl apply -f https://github.com/emberstack/kubernetes-reflector/releases/l
 
  - - - -
 
-## `cert-manager` extension
-
-> Supported `cert-manager` version: `0.11.0` or higher.
-
-Reflector can automatically annotate secrets created by cert-manager by annotating the `Certificate` object. This allows for issued certificates (example: wildcard certificates) to be reused in other namespaces and permit automatic updates of mirrors on certificate renewal.
-  
-  - Add `reflector.v1.k8s.emberstack.com/secret-reflection-allowed` to the certificate annotations. Reflector will automatically annotate the resulting secret with `reflector.v1.k8s.emberstack.com/reflection-allowed`.
-  - Add `reflector.v1.k8s.emberstack.com/secret-reflection-allowed-namespaces: "<list>"` to the certificate annotations. Reflector will automatically annotate the resulting secret with `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces`.
-  - Add `reflector.v1.k8s.emberstack.com/secret-reflection-auto-enabled: "true"` to the certificate annotations. Reflector will automatically annotate the resulting secret with `reflector.v1.k8s.emberstack.com/reflection-auto-enabled`.
-  - Add `reflector.v1.k8s.emberstack.com/secret-reflection-auto-namespaces: "<list>"` to the certificate annotations. Reflector will automatically annotate the resulting secret with `reflector.v1.k8s.emberstack.com/reflection-auto-namespaces`.
 
 
-In the following example, the generated secret `certificate-secret` will be annotated with the `reflector.v1.k8s.emberstack.com/reflection-allowed` and `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces` based on the certificate annotations.
-```yaml
-apiVersion: cert-manager.io/v1alpha1
+## `cert-manager` support
+
+> Since version 1.5 of cert-manager you can annotate secrets created from certificates for mirroring using `secretTemplate`  (see https://cert-manager.io/docs/usage/certificate/).
+
+```
+apiVersion: cert-manager.io/v1
 kind: Certificate
-metadata:  
-  name: some-certificate
-  annotations:
-    reflector.v1.k8s.emberstack.com/secret-reflection-allowed: "true"
-    reflector.v1.k8s.emberstack.com/secret-reflection-allowed-namespaces: "namespace-1,namespace-2,namespace-[0-9]*"
+...
 spec:
-  secretName: certificate-secret
+  secretTemplate:
+    annotations:
+      reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: ""
   ...
-```
-
-Example mirror certificate secret:
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: mirror-certificate-secret
-  annotations:
-    reflector.v1.k8s.emberstack.com/reflects: "default/certificate-secret"
-data:
-  ...
-```
+  ```

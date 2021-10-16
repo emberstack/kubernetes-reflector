@@ -15,10 +15,4 @@ rules:
   - apiGroups: ["apiextensions.k8s.io"]
     resources: ["customresourcedefinitions"]
     verbs: ["watch", "list"]
-  - apiGroups: ["certmanager.k8s.io"]
-    resources: ["certificates", "certificates/finalizers"]
-    verbs: ["watch", "list"]
-  - apiGroups: ["cert-manager.io"]
-    resources: ["certificates", "certificates/finalizers"]
-    verbs: ["watch", "list"]
 {{- end }}
