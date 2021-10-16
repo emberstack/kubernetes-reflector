@@ -84,7 +84,7 @@ stages:
     - stage: cd
       displayName: "CD"
       dependsOn: "ci"
-      condition: and(succeeded(), in(variables['Build.Reason'], 'IndividualCI', 'Manual'), in(variables['Build.SourceBranchName'], 'master'))
+      condition: and(succeeded(), in(variables['Build.Reason'], 'IndividualCI', 'Manual'), in(variables['Build.SourceBranchName'], 'main'))
       jobs:
         - job: release
           displayName: "Release"
