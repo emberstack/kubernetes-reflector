@@ -57,7 +57,7 @@ try
         container.RegisterType<SecretMirror>().AsImplementedInterfaces().SingleInstance();
 
         container.RegisterType<ConfigMapWatcher>().AsImplementedInterfaces().SingleInstance();
-        //container.RegisterType<ConfigMapMirror>().AsImplementedInterfaces().SingleInstance();
+        container.RegisterType<ConfigMapMirror>().AsImplementedInterfaces().SingleInstance();
     });
 
     builder.WebHost.UseUrls("http://*:25080");

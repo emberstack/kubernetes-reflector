@@ -32,9 +32,10 @@ public abstract class WatcherBackgroundService<TResource, TResourceList> : Backg
             try
             {
                 Logger.LogInformation("Requesting {type} resources", typeof(TResource).Name);
-                var watcher = OnGetWatcher(stoppingToken);
+                using var watcher = OnGetWatcher(stoppingToken);
+                var watchList = watcher.WatchAsync<TResource, TResourceList>();
 
-                await foreach (var (type, item) in watcher.WatchAsync<TResource, TResourceList>()
+                await foreach (var (type, item) in watchList
                     .WithCancellation(stoppingToken))
                     await Mediator.Publish(new WatcherEvent
                     {

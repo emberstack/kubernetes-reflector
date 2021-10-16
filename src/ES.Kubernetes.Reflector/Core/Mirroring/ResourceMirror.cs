@@ -58,7 +58,8 @@ public abstract class ResourceMirror<TResource> :
             case TResource resource:
                 if (await OnResourceIgnoreCheck(resource)) return;
 
-                Logger.LogTrace("Handling {eventType} {resourceType} {resourceRef}", notification.Type, resource.Kind, resource.GetRef());
+                Logger.LogTrace("Handling {eventType} {resourceType} {resourceRef}", notification.Type, resource.Kind,
+                    resource.GetRef());
 
 
                 var itemRef = resource.GetRef();
@@ -68,37 +69,37 @@ public abstract class ResourceMirror<TResource> :
                 {
                     case WatchEventType.Added:
                     case WatchEventType.Modified:
-                        {
-                            await HandleUpsert(resource, notification.Type, cancellationToken);
-                        }
+                    {
+                        await HandleUpsert(resource, notification.Type, cancellationToken);
+                    }
                         break;
                     case WatchEventType.Deleted:
+                    {
+                        _propertiesCache.Remove(itemRef, out _);
+                        var properties = resource.GetReflectionProperties();
+
+
+                        if (!properties.IsReflection)
                         {
-                            _propertiesCache.Remove(itemRef, out _);
-                            var properties = resource.GetReflectionProperties();
+                            if (properties.Allowed && properties.AutoEnabled &&
+                                _autoReflectionCache.TryGetValue(itemRef, out var reflectionList))
+                                foreach (var reflectionId in reflectionList.ToArray())
+                                {
+                                    Logger.LogDebug("Deleting {id} - Source {sourceId} has been deleted", reflectionId,
+                                        itemRef);
+                                    await OnResourceDelete(reflectionId);
+                                }
 
-
-                            if (!properties.IsReflection)
-                            {
-                                if (properties.Allowed && properties.AutoEnabled &&
-                                    _autoReflectionCache.TryGetValue(itemRef, out var reflectionList))
-                                    foreach (var reflectionId in reflectionList.ToArray())
-                                    {
-                                        Logger.LogDebug("Deleting {id} - Source {sourceId} has been deleted", reflectionId,
-                                            itemRef);
-                                        await OnResourceDelete(reflectionId);
-                                    }
-
-                                _autoSources.Remove(itemRef, out _);
-                                _directReflectionCache.Remove(itemRef, out _);
-                                _autoReflectionCache.Remove(itemRef, out _);
-                            }
-                            else
-                            {
-                                foreach (var item in _directReflectionCache) item.Value.Remove(itemRef);
-                                foreach (var item in _autoReflectionCache) item.Value.Remove(itemRef);
-                            }
+                            _autoSources.Remove(itemRef, out _);
+                            _directReflectionCache.Remove(itemRef, out _);
+                            _autoReflectionCache.Remove(itemRef, out _);
                         }
+                        else
+                        {
+                            foreach (var item in _directReflectionCache) item.Value.Remove(itemRef);
+                            foreach (var item in _autoReflectionCache) item.Value.Remove(itemRef);
+                        }
+                    }
                         break;
                     default:
                         return;
@@ -106,28 +107,29 @@ public abstract class ResourceMirror<TResource> :
 
                 break;
             case V1Namespace ns:
+            {
+                if (notification.Type != WatchEventType.Added) return;
+                Logger.LogTrace("Handling {eventType} {resourceType} {resourceRef}", notification.Type, ns.Kind,
+                    ns.GetRef());
+
+
+                foreach (var autoSourceRef in _autoSources.Keys)
                 {
-                    if (notification.Type != WatchEventType.Added) return;
-                    Logger.LogTrace("Handling {eventType} {resourceType} {resourceRef}", notification.Type, ns.Kind, ns.GetRef());
-
-
-                    foreach (var autoSourceRef in _autoSources.Keys)
+                    var properties = _propertiesCache[autoSourceRef];
+                    if (properties.CanBeAutoReflectedToNamespace(ns.Name()))
                     {
-                        var properties = _propertiesCache[autoSourceRef];
-                        if (properties.CanBeAutoReflectedToNamespace(ns.Name()))
-                        {
-                            var reflectionRef = new KubeRef(ns.Name(), autoSourceRef.Name);
-                            var autoReflectionList = _autoReflectionCache.GetOrAdd(autoSourceRef, new List<KubeRef>());
+                        var reflectionRef = new KubeRef(ns.Name(), autoSourceRef.Name);
+                        var autoReflectionList = _autoReflectionCache.GetOrAdd(autoSourceRef, new List<KubeRef>());
 
-                            if (autoReflectionList.Contains(reflectionRef)) return;
+                        if (autoReflectionList.Contains(reflectionRef)) return;
 
-                            await ResourceReflect(autoSourceRef, reflectionRef, null, null, true);
+                        await ResourceReflect(autoSourceRef, reflectionRef, null, null, true);
 
-                            if (!autoReflectionList.Contains(reflectionRef))
-                                autoReflectionList.Add(reflectionRef);
-                        }
+                        if (!autoReflectionList.Contains(reflectionRef))
+                            autoReflectionList.Add(reflectionRef);
                     }
                 }
+            }
                 break;
         }
     }
@@ -250,7 +252,6 @@ public abstract class ResourceMirror<TResource> :
             }
 
             await ResourceReflect(sourceRef, resourceRef, null, resource, false);
-
         }
 
 
@@ -261,7 +262,8 @@ public abstract class ResourceMirror<TResource> :
         }
     }
 
-    private async Task TriggerAutoReflectionForSource(KubeRef resourceRef, KubeRef reflectionRef, CancellationToken cancellationToken)
+    private async Task TriggerAutoReflectionForSource(KubeRef resourceRef, KubeRef reflectionRef,
+        CancellationToken cancellationToken)
     {
         if (_notFoundCache.ContainsKey(resourceRef))
         {
@@ -279,6 +281,7 @@ public abstract class ResourceMirror<TResource> :
                 await OnResourceDelete(reflectionRef);
                 return;
             }
+
             properties = resourceCached.GetReflectionProperties();
         }
         else
@@ -326,17 +329,14 @@ public abstract class ResourceMirror<TResource> :
         foreach (var kubeRef in toDelete) await OnResourceDelete(kubeRef);
 
         resourceInstance ??= await TryResourceGet(resourceRef);
-        if (resourceInstance is null)
-        {
-            return;
-        }
+        if (resourceInstance is null) return;
         var resource = resourceInstance;
 
         var toCreate = namespaces
             .Where(s => s.Name() != resourceRef.Namespace)
             .Where(s =>
                 matches.All(m => m.Namespace() != s.Name()) && properties.CanBeAutoReflectedToNamespace(s.Name()))
-            .Select(s => new KubeRef(s.Name(),resource.Name())).ToList();
+            .Select(s => new KubeRef(s.Name(), resource.Name())).ToList();
 
         var toUpdate = matches
             .Where(s => s.Namespace() != resourceRef.Namespace)
@@ -359,16 +359,11 @@ public abstract class ResourceMirror<TResource> :
         autoReflectionList.AddRange(toSkip);
         autoReflectionList.AddRange(toUpdate);
 
-        foreach (var reflectionRef in toCreate)
-        {
-            await ResourceReflect(resourceRef, reflectionRef, resource, null, true);
-
-        }
+        foreach (var reflectionRef in toCreate) await ResourceReflect(resourceRef, reflectionRef, resource, null, true);
         foreach (var reflectionRef in toUpdate)
         {
             var reflection = matches.Single(s => s.GetRef().Equals(reflectionRef));
             await ResourceReflect(resourceRef, reflectionRef, resource, reflection, true);
-
         }
     }
 
@@ -464,8 +459,6 @@ public abstract class ResourceMirror<TResource> :
             Logger.LogError(ex, "Could not reflect {sourceId} to {targetId} due to exception.", sourceId, targetId);
         }
     }
-
-
 
 
     protected abstract Task OnResourceApplyPatch(V1Patch source, KubeRef refId);

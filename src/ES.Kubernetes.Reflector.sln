@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31710.8
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ES.Kubernetes.Reflector", "ES.Kubernetes.Reflector\ES.Kubernetes.Reflector.csproj", "{96CDE0CF-7782-490B-8AF6-4219DB0236B3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ES.Kubernetes.Reflector", "ES.Kubernetes.Reflector\ES.Kubernetes.Reflector.csproj", "{96CDE0CF-7782-490B-8AF6-4219DB0236B3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
