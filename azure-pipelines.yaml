@@ -1,7 +1,7 @@
 name: $(version).$(Rev:r)
 
 variables:
-  version: 5.4
+  version: 6.0
   buildConfiguration: "Release"
   imageRepository: "emberstack/kubernetes-reflector"
   DOCKER_CLI_EXPERIMENTAL: "enabled"
@@ -17,19 +17,150 @@ trigger:
       - azure-pipelines.yaml
 
 stages:
-  - template: .devops/pipelines/stage.ci.yaml
-    parameters:
-      architectures:
-        - arch: amd64
-          pool: winromulus-devops
-        - arch: arm
-          pool: winromulus-devops
-        - arch: arm64
-          pool: winromulus-devops
+  - stage: ci
+    displayName: "CI"
+    jobs:
+      - job: build
+        displayName: "Build"
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: HelmInstaller@1
+            inputs:
+              helmVersionToInstall: "3.7.0"
+            displayName: "tools - helm - install"
+          - task: DockerInstaller@0
+            displayName: "tools - docker - install"
+            inputs:
+              dockerVersion: "20.10.9"
+          - task: Docker@2
+            displayName: "tools - docker - login"
+            inputs:
+              containerRegistry: "Emberstack Docker Hub"
+              command: login
 
-  - template: .devops/pipelines/stage.cd.yaml
-    parameters:
-      architectures:
-        - arch: amd64
-        - arch: arm
-        - arch: arm64
+          - script: |
+              mkdir -p artifacts/helm
+              mkdir -p artifacts/kubectl
+            workingDirectory: "$(Build.ArtifactStagingDirectory)"
+            displayName: "artifacts - prepare directories"
+
+
+          - script: |
+              cp README.md src/helm/reflector/README.md
+            displayName: "helm - import README"
+          - script: |
+              helm package --destination $(Build.ArtifactStagingDirectory)/artifacts/helm --version $(Build.BuildNumber) --app-version $(Build.BuildNumber) src/helm/reflector
+            displayName: "helm - package chart"
+          - script: "helm template --namespace kube-system reflector $(Build.ArtifactStagingDirectory)/artifacts/helm/reflector-$(Build.BuildNumber).tgz > $(Build.ArtifactStagingDirectory)/artifacts/kubectl/reflector-$(Build.BuildNumber).yaml"
+            workingDirectory: src/helm
+            displayName: "helm - template chart"
+          - publish: "$(Build.ArtifactStagingDirectory)/artifacts/helm"
+            artifact: "helm"
+            displayName: "artifacts - publish - helm chart"
+          - publish: "$(Build.ArtifactStagingDirectory)/artifacts/kubectl"
+            artifact: "kubectl"
+            displayName: "artifacts - publish - kubectl manifests"
+
+
+          - script: |
+              docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+              docker buildx rm builder
+              docker buildx create --name builder --driver docker-container --use
+              docker buildx inspect --bootstrap
+              docker buildx build --push --platform linux/amd64 -t $(imageRepository):build-$(Build.BuildNumber)-amd64   -f src/ES.Kubernetes.Reflector/Dockerfile src/
+              docker buildx build --push --platform linux/arm   -t $(imageRepository):build-$(Build.BuildNumber)-arm32v7 -f src/ES.Kubernetes.Reflector/Dockerfile src/
+              docker buildx build --push --platform linux/arm64 -t $(imageRepository):build-$(Build.BuildNumber)-arm64v8 -f src/ES.Kubernetes.Reflector/Dockerfile src/
+              docker pull $(imageRepository):build-$(Build.BuildNumber)-amd64
+              docker pull $(imageRepository):build-$(Build.BuildNumber)-arm32v7
+              docker pull $(imageRepository):build-$(Build.BuildNumber)-arm64v8
+              docker manifest create  $(imageRepository):build-$(Build.BuildNumber) $(imageRepository):build-$(Build.BuildNumber)-amd64  $(imageRepository):build-$(Build.BuildNumber)-arm32v7  $(imageRepository):build-$(Build.BuildNumber)-arm64v8
+              docker manifest inspect $(imageRepository):build-$(Build.BuildNumber)
+              docker manifest push    $(imageRepository):build-$(Build.BuildNumber)
+            displayName: "docker - build and publish"
+
+
+  - ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
+    - stage: cd
+      displayName: "CD"
+      dependsOn: "ci"
+      condition: and(succeeded(), in(variables['Build.Reason'], 'IndividualCI', 'Manual'), in(variables['Build.SourceBranchName'], 'master'))
+      jobs:
+        - job: release
+          displayName: "Release"
+          pool:
+            vmImage: ubuntu-latest
+          variables:
+            - group: "OpenSource.GitHub"
+          steps:
+            - checkout: none
+
+
+            - task: HelmInstaller@1
+              inputs:
+                helmVersionToInstall: "3.7.0"
+              displayName: "tools - helm - install"
+            - task: DockerInstaller@0
+              displayName: "tools - docker - install"
+              inputs:
+                dockerVersion: "20.10.9"
+            - task: Docker@2
+              displayName: "tools - docker - login"
+              inputs:
+                containerRegistry: "Emberstack Docker Hub"
+                command: login
+
+
+            - download: current
+              artifact: "helm"
+              displayName: "artifacts - download - helm chart"
+
+            - download: current
+              artifact: "kubectl"
+              displayName: "artifacts - download - kubectl manifests"
+
+
+            - script: |
+                docker pull $(imageRepository):build-$(Build.BuildNumber)-amd64
+                docker pull $(imageRepository):build-$(Build.BuildNumber)-arm32v7
+                docker pull $(imageRepository):build-$(Build.BuildNumber)-arm64v8
+                docker manifest create  $(imageRepository):$(Build.BuildNumber) $(imageRepository):build-$(Build.BuildNumber)-amd64 $(imageRepository):build-$(Build.BuildNumber)-arm32v7 $(imageRepository):build-$(Build.BuildNumber)-arm64v8
+                docker manifest create  $(imageRepository):latest               $(imageRepository):build-$(Build.BuildNumber)-amd64 $(imageRepository):build-$(Build.BuildNumber)-arm32v7 $(imageRepository):build-$(Build.BuildNumber)-arm64v8
+                docker manifest push    $(imageRepository):$(Build.BuildNumber)
+                docker manifest push    $(imageRepository):latest
+                docker manifest push    $(imageRepository):$(Build.BuildNumber)
+                docker manifest push    $(imageRepository):latest
+                docker tag  $(imageRepository):build-$(Build.BuildNumber)-amd64     $(imageRepository):$(Build.BuildNumber)-amd64
+                docker tag  $(imageRepository):build-$(Build.BuildNumber)-arm32v7   $(imageRepository):$(Build.BuildNumber)-arm32v7
+                docker tag  $(imageRepository):build-$(Build.BuildNumber)-arm64v8   $(imageRepository):$(Build.BuildNumber)-arm64v8
+                docker push $(imageRepository):$(Build.BuildNumber)-amd64
+                docker push $(imageRepository):$(Build.BuildNumber)-arm32v7
+                docker push $(imageRepository):$(Build.BuildNumber)-arm64v8
+              displayName: "Build and push multi-arch Docker image"
+            - script: |
+                git config --global user.email "$(emberstack-agent-email)"
+                git config --global user.name "$(emberstack-agent-name)"
+                git clone https://$(emberstack-agent-username):$(emberstack-agent-pat)@github.com/emberstack/helm-charts.git
+
+                mkdir -p helm-charts/charts
+                cp $(Pipeline.Workspace)/helm/reflector-$(Build.BuildNumber).tgz  helm-charts/charts
+
+                cd helm-charts
+                rm index.yaml
+                helm repo index ./
+                git add .
+                git status
+                git commit -m "Added reflector-$(Build.BuildNumber).tgz"
+                git push
+              displayName: "github - release - chart"
+            - task: GitHubRelease@1
+              displayName: "gitHub - create release"
+              inputs:
+                gitHubConnection: GitHub
+                repositoryName: "emberstack/kubernetes-reflector"
+                tagSource: userSpecifiedTag
+                tag: "v$(Build.BuildNumber)"
+                title: "Release v$(Build.BuildNumber)"
+                releaseNotesSource: inline
+                releaseNotes: "The release process is automated."
+                assets: "$(System.DefaultWorkingDirectory)/github/*.*"
