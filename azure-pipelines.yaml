@@ -153,8 +153,13 @@ stages:
                 git commit -m "Added reflector-$(Build.BuildNumber).tgz"
                 git push
               displayName: "github - release - chart"
+            - script: |
+                mkdir -p github 
+                cp $(Pipeline.Workspace)/kubectl/reflector-$(Build.BuildNumber).yaml  github/reflector.yaml
+              displayName: "github - prepare release artifacts"
+
             - task: GitHubRelease@1
-              displayName: "gitHub - create release"
+              displayName: "github - create release"
               inputs:
                 gitHubConnection: GitHub
                 repositoryName: "emberstack/kubernetes-reflector"
