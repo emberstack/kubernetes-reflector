@@ -139,6 +139,7 @@ stages:
             - script: |
                 git config --global user.email "$(emberstack-agent-email)"
                 git config --global user.name "$(emberstack-agent-name)"
+                git config --global http.postBuffer 1048576000
                 git clone https://$(emberstack-agent-username):$(emberstack-agent-pat)@github.com/emberstack/helm-charts.git
 
                 mkdir -p helm-charts/charts
