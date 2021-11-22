@@ -4,6 +4,7 @@
     "MinimumLevel": {
       "Default": "Information",
       "Override": {
+        "Microsoft.AspNetCore.Server.Kestrel": "Error",
         "Microsoft": "Warning",
         "System": "Warning",
         "Microsoft.Extensions.Http": "Warning"
