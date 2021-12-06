@@ -324,6 +324,7 @@ public abstract class ResourceMirror<TResource> :
         var toDelete = matches
             .Where(s => s.Namespace() != resourceRef.Namespace)
             .Where(m => !properties.CanBeAutoReflectedToNamespace(m.Namespace()))
+            .Where(m => m.GetReflectionProperties().Reflects.Equals(resourceRef))
             .Select(s => s.GetRef()).ToList();
 
         foreach (var kubeRef in toDelete) await OnResourceDelete(kubeRef);
@@ -341,13 +342,15 @@ public abstract class ResourceMirror<TResource> :
         var toUpdate = matches
             .Where(s => s.Namespace() != resourceRef.Namespace)
             .Where(m => !toDelete.Contains(m.GetRef()) && !toCreate.Contains(m.GetRef()) &&
-                        m.GetReflectionProperties().ReflectedVersion != properties.Version)
+                        m.GetReflectionProperties().ReflectedVersion != properties.Version &&
+                        m.GetReflectionProperties().Reflects.Equals(resourceRef))
             .Select(m => m.GetRef()).ToList();
 
         var toSkip = matches
             .Where(s => s.Namespace() != resourceRef.Namespace)
             .Where(m => !toDelete.Contains(m.GetRef()) && !toCreate.Contains(m.GetRef()) &&
-                        m.GetReflectionProperties().ReflectedVersion == properties.Version)
+                        m.GetReflectionProperties().ReflectedVersion == properties.Version &&
+                        m.GetReflectionProperties().Reflects.Equals(resourceRef))
             .Select(m => m.GetRef()).ToList();
 
         Logger.LogInformation(
