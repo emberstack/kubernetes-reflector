@@ -147,7 +147,7 @@ jobs:
       - name: github - release - set manifest name
         run: |
           mkdir -p github 
-          cp .artifacts/kubectl/reflector-$(Build.BuildNumber).yaml github/reflector.yaml
+          cp .artifacts/kubectl/reflector-${{env.version}}.yaml github/reflector.yaml
 
       - name: github - create release
         uses: softprops/action-gh-release@v1
