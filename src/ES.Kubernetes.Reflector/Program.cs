@@ -1,16 +1,8 @@
-using System;
-using System.IO;
-using System.Net.Http;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using ES.Kubernetes.Reflector.Core;
 using k8s;
 using MediatR;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -67,11 +59,8 @@ try
         container.RegisterType<ConfigMapWatcher>().AsImplementedInterfaces().SingleInstance();
         container.RegisterType<ConfigMapMirror>().AsImplementedInterfaces().SingleInstance();
     });
-    
-    builder.WebHost.ConfigureKestrel(options =>
-    {
-        options.ListenAnyIP(25080);
-    });
+
+    builder.WebHost.ConfigureKestrel(options => { options.ListenAnyIP(25080); });
 
 
     var app = builder.Build();

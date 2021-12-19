@@ -36,7 +36,7 @@ public abstract class WatcherBackgroundService<TResource, TResourceList> : Backg
                 var watchList = watcher.WatchAsync<TResource, TResourceList>();
 
                 await foreach (var (type, item) in watchList
-                    .WithCancellation(stoppingToken))
+                                   .WithCancellation(stoppingToken))
                     await Mediator.Publish(new WatcherEvent
                     {
                         Item = item,

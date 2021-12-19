@@ -16,7 +16,5 @@ public static class Annotations
         public static string MetaAutoReflects => $"{Prefix}/auto-reflects";
         public static string MetaReflectedVersion => $"{Prefix}/reflected-version";
         public static string MetaReflectedAt => $"{Prefix}/reflected-at";
-
-
     }
 }
