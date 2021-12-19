@@ -48,7 +48,7 @@ jobs:
         run: helm package --destination .artifacts/helm --version ${{env.version}} --app-version ${{env.version}} src/helm/reflector
 
       - name: helm - template chart
-        run: helm template --namespace kube-system reflector .artifacts/helm/reflector-${{env.version}}.tgz > .artifacts/kubectl/reflector-${{env.version}}.yaml"
+        run: helm template --namespace kube-system reflector .artifacts/helm/reflector-${{env.version}}.tgz > .artifacts/kubectl/reflector-${{env.version}}.yaml
 
       - name: "artifacts - upload - helm chart"
         uses: actions/upload-artifact@v2
