@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Net;
 using ES.Kubernetes.Reflector.Core.Extensions;
+using ES.Kubernetes.Reflector.Core.Json;
 using ES.Kubernetes.Reflector.Core.Messages;
 using ES.Kubernetes.Reflector.Core.Mirroring.Constants;
 using ES.Kubernetes.Reflector.Core.Mirroring.Extensions;
@@ -9,6 +10,7 @@ using k8s;
 using k8s.Models;
 using MediatR;
 using Microsoft.AspNetCore.JsonPatch;
+using Microsoft.AspNetCore.JsonPatch.Operations;
 using Microsoft.Rest;
 using Newtonsoft.Json;
 
@@ -445,7 +447,9 @@ public abstract class ResourceMirror<TResource> :
                 return;
             }
 
-            var patchDoc = new JsonPatchDocument<TResource>();
+
+            var patchDoc = new JsonPatchDocument<TResource>(new List<Operation<TResource>>(),
+                new JsonPropertyNameContractResolver());
             var annotations = new Dictionary<string, string>(targetResource.Metadata.Annotations);
             foreach (var patchAnnotation in patchAnnotations)
                 annotations[patchAnnotation.Key] = patchAnnotation.Value;
@@ -453,7 +457,7 @@ public abstract class ResourceMirror<TResource> :
 
             await OnResourceConfigurePatch(source, patchDoc);
 
-            var patch = JsonConvert.SerializeObject(patchDoc);
+            var patch = JsonConvert.SerializeObject(patchDoc, Formatting.Indented);
             await OnResourceApplyPatch(new V1Patch(patch, V1Patch.PatchType.JsonPatch), targetId);
             Logger.LogInformation("Patched {id} as a reflection of {sourceId}", targetId, sourceId);
         }

@@ -1,8 +1,10 @@
 ﻿using System.Diagnostics;
+using ES.Kubernetes.Reflector.Core.Configuration;
 using ES.Kubernetes.Reflector.Core.Messages;
 using k8s;
 using k8s.Models;
 using MediatR;
+using Microsoft.Extensions.Options;
 using Microsoft.Rest;
 
 namespace ES.Kubernetes.Reflector.Core.Watchers;
@@ -10,16 +12,21 @@ namespace ES.Kubernetes.Reflector.Core.Watchers;
 public abstract class WatcherBackgroundService<TResource, TResourceList> : BackgroundService
     where TResource : IKubernetesObject<V1ObjectMeta>
 {
+    private readonly IOptionsMonitor<ReflectorOptions> _options;
     protected readonly IKubernetes Client;
     protected readonly ILogger Logger;
     protected readonly IMediator Mediator;
 
-    protected WatcherBackgroundService(ILogger logger, IMediator mediator, IKubernetes client)
+    protected WatcherBackgroundService(ILogger logger, IMediator mediator, IKubernetes client,
+        IOptionsMonitor<ReflectorOptions> options)
     {
         Logger = logger;
         Mediator = mediator;
         Client = client;
+        _options = options;
     }
+
+    protected int? WatcherTimeout => _options.CurrentValue.Watcher?.Timeout;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {

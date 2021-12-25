@@ -1,6 +1,7 @@
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using ES.Kubernetes.Reflector.Core;
+using ES.Kubernetes.Reflector.Core.Configuration;
 using k8s;
 using MediatR;
 using Serilog;
@@ -24,6 +25,11 @@ try
         Environment.GetEnvironmentVariable($"{nameof(ES)}_{nameof(Environment)}") ??
         Environments.Production;
 
+    builder.Configuration.AddJsonFile("appsettings.json", false, true);
+    builder.Configuration.AddJsonFile("reflector.logging.json");
+    builder.Configuration.AddEnvironmentVariables("ES_");
+    builder.Configuration.AddCommandLine(args);
+
     builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
     builder.Host.UseSerilog();
     builder.Host.UseConsoleLifetime();
@@ -45,6 +51,8 @@ try
             httpClient))
         .ConfigurePrimaryHttpMessageHandler(s =>
             s.GetRequiredService<KubernetesClientConfiguration>().CreateDefaultHttpClientHandler());
+
+    builder.Services.Configure<ReflectorOptions>(builder.Configuration.GetSection("Reflector"));
 
 
     builder.Host.ConfigureContainer((ContainerBuilder container) =>
