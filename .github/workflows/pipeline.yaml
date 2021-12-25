@@ -25,11 +25,7 @@ jobs:
       - name: tools - helm - install
         uses: azure/setup-helm@v1
 
-      - name: tools - docker - login
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.ES_DOCKERHUB_USERNAME }}
-          password: ${{ secrets.ES_DOCKERHUB_PAT }}
+
 
       - name: checkout
         uses: actions/checkout@v2
@@ -60,7 +56,26 @@ jobs:
           name: kubectl
           path: .artifacts/kubectl
 
+      - name: "docker - build PR"
+        if: github.event_name == 'pull_request'
+        run: |
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          docker buildx create --name builder --driver docker-container --use
+          docker buildx inspect --bootstrap
+          docker buildx build --platform linux/amd64 -t ${{env.imageRepository}}:build-${{env.version}}-amd64   -f src/ES.Kubernetes.Reflector/Dockerfile src/
+          docker buildx build --platform linux/arm   -t ${{env.imageRepository}}:build-${{env.version}}-arm32v7 -f src/ES.Kubernetes.Reflector/Dockerfile src/
+          docker buildx build --platform linux/arm64 -t ${{env.imageRepository}}:build-${{env.version}}-arm64v8 -f src/ES.Kubernetes.Reflector/Dockerfile src/
+
+      - name: tools - docker - login
+        if: github.event_name == 'push'
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.ES_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.ES_DOCKERHUB_PAT }}
+
+
       - name: "docker - build and publish"
+        if: github.event_name == 'push'
         run: |
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
           docker buildx create --name builder --driver docker-container --use
