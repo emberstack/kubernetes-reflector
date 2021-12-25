@@ -17,6 +17,8 @@ fullnameOverride: ""
 configuration:
   logging:
     minimumLevel: Information
+  watcher:
+    timeout: ""
 
 rbac:
   enabled: true

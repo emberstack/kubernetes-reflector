@@ -40,6 +40,7 @@ You can customize the values of the helm deployment by using the following Value
 | `image.tag`                          | Container image tag                              | `Same as chart version`                                 |
 | `image.pullPolicy`                   | Container image pull policy                      | `IfNotPresent`                                          |
 | `configuration.logging.minimumLevel` | Logging minimum level                            | `Information`                                           |
+| `configuration.watcher.timeout`      | Maximum watcher lifetime in seconds              | ``                                                      |
 | `rbac.enabled`                       | Create and use RBAC resources                    | `true`                                                  |
 | `serviceAccount.create`              | Create ServiceAccount                            | `true`                                                  |
 | `serviceAccount.name`                | ServiceAccount name                              | _release name_                                          |
