@@ -219,7 +219,7 @@ public abstract class ResourceMirror<TResource> :
             ReflectorProperties sourceProperties;
             if (!_propertiesCache.TryGetValue(sourceRef, out var sourceProps))
             {
-                var source = await TryResourceGet(resourceRef);
+                var source = await TryResourceGet(sourceRef);
                 if (source is null)
                 {
                     Logger.LogWarning("Could not update {id} - Source {sourceId} could not be found.",
