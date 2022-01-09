@@ -51,6 +51,10 @@ livenessProbe:
 readinessProbe:
   initialDelaySeconds: 5
   periodSeconds: 10
+startupProbe:
+  # The application will have a maximum of 50s (10 * 5 = 50s) to finish its startup.
+  failureThreshold: 10
+  periodSeconds: 5
 
 resources:
   {}
