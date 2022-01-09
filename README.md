@@ -48,6 +48,8 @@ You can customize the values of the helm deployment by using the following Value
 | `livenessProbe.periodSeconds`        | `livenessProbe` period                           | `10`                                                    |
 | `readinessProbe.initialDelaySeconds` | `readinessProbe` initial delay                   | `5`                                                     |
 | `readinessProbe.periodSeconds`       | `readinessProbe` period                          | `10`                                                    |
+| `startupProbe.failureThreshold`      | `startupProbe` failure threshold                 | `10`                                                    |
+| `startupProbe.periodSeconds`         | `startupProbe` period                            | `5`                                                     |
 | `resources`                          | Resource limits                                  | `{}`                                                    |
 | `nodeSelector`                       | Node labels for pod assignment                   | `{}`                                                    |
 | `tolerations`                        | Toleration labels for pod assignment             | `[]`                                                    |
