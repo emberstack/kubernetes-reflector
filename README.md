@@ -54,6 +54,7 @@ You can customize the values of the helm deployment by using the following Value
 | `nodeSelector`                       | Node labels for pod assignment                   | `{}`                                                    |
 | `tolerations`                        | Toleration labels for pod assignment             | `[]`                                                    |
 | `affinity`                           | Node affinity for pod assignment                 | `{}`                                                    |
+| `priorityClassName`                  | `priorityClassName` for pods                     | `""`                                                    |
 
 > Find us on [Artifact Hub](https://artifacthub.io/packages/helm/emberstack/reflector)
 
