@@ -11,7 +11,7 @@ steps:
       registry: harbor.devops.indico.io
       repo: harbor.devops.indico.io/indico-devops/${DRONE_REPO_NAME}
       tags: ${DRONE_COMMIT_SHA:0:8}
-      dockerfile: src/ES.Kubernetes.Reflector
+      dockerfile: src/ES.Kubernetes.Reflector/Dockerfile
       context: src/
       username:
         from_secret: harbor_username
