@@ -1,0 +1,33 @@
+kind: pipeline
+type: kubernetes
+name: kubernetes-reflector
+concurrency:
+  limit: 1
+
+steps:
+  - name: docker  
+    image: plugins/docker
+    settings:
+      registry: harbor.devops.indico.io
+      repo: harbor.devops.indico.io/indico-devops/${DRONE_REPO_NAME}
+      tags: ${DRONE_COMMIT_SHA:0:8}
+      dockerfile: src/ES.Kubernetes.Reflector
+      context: src/
+      username:
+        from_secret: harbor_username
+      password:
+        from_secret: harbor_password
+
+---
+kind: secret
+name: harbor_username
+get:
+  path: tools/drone/harbor-push-token
+  name: username
+
+---
+kind: secret
+name: harbor_password
+get:
+  path: tools/drone/harbor-push-token
+  name: password
