@@ -45,6 +45,11 @@ securityContext:
   runAsNonRoot: true
   runAsUser: 1000
 
+healthcheck:
+  httpGet:
+    path: /healthz
+    port: http
+
 livenessProbe:
   initialDelaySeconds: 5
   periodSeconds: 10

@@ -46,22 +46,16 @@ spec:
               containerPort: 25080
               protocol: TCP
           livenessProbe:
-            httpGet:
-              path: /healthz
-              port: http
+            {{- toYaml .Values.healthcheck | nindent 12 }}
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
           readinessProbe:
-            httpGet:
-              path: /healthz
-              port: http
+            {{- toYaml .Values.healthcheck | nindent 12 }}
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
           {{- if semverCompare ">= 1.18-0" .Capabilities.KubeVersion.Version }}
           startupProbe:
-            httpGet:
-              path: /healthz
-              port: http
+            {{- toYaml .Values.healthcheck | nindent 12 }}
             failureThreshold: {{ .Values.startupProbe.failureThreshold }}
             periodSeconds: {{ .Values.startupProbe.periodSeconds }}
           {{- end }}
