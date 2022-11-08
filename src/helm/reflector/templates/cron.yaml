@@ -18,7 +18,6 @@ spec:
   {{- end }}
   jobTemplate:
     spec:
-      serviceAccountName: {{ include "reflector.serviceAccountName" . }}
       template:
         metadata:
           {{- with .Values.podAnnotations }}
@@ -28,6 +27,8 @@ spec:
           labels:
             {{- include "reflector.selectorLabels" . | nindent 12 }}
         spec:
+          serviceAccountName: {{ include "reflector.serviceAccountName" . }}
+
           {{- with .Values.imagePullSecrets }}
           imagePullSecrets:
             {{- toYaml . | nindent 12 }}
