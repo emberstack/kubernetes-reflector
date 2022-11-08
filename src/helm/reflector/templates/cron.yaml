@@ -48,8 +48,10 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
 
+          {{- with .Values.cron.securityContext }}
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
 
           restartPolicy: {{ .Values.cron.restartPolicy | default "Never" }}
           containers:

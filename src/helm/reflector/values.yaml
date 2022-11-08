@@ -17,6 +17,9 @@ fullnameOverride: ""
 cron:
   enabled: false
   schedule: "* * * * *"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
 
 configuration:
   logging:
