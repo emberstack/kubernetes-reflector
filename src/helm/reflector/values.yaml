@@ -16,7 +16,8 @@ fullnameOverride: ""
 
 cron:
   enabled: false
-  schedule: "* * * * *"
+  schedule: "*/15 * * * *"
+  activeDeadlineSeconds: 600
   securityContext:
     runAsNonRoot: true
     runAsUser: 1000

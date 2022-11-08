@@ -18,6 +18,9 @@ spec:
   {{- end }}
   jobTemplate:
     spec:
+      {{- if .Values.cron.activeDeadlineSeconds }}
+      activeDeadlineSeconds: {{ .Values.cron.activeDeadlineSeconds }}
+      {{- end }}
       template:
         metadata:
           {{- with .Values.podAnnotations }}
