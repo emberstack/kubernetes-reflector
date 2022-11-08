@@ -1,0 +1,66 @@
+{{- if .Values.cron.enabled }}
+---
+apiVersion: {{ .Values.cron.apiVersion | default "batch/v1beta1" }}
+kind: CronJob
+metadata:
+  name: {{ include "reflector.fullname" . }}
+  labels:
+    {{- include "reflector.labels" . | nindent 4 }}
+
+spec:
+  serviceAccountName: {{ include "reflector.serviceAccountName" . }}
+  schedule: {{ .Values.cron.schedule | quote }}
+  suspend: {{ default false .Values.cron.suspend }}
+  concurrencyPolicy: {{ default "Forbid" .Values.cron.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ default "5" .Values.cron.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ default "5" .Values.cron.failedJobsHistoryLimit }}
+  {{- if .Values.cron.startingDeadlineSeconds }}
+  startingDeadlineSeconds: {{ .Values.cron.startingDeadlineSeconds }}
+  {{- end }}
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          {{- with .Values.podAnnotations }}
+          annotations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          labels:
+            {{- include "reflector.selectorLabels" . | nindent 12 }}
+        spec:
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          {{- with .Values.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          {{- with .Values.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+
+          restartPolicy: {{ .Values.cron.restartPolicy | default "Never" }}
+          containers:
+            - name: {{ .Chart.Name }}
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              env:
+                - name: ES_Serilog__MinimumLevel__Default
+                  value: {{ .Values.configuration.logging.minimumLevel | quote }}
+                - name: ES_Reflector__Watcher__Timeout
+                  value: {{ .Values.configuration.watcher.timeout | quote }}
+              resources:
+                {{- toYaml .Values.resources | nindent 16 }}        
+{{- end }}
