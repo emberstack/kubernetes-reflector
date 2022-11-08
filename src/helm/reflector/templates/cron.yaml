@@ -8,7 +8,6 @@ metadata:
     {{- include "reflector.labels" . | nindent 4 }}
 
 spec:
-  serviceAccountName: {{ include "reflector.serviceAccountName" . }}
   schedule: {{ .Values.cron.schedule | quote }}
   suspend: {{ default false .Values.cron.suspend }}
   concurrencyPolicy: {{ default "Forbid" .Values.cron.concurrencyPolicy }}
@@ -19,6 +18,7 @@ spec:
   {{- end }}
   jobTemplate:
     spec:
+      serviceAccountName: {{ include "reflector.serviceAccountName" . }}
       template:
         metadata:
           {{- with .Values.podAnnotations }}
