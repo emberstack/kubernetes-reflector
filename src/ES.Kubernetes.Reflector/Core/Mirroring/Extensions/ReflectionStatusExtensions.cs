@@ -4,16 +4,16 @@ namespace ES.Kubernetes.Reflector.Core.Mirroring.Extensions;
 
 public static class ReflectionStatusExtensions
 {
-    public static bool CanBeReflectedToNamespace(this ReflectorProperties status, string ns)
+    public static bool CanBeReflectedToNamespace(this ReflectorProperties properties, string ns)
     {
-        return status.Allowed && PatternListMatch(status.AllowedNamespaces, ns);
+        return properties.Allowed && PatternListMatch(properties.AllowedNamespaces, ns);
     }
 
 
-    public static bool CanBeAutoReflectedToNamespace(this ReflectorProperties status, string ns)
+    public static bool CanBeAutoReflectedToNamespace(this ReflectorProperties properties, string ns)
     {
-        return status.CanBeReflectedToNamespace(ns) && status.AutoEnabled &&
-               PatternListMatch(status.AutoNamespaces, ns);
+        return properties.CanBeReflectedToNamespace(ns) && properties.AutoEnabled &&
+               PatternListMatch(properties.AutoNamespaces, ns);
     }
 
 

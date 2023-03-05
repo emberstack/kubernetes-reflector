@@ -7,11 +7,11 @@ using ES.Kubernetes.Reflector.Core.Mirroring.Constants;
 using ES.Kubernetes.Reflector.Core.Mirroring.Extensions;
 using ES.Kubernetes.Reflector.Core.Resources;
 using k8s;
+using k8s.Autorest;
 using k8s.Models;
 using MediatR;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.JsonPatch.Operations;
-using Microsoft.Rest;
 using Newtonsoft.Json;
 
 namespace ES.Kubernetes.Reflector.Core.Mirroring;
@@ -37,21 +37,30 @@ public abstract class ResourceMirror<TResource> :
         Client = client;
     }
 
+
+    /// <summary>
+    /// Handles <see cref="WatcherClosed"/> notifications
+    /// </summary>
     public Task Handle(WatcherClosed notification, CancellationToken cancellationToken)
     {
-        if (notification.ResourceType != typeof(TResource) && notification.ResourceType != typeof(V1Namespace))
-            return Task.CompletedTask;
 
-        if (notification.ResourceType == typeof(TResource))
-        {
-            _autoSources.Clear();
-            _notFoundCache.Clear();
-            _propertiesCache.Clear();
-            _autoReflectionCache.Clear();
-        }
+        //If not TResource or Namespace, not something this instance should handle
+        if (notification.ResourceType != typeof(TResource) &&
+            notification.ResourceType != typeof(V1Namespace)) return Task.CompletedTask;
+        if (notification.ResourceType != typeof(TResource)) return Task.CompletedTask;
+
+
+        _autoSources.Clear();
+        _notFoundCache.Clear();
+        _propertiesCache.Clear();
+        _autoReflectionCache.Clear();
 
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// Handles <see cref="WatcherEvent"/> notifications
+    /// </summary>
 
     public async Task Handle(WatcherEvent notification, CancellationToken cancellationToken)
     {
@@ -63,63 +72,67 @@ public abstract class ResourceMirror<TResource> :
                 Logger.LogTrace("Handling {eventType} {resourceType} {resourceRef}", notification.Type, resource.Kind,
                     resource.GetRef());
 
-
                 var itemRef = resource.GetRef();
+
+                //Remove from the not found, since it exists
                 _notFoundCache.Remove(itemRef, out _);
 
                 switch (notification.Type)
                 {
                     case WatchEventType.Added:
                     case WatchEventType.Modified:
-                    {
-                        await HandleUpsert(resource, notification.Type, cancellationToken);
-                    }
+                        {
+                            await HandleUpsert(resource, notification.Type, cancellationToken);
+                        }
                         break;
                     case WatchEventType.Deleted:
-                    {
-                        _propertiesCache.Remove(itemRef, out _);
-                        var properties = resource.GetReflectionProperties();
-
-
-                        if (!properties.IsReflection)
                         {
-                            if (properties.Allowed && properties.AutoEnabled &&
-                                _autoReflectionCache.TryGetValue(itemRef, out var reflectionList))
-                                foreach (var reflectionId in reflectionList.ToArray())
-                                {
-                                    Logger.LogDebug("Deleting {id} - Source {sourceId} has been deleted", reflectionId,
-                                        itemRef);
-                                    await OnResourceDelete(reflectionId);
-                                }
+                            _propertiesCache.Remove(itemRef, out _);
+                            var properties = resource.GetReflectionProperties();
 
-                            _autoSources.Remove(itemRef, out _);
-                            _directReflectionCache.Remove(itemRef, out _);
-                            _autoReflectionCache.Remove(itemRef, out _);
+
+                            if (!properties.IsReflection)
+                            {
+                                if (properties is { Allowed: true, AutoEnabled: true } &&
+                                    _autoReflectionCache.TryGetValue(itemRef, out var reflectionList))
+                                    foreach (var reflectionId in reflectionList.ToArray())
+                                    {
+                                        Logger.LogDebug("Deleting {id} - Source {sourceId} has been deleted", reflectionId,
+                                            itemRef);
+                                        await OnResourceDelete(reflectionId);
+                                    }
+
+                                _autoSources.Remove(itemRef, out _);
+                                _directReflectionCache.Remove(itemRef, out _);
+                                _autoReflectionCache.Remove(itemRef, out _);
+                            }
+                            else
+                            {
+                                foreach (var item in _directReflectionCache) item.Value.Remove(itemRef);
+                                foreach (var item in _autoReflectionCache) item.Value.Remove(itemRef);
+                            }
                         }
-                        else
-                        {
-                            foreach (var item in _directReflectionCache) item.Value.Remove(itemRef);
-                            foreach (var item in _autoReflectionCache) item.Value.Remove(itemRef);
-                        }
-                    }
                         break;
+                    case WatchEventType.Error:
+                    case WatchEventType.Bookmark:
                     default:
                         return;
                 }
 
                 break;
             case V1Namespace ns:
-            {
-                if (notification.Type != WatchEventType.Added) return;
-                Logger.LogTrace("Handling {eventType} {resourceType} {resourceRef}", notification.Type, ns.Kind,
-                    ns.GetRef());
-
-
-                foreach (var autoSourceRef in _autoSources.Keys)
                 {
-                    var properties = _propertiesCache[autoSourceRef];
-                    if (properties.CanBeAutoReflectedToNamespace(ns.Name()))
+                    if (notification.Type != WatchEventType.Added) return;
+                    Logger.LogTrace("Handling {eventType} {resourceType} {resourceRef}", notification.Type, ns.Kind,
+                        ns.GetRef());
+
+
+                    foreach (var autoSourceRef in _autoSources.Keys)
                     {
+                        var properties = _propertiesCache[autoSourceRef];
+                        if (!properties.CanBeAutoReflectedToNamespace(ns.Name())) continue;
+
+
                         var reflectionRef = new KubeRef(ns.Name(), autoSourceRef.Name);
                         var autoReflectionList = _autoReflectionCache.GetOrAdd(autoSourceRef, new List<KubeRef>());
 
@@ -131,7 +144,6 @@ public abstract class ResourceMirror<TResource> :
                             autoReflectionList.Add(reflectionRef);
                     }
                 }
-            }
                 break;
         }
     }
@@ -142,43 +154,59 @@ public abstract class ResourceMirror<TResource> :
         var resourceRef = resource.GetRef();
         var properties = resource.GetReflectionProperties();
 
+        //TODO: Investigate if we need to keep all or just properties of interest
         _propertiesCache.AddOrUpdate(resourceRef, properties, (_, _) => properties);
 
-        if (!properties.IsReflection)
+        //If this is not a reflection
+        if (properties is not { IsReflection: true })
         {
-            //Remove binding to any cached reflections that are no longer valid
+            //Check any direct reflections if the binding is still valid
             if (_directReflectionCache.TryGetValue(resourceRef, out var reflectionList))
                 foreach (var reflectionId in reflectionList.ToArray())
+                    //Remove the reflection if the namespace is no longer allowed
                     if (!properties.CanBeReflectedToNamespace(reflectionId.Namespace))
+                    {
+                        Logger.LogInformation(
+                            "Source {sourceId} no longer permits the direct reflection to {destinationId}.",
+                            resourceRef, reflectionId);
                         reflectionList.Remove(reflectionId);
+                    }
 
             //Delete any cached auto-reflections that are no longer valid
             if (_autoReflectionCache.TryGetValue(resourceRef, out reflectionList))
                 foreach (var reflectionId in reflectionList.ToArray())
                 {
                     if (properties.CanBeAutoReflectedToNamespace(reflectionId.Namespace)) continue;
+
                     reflectionList.Remove(reflectionId);
 
                     Logger.LogInformation(
-                        "Deleting {id} - Source {sourceId} no longer permits reflection.",
-                        reflectionId, resourceRef);
+                        "Source {sourceId} no longer permits the auto reflection to {destinationId}. Deleting {destinationId}.",
+                        resourceRef, reflectionId, reflectionId);
                     await OnResourceDelete(reflectionId);
                 }
 
-            //If auto is disabled Remove the cache for auto-reflections
-            if (!properties.AutoEnabled) _autoReflectionCache.Remove(resourceRef, out _);
+            var isAutoSource = properties is { Allowed: true, AutoEnabled: true};
 
-            //If reflection is disabled, remove the reflections cache
-            if (!properties.Allowed) _directReflectionCache.Remove(resourceRef, out _);
+            //Update the status of an auto-source
+            _autoSources.AddOrUpdate(resourceRef, isAutoSource, (_, _) => isAutoSource);
+
+            //If not allowed or auto is disabled, remove the cache for auto-reflections
+            if (!isAutoSource) { _autoReflectionCache.Remove(resourceRef, out _); }
+
+            //If reflection is disabled, remove the reflections cache and stop reflecting
+            if (!properties.Allowed)
+            {
+                _directReflectionCache.Remove(resourceRef, out _);
+                return;
+            }
 
 
-            //Stop if reflection is not allowed. Not of interest
-            if (!properties.Allowed) return;
-
-            //Update cached direct reflections
+            //Update known permitted direct reflections
             if (_directReflectionCache.TryGetValue(resourceRef, out reflectionList))
                 foreach (var reflectionRef in reflectionList.ToArray())
                 {
+                    //Try to get the properties for the reflection. Otherwise remove it
                     if (!_propertiesCache.TryGetValue(reflectionRef, out var reflectionProperties))
                     {
                         reflectionList.Remove(reflectionRef);
@@ -192,28 +220,19 @@ public abstract class ResourceMirror<TResource> :
                         continue;
                     }
 
+                    //Execute the reflection
                     await ResourceReflect(resourceRef, reflectionRef, resource, null, false);
                 }
 
-            //Update or ensure auto-reflections
-            if (properties.AutoEnabled)
-            {
-                if (_autoSources.TryAdd(resourceRef, true))
-                {
-                    await AutoReflectionForSource(resourceRef, resource, cancellationToken);
-                    return;
-                }
+            //Ensure updated auto-reflections
+            if (isAutoSource) await AutoReflectionForSource(resourceRef, resource, cancellationToken);
 
-                if (eventType == WatchEventType.Modified)
-                {
-                    await AutoReflectionForSource(resourceRef, resource, cancellationToken);
-                    return;
-                }
-            }
+
+            return;
         }
 
-
-        if (properties.IsReflection && !properties.IsAutoReflection)
+        //If this is a direct reflection
+        if (properties is { IsReflection: true, IsAutoReflection: false })
         {
             var sourceRef = properties.Reflects;
             ReflectorProperties sourceProperties;
@@ -254,55 +273,54 @@ public abstract class ResourceMirror<TResource> :
             }
 
             await ResourceReflect(sourceRef, resourceRef, null, resource, false);
-        }
 
-
-        if (properties.IsReflection && properties.IsAutoReflection)
-        {
-            var sourceRef = properties.Reflects;
-            await TriggerAutoReflectionForSource(sourceRef, resourceRef, cancellationToken);
-        }
-    }
-
-    private async Task TriggerAutoReflectionForSource(KubeRef resourceRef, KubeRef reflectionRef,
-        CancellationToken cancellationToken)
-    {
-        if (_notFoundCache.ContainsKey(resourceRef))
-        {
-            await OnResourceDelete(reflectionRef);
             return;
         }
 
-        TResource? resourceCached = null;
-        ReflectorProperties properties;
-        if (!_propertiesCache.TryGetValue(resourceRef, out var props))
+        //If this is an auto-reflection, ensure it still has a source. reflection will be done when we hit the source
+        if (properties is { IsReflection: true, IsAutoReflection: true })
         {
-            resourceCached = await TryResourceGet(resourceRef);
-            if (resourceCached is null)
+            var sourceRef = properties.Reflects;
+
+            //If the source is known to not exist, drop the reflection
+            if (_notFoundCache.ContainsKey(sourceRef))
             {
-                await OnResourceDelete(reflectionRef);
+                Logger.LogInformation("Source {sourceId} no longer exists. Deleting {destinationId}.",
+                    sourceRef, resourceRef);
+                await OnResourceDelete(resourceRef);
                 return;
             }
 
-            properties = resourceCached.GetReflectionProperties();
+
+            //Find the source resource
+            ReflectorProperties sourceProperties;
+            if (!_propertiesCache.TryGetValue(sourceRef, out var props))
+            {
+                var sourceResource = await TryResourceGet(sourceRef);
+                if (sourceResource is null)
+                {
+                    Logger.LogInformation("Source {sourceId} no longer exists. Deleting {destinationId}.",
+                        sourceRef, resourceRef);
+                    await OnResourceDelete(resourceRef);
+                    return;
+                }
+
+                sourceProperties = sourceResource.GetReflectionProperties();
+            }
+            else
+            {
+                sourceProperties = props;
+            }
+
+            _propertiesCache.AddOrUpdate(sourceRef, sourceProperties, (_, _) => sourceProperties);
+            if (!sourceProperties.CanBeAutoReflectedToNamespace(resourceRef.Namespace))
+            {
+                Logger.LogInformation(
+                    "Source {sourceId} no longer permits the auto reflection to {destinationId}. Deleting {destinationId}.",
+                    sourceRef, resourceRef, resourceRef);
+                await OnResourceDelete(resourceRef);
+            }
         }
-        else
-        {
-            properties = props;
-        }
-
-        _propertiesCache.AddOrUpdate(resourceRef, properties, (_, _) => properties);
-
-        if (!properties.Allowed || !properties.AutoEnabled)
-        {
-            await OnResourceDelete(reflectionRef);
-            return;
-        }
-
-        //Skip if processed.
-        if (!_autoSources.TryAdd(resourceRef, true)) return;
-
-        await AutoReflectionForSource(resourceRef, resourceCached, cancellationToken);
     }
 
 
@@ -315,7 +333,7 @@ public abstract class ResourceMirror<TResource> :
         var autoReflectionList = _autoReflectionCache.GetOrAdd(resourceRef, _ => new List<KubeRef>());
 
         var matches = await OnResourceWithNameList(resourceRef.Name);
-        var namespaces = (await Client.ListNamespaceAsync(cancellationToken: cancellationToken)).Items;
+        var namespaces = (await Client.CoreV1.ListNamespaceAsync(cancellationToken: cancellationToken)).Items;
 
         foreach (var match in matches)
         {
@@ -355,9 +373,7 @@ public abstract class ResourceMirror<TResource> :
                         m.GetReflectionProperties().Reflects.Equals(resourceRef))
             .Select(m => m.GetRef()).ToList();
 
-        Logger.LogInformation(
-            "Auto-reflected {id} where permitted. Created {create} - Updated {update} - Deleted {delete} - Validated {skip}.",
-            resourceRef, toCreate.Count, toUpdate.Count, toDelete.Count, toSkip.Count);
+        
 
         autoReflectionList.Clear();
         autoReflectionList.AddRange(toCreate);
@@ -370,6 +386,10 @@ public abstract class ResourceMirror<TResource> :
             var reflection = matches.Single(s => s.GetRef().Equals(reflectionRef));
             await ResourceReflect(resourceRef, reflectionRef, resource, reflection, true);
         }
+
+        Logger.LogInformation(
+            "Auto-reflected {id} where permitted. Created {create} - Updated {update} - Deleted {delete} - Validated {skip}.",
+            resourceRef, toCreate.Count, toUpdate.Count, toDelete.Count, toSkip.Count);
     }
 
 
@@ -483,6 +503,7 @@ public abstract class ResourceMirror<TResource> :
         {
             Logger.LogDebug("Retrieving {id}", refId);
             var resource = await OnResourceGet(refId);
+            _notFoundCache.TryRemove(refId, out _);
             return resource;
         }
         catch (HttpOperationException ex) when (ex.Response.StatusCode == HttpStatusCode.NotFound)

@@ -3,7 +3,6 @@ using Autofac.Extensions.DependencyInjection;
 using ES.Kubernetes.Reflector.Core;
 using ES.Kubernetes.Reflector.Core.Configuration;
 using k8s;
-using MediatR;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -38,19 +37,19 @@ try
     builder.Services.AddHttpClient();
     builder.Services.AddOptions();
     builder.Services.AddHealthChecks();
-    builder.Services.AddMediatR(typeof(void).Assembly);
+    builder.Services.AddMediatR(config => config.RegisterServicesFromAssembly(typeof(void).Assembly));
     builder.Services.AddControllers();
 
-    builder.Services.AddSingleton(KubernetesClientConfiguration.BuildDefaultConfig());
-    builder.Services.AddScoped<IKubernetes>(c =>
-        new Kubernetes(c.GetRequiredService<KubernetesClientConfiguration>()));
+    builder.Services.AddSingleton<KubernetesClientConfiguration>(_ =>
+    {
+        var config = KubernetesClientConfiguration.BuildDefaultConfig();
+        config.HttpClientTimeout = TimeSpan.FromMinutes(30);
+        return config;
+    });
+   
 
-    builder.Services.AddHttpClient(nameof(IKubernetes))
-        .AddTypedClient<IKubernetes>((httpClient, s) => new Kubernetes(
-            s.GetRequiredService<KubernetesClientConfiguration>(),
-            httpClient))
-        .ConfigurePrimaryHttpMessageHandler(s =>
-            s.GetRequiredService<KubernetesClientConfiguration>().CreateDefaultHttpClientHandler());
+    builder.Services.AddSingleton<IKubernetes>(s =>
+        new Kubernetes(s.GetRequiredService<KubernetesClientConfiguration>()));
 
     builder.Services.Configure<ReflectorOptions>(builder.Configuration.GetSection("Reflector"));
 

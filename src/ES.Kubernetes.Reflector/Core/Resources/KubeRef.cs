@@ -2,7 +2,7 @@
 
 namespace ES.Kubernetes.Reflector.Core.Resources;
 
-public class KubeRef
+public sealed record KubeRef
 {
     public static readonly KubeRef Empty = new(string.Empty, string.Empty);
 
@@ -55,18 +55,14 @@ public class KubeRef
     }
 
 
-    public bool Equals(KubeRef other)
+    public bool Equals(KubeRef? other)
     {
         if (ReferenceEquals(this, other)) return true;
-        return string.Equals(Namespace, other.Namespace) && string.Equals(Name, other.Name);
+        return string.Equals(Namespace, other?.Namespace) && string.Equals(Name, other?.Name);
     }
 
-    public override bool Equals(object? obj)
-    {
-        if (obj is null) return false;
-        if (ReferenceEquals(this, obj)) return true;
-        return obj.GetType() == GetType() && Equals((KubeRef) obj);
-    }
+
+
 
     public override int GetHashCode()
     {
