@@ -11,7 +11,7 @@ on:
       - ".github/workflows/**"
 
 env:
-  version: 6.1.${{github.run_number}}
+  version: 7.0.${{github.run_number}}
   imageRepository: "emberstack/kubernetes-reflector"
   DOCKER_CLI_EXPERIMENTAL: "enabled"
 
@@ -80,12 +80,12 @@ jobs:
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
           docker buildx create --name builder --driver docker-container --use
           docker buildx inspect --bootstrap
-          docker buildx build --push --platform linux/amd64 -t ${{env.imageRepository}}:build-${{env.version}}-amd64   -f src/ES.Kubernetes.Reflector/Dockerfile src/
-          docker buildx build --push --platform linux/arm   -t ${{env.imageRepository}}:build-${{env.version}}-arm32v7 -f src/ES.Kubernetes.Reflector/Dockerfile src/
-          docker buildx build --push --platform linux/arm64 -t ${{env.imageRepository}}:build-${{env.version}}-arm64v8 -f src/ES.Kubernetes.Reflector/Dockerfile src/
-          docker pull ${{env.imageRepository}}:build-${{env.version}}-amd64
-          docker pull ${{env.imageRepository}}:build-${{env.version}}-arm32v7
-          docker pull ${{env.imageRepository}}:build-${{env.version}}-arm64v8
+          docker buildx build --push --platform linux/amd64 --provenance=false -t ${{env.imageRepository}}:build-${{env.version}}-amd64   -f src/ES.Kubernetes.Reflector/Dockerfile src/
+          docker buildx build --push --platform linux/arm   --provenance=false -t ${{env.imageRepository}}:build-${{env.version}}-arm32v7 -f src/ES.Kubernetes.Reflector/Dockerfile src/
+          docker buildx build --push --platform linux/arm64 --provenance=false -t ${{env.imageRepository}}:build-${{env.version}}-arm64v8 -f src/ES.Kubernetes.Reflector/Dockerfile src/
+          docker pull --platform linux/amd64 ${{env.imageRepository}}:build-${{env.version}}-amd64
+          docker pull --platform linux/arm/v7 ${{env.imageRepository}}:build-${{env.version}}-arm32v7
+          docker pull --platform linux/arm64 ${{env.imageRepository}}:build-${{env.version}}-arm64v8
           docker manifest create  ${{env.imageRepository}}:build-${{env.version}} ${{env.imageRepository}}:build-${{env.version}}-amd64  ${{env.imageRepository}}:build-${{env.version}}-arm32v7  ${{env.imageRepository}}:build-${{env.version}}-arm64v8
           docker manifest inspect ${{env.imageRepository}}:build-${{env.version}}
           docker manifest push    ${{env.imageRepository}}:build-${{env.version}}

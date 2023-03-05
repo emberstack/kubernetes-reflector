@@ -15,12 +15,9 @@ public class JsonPropertyNameContractResolver : DefaultContractResolver
     {
         var property = base.CreateProperty(member, memberSerialization);
 
-        if (member.GetCustomAttribute<JsonPropertyNameAttribute>() is { } propertyNameAttribute)
-        {
-            property.PropertyName = propertyNameAttribute.Name;
-            return property;
-        }
-
+        if (member.GetCustomAttribute<JsonPropertyNameAttribute>() is not { } propertyNameAttribute) return property;
+        property.PropertyName = propertyNameAttribute.Name;
         return property;
+
     }
 }

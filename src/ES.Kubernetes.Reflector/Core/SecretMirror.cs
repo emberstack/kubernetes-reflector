@@ -14,13 +14,13 @@ public class SecretMirror : ResourceMirror<V1Secret>
 
     protected override async Task<V1Secret[]> OnResourceWithNameList(string itemRefName)
     {
-        return (await Client.ListSecretForAllNamespacesAsync(fieldSelector: $"metadata.name={itemRefName}")).Items
+        return (await Client.CoreV1.ListSecretForAllNamespacesAsync(fieldSelector: $"metadata.name={itemRefName}")).Items
             .ToArray();
     }
 
     protected override Task OnResourceApplyPatch(V1Patch patch, KubeRef refId)
     {
-        return Client.PatchNamespacedSecretWithHttpMessagesAsync(patch, refId.Name, refId.Namespace);
+        return Client.CoreV1.PatchNamespacedSecretWithHttpMessagesAsync(patch, refId.Name, refId.Namespace);
     }
 
     protected override Task OnResourceConfigurePatch(V1Secret source, JsonPatchDocument<V1Secret> patchDoc)
@@ -31,7 +31,7 @@ public class SecretMirror : ResourceMirror<V1Secret>
 
     protected override Task OnResourceCreate(V1Secret item, string ns)
     {
-        return Client.CreateNamespacedSecretAsync(item, ns);
+        return Client.CoreV1.CreateNamespacedSecretAsync(item, ns);
     }
 
     protected override Task<V1Secret> OnResourceClone(V1Secret sourceResource)
@@ -47,12 +47,12 @@ public class SecretMirror : ResourceMirror<V1Secret>
 
     protected override Task OnResourceDelete(KubeRef resourceId)
     {
-        return Client.DeleteNamespacedSecretAsync(resourceId.Name, resourceId.Namespace);
+        return Client.CoreV1.DeleteNamespacedSecretAsync(resourceId.Name, resourceId.Namespace);
     }
 
     protected override Task<V1Secret> OnResourceGet(KubeRef refId)
     {
-        return Client.ReadNamespacedSecretAsync(refId.Name, refId.Namespace);
+        return Client.CoreV1.ReadNamespacedSecretAsync(refId.Name, refId.Namespace);
     }
 
     protected override Task<bool> OnResourceIgnoreCheck(V1Secret item)

@@ -1,10 +1,10 @@
 ﻿using ES.Kubernetes.Reflector.Core.Configuration;
 using ES.Kubernetes.Reflector.Core.Watchers;
 using k8s;
+using k8s.Autorest;
 using k8s.Models;
 using MediatR;
 using Microsoft.Extensions.Options;
-using Microsoft.Rest;
 
 namespace ES.Kubernetes.Reflector.Core;
 
@@ -19,7 +19,7 @@ public class ConfigMapWatcher : WatcherBackgroundService<V1ConfigMap, V1ConfigMa
 
     protected override Task<HttpOperationResponse<V1ConfigMapList>> OnGetWatcher(CancellationToken cancellationToken)
     {
-        return Client.ListConfigMapForAllNamespacesWithHttpMessagesAsync(watch: true, timeoutSeconds: WatcherTimeout,
+        return Client.CoreV1.ListConfigMapForAllNamespacesWithHttpMessagesAsync(watch: true, timeoutSeconds: WatcherTimeout,
             cancellationToken: cancellationToken);
     }
 }

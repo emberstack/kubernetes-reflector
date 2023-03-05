@@ -21,16 +21,20 @@ public static class ReflectorExtensions
 
             Allowed = metadata.SafeAnnotations()
                 .TryGet(Annotations.Reflection.Allowed, out bool allowed) && allowed,
+
             AllowedNamespaces = metadata.SafeAnnotations()
                 .TryGet(Annotations.Reflection.AllowedNamespaces, out string? allowedNamespaces)
                 ? allowedNamespaces ?? string.Empty
                 : string.Empty,
+
             AutoEnabled = metadata.SafeAnnotations()
                 .TryGet(Annotations.Reflection.AutoEnabled, out bool autoEnabled) && autoEnabled,
+
             AutoNamespaces = metadata.SafeAnnotations()
                 .TryGet(Annotations.Reflection.AutoNamespaces, out string? autoNamespaces)
                 ? autoNamespaces ?? string.Empty
                 : string.Empty,
+
             Reflects = metadata.SafeAnnotations()
                 .TryGet(Annotations.Reflection.Reflects, out string? metaReflects)
                 ? string.IsNullOrWhiteSpace(metaReflects) ? KubeRef.Empty :
@@ -38,8 +42,10 @@ public static class ReflectorExtensions
                     ? new KubeRef(metadata.NamespaceProperty, metaReflectsRef.Name)
                     : metaReflectsRef : KubeRef.Empty
                 : KubeRef.Empty,
+
             IsAutoReflection = metadata.SafeAnnotations()
                 .TryGet(Annotations.Reflection.MetaAutoReflects, out bool metaAutoReflects) && metaAutoReflects,
+
             ReflectedVersion = metadata.SafeAnnotations()
                 .TryGet(Annotations.Reflection.MetaReflectedVersion, out string? reflectedVersion)
                 ? string.IsNullOrWhiteSpace(reflectedVersion) ? string.Empty : reflectedVersion

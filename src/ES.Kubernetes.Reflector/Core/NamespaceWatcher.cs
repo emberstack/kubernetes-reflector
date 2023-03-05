@@ -1,10 +1,10 @@
 ﻿using ES.Kubernetes.Reflector.Core.Configuration;
 using ES.Kubernetes.Reflector.Core.Watchers;
 using k8s;
+using k8s.Autorest;
 using k8s.Models;
 using MediatR;
 using Microsoft.Extensions.Options;
-using Microsoft.Rest;
 
 namespace ES.Kubernetes.Reflector.Core;
 
@@ -19,7 +19,7 @@ public class NamespaceWatcher : WatcherBackgroundService<V1Namespace, V1Namespac
 
     protected override Task<HttpOperationResponse<V1NamespaceList>> OnGetWatcher(CancellationToken cancellationToken)
     {
-        return Client.ListNamespaceWithHttpMessagesAsync(watch: true, timeoutSeconds: WatcherTimeout,
+        return Client.CoreV1.ListNamespaceWithHttpMessagesAsync(watch: true, timeoutSeconds: WatcherTimeout,
             cancellationToken: cancellationToken);
     }
 }
