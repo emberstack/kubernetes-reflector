@@ -65,6 +65,9 @@ try
 
         container.RegisterType<ConfigMapWatcher>().AsImplementedInterfaces().SingleInstance();
         container.RegisterType<ConfigMapMirror>().AsImplementedInterfaces().SingleInstance();
+
+        container.RegisterType<NetworkPolicyWatcher>().AsImplementedInterfaces().SingleInstance();
+        container.RegisterType<NetworkPolicyMirror>().AsImplementedInterfaces().SingleInstance();
     });
 
     builder.WebHost.ConfigureKestrel(options => { options.ListenAnyIP(25080); });
