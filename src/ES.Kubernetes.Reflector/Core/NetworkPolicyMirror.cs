@@ -25,9 +25,7 @@ public class NetworkPolicyMirror : ResourceMirror<V1NetworkPolicy>
 
     protected override Task OnResourceConfigurePatch(V1NetworkPolicy source, JsonPatchDocument<V1NetworkPolicy> patchDoc)
     {
-        // TODO
-        //patchDoc.Replace(e => e.Data, source.Data);
-        //patchDoc.Replace(e => e.BinaryData, source.BinaryData);
+        patchDoc.Replace(e => e.Spec, source.Spec);
         return Task.CompletedTask;
     }
 
@@ -42,9 +40,7 @@ public class NetworkPolicyMirror : ResourceMirror<V1NetworkPolicy>
         {
             ApiVersion = sourceResource.ApiVersion,
             Kind = sourceResource.Kind,
-            // TODO
-            //Data = sourceResource.Data,
-            //BinaryData = sourceResource.BinaryData
+            Spec = sourceResource.Spec
         });
     }
 
