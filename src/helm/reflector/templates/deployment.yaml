@@ -4,6 +4,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "reflector.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "reflector.labels" . | nindent 4 }}
 spec:
