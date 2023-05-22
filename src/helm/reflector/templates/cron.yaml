@@ -4,6 +4,7 @@ apiVersion: {{ .Values.cron.apiVersion | default "batch/v1beta1" }}
 kind: CronJob
 metadata:
   name: {{ include "reflector.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "reflector.labels" . | nindent 4 }}
 
