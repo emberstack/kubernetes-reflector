@@ -49,6 +49,7 @@ public abstract class ResourceMirror<TResource> :
             notification.ResourceType != typeof(V1Namespace)) return Task.CompletedTask;
         if (notification.ResourceType != typeof(TResource)) return Task.CompletedTask;
 
+        Logger.LogDebug("Cleared sources for {Type} resources", typeof(TResource).Name);
 
         _autoSources.Clear();
         _notFoundCache.Clear();
