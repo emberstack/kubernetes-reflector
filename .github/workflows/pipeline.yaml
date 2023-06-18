@@ -170,6 +170,7 @@ jobs:
           repository: emberstack/kubernetes-reflector
           tag_name: v${{env.version}}
           body: The release process is automated.
+          generate_release_notes: true
           token: ${{ secrets.ES_GITHUB_PAT }}
           files: |
             github/reflector.yaml
