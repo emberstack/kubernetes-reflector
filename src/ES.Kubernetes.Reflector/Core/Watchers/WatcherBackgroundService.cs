@@ -68,7 +68,7 @@ public abstract class WatcherBackgroundService<TResource, TResourceList> : Backg
 
                 await Mediator.Publish(new WatcherClosed
                 {
-                    ResourceType = typeof(V1Secret),
+                    ResourceType = typeof(TResource),
                     Faulted = sessionFaulted
                 }, stoppingToken);
 
