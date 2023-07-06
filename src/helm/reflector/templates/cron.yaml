@@ -1,6 +1,6 @@
 {{- if .Values.cron.enabled }}
 ---
-apiVersion: {{ .Values.cron.apiVersion | default "batch/v1beta1" }}
+apiVersion: {{ .Values.cron.apiVersion | default "batch/v1" }}
 kind: CronJob
 metadata:
   name: {{ include "reflector.fullname" . }}
@@ -69,5 +69,5 @@ spec:
                 - name: ES_Reflector__Watcher__Timeout
                   value: {{ .Values.configuration.watcher.timeout | quote }}
               resources:
-                {{- toYaml .Values.resources | nindent 16 }}        
+                {{- toYaml .Values.resources | nindent 16 }}
 {{- end }}
