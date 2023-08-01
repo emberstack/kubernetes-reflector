@@ -40,7 +40,12 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
+# additional annotations to set on the pod
 podAnnotations: {}
+# additional labels to set on the pod
+podLabels: {}
+# additional env vars to add to the pod
+extraEnv: []
 
 podSecurityContext:
   fsGroup: 2000

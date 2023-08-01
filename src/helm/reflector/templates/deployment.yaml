@@ -7,6 +7,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "reflector.labels" . | nindent 4 }}
+
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
@@ -22,6 +23,10 @@ spec:
       {{- end }}
       labels:
         {{- include "reflector.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -44,6 +49,10 @@ spec:
               value: {{ .Values.configuration.logging.minimumLevel | quote }}
             - name: ES_Reflector__Watcher__Timeout
               value: {{ .Values.configuration.watcher.timeout | quote }}
+            {{- with .Values.extraEnv }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+
           ports:
             - name: http
               containerPort: 25080
