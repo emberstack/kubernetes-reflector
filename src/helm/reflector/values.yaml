@@ -109,7 +109,3 @@ affinity: {}
 priorityClassName: ""
 
 customCaCert: false
-# Example
-#customCaCert: |-
-#  -----BEGIN CERTIFICATE-----
-#  -----END CERTIFICATE-----

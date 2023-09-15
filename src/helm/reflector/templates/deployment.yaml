@@ -49,10 +49,10 @@ spec:
             - name: DEBIAN_FRONTEND
               value: noninteractive
           volumeMounts:
-            - name: custom-ca-cert
+            - name: kube-root-ca
               mountPath: /usr/local/share/ca-certificates/rootCACert.crt
-              subPath: rootCACert.pem
-              readOnly: false
+              subPath: ca.crt
+              readOnly: true
             - name: ssl-certs
               mountPath: /ssl-certs
               readOnly: false
@@ -115,9 +115,9 @@ spec:
 
       {{- if .Values.customCaCert }}
       volumes:
-        - name: custom-ca-cert
+        - name: kube-root-ca
           configMap:
-            name: {{ .Release.Name }}-custom-ca-cert
+            name: kube-root-ca.crt
         - name: ssl-certs
           emptyDir: {}
       {{- end }}
