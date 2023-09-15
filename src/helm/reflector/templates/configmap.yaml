@@ -1,0 +1,9 @@
+{{- if .Values.customCaCert }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-custom-ca-cert
+data:
+  rootCACert.pem: |
+{{ .Values.customCaCert | indent 4 }}
+{{- end }}

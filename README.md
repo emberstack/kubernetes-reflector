@@ -55,6 +55,7 @@ You can customize the values of the helm deployment by using the following Value
 | `tolerations`                        | Toleration labels for pod assignment             | `[]`                                                    |
 | `affinity`                           | Node affinity for pod assignment                 | `{}`                                                    |
 | `priorityClassName`                  | `priorityClassName` for pods                     | `""`                                                    |
+| `customCaCert     `                  | `customCaCert` for access selfsigned certs       | `false`                                                 |
 
 > Find us on [Artifact Hub](https://artifacthub.io/packages/helm/emberstack/reflector)
 
@@ -70,7 +71,7 @@ $ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-refle
 ## Usage
 
 ### 1. Annotate the source `secret` or `configmap`
-  
+
   - Add `reflector.v1.k8s.emberstack.com/reflection-allowed: "true"` to the resource annotations to permit reflection to mirrors.
   - Add `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "<list>"` to the resource annotations to permit reflection from only the list of comma separated namespaces or regular expressions. Note: If this annotation is omitted or is empty, all namespaces are allowed.
 
@@ -82,7 +83,7 @@ $ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-refle
   > Important: If the `source` is deleted, automatic mirrors are deleted. Also if either reflection or automirroring is turned off or the automatic mirror's namespace is no longer a valid match for the allowed namespaces, the automatic mirror is deleted.
 
   > Important: Reflector will skip any conflicting resource when creating auto-mirrors. If there is already a resource with the source's name in a namespace where an automatic mirror is to be created, that namespace is skipped and logged as a warning.
-  
+
   Example source secret:
    ```yaml
   apiVersion: v1
@@ -95,7 +96,7 @@ $ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-refle
   data:
     ...
   ```
-  
+
   Example source configmap:
    ```yaml
   apiVersion: v1
@@ -108,13 +109,13 @@ $ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-refle
   data:
     ...
   ```
-  
+
 ### 2. Annotate the mirror secret or configmap
 
   - Add `reflector.v1.k8s.emberstack.com/reflects: "<source namespace>/<source name>"` to the mirror object. The value of the annotation is the full name of the source object in `namespace/name` format.
 
   > Note: Add `reflector.v1.k8s.emberstack.com/reflected-version: ""` to the resource annotations when doing any manual changes to the mirror (for example when deploying with `helm` or re-applying the deployment script). This will reset the reflected version of the mirror.
-  
+
   Example mirror secret:
    ```yaml
   apiVersion: v1
@@ -126,7 +127,7 @@ $ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-refle
   data:
     ...
   ```
-  
+
   Example mirror configmap:
    ```yaml
   apiVersion: v1

@@ -38,6 +38,26 @@ spec:
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName }}
       {{- end }}
+
+      {{- if .Values.customCaCert }}
+      initContainers:
+        - name: init-ca
+          image: "{{ .Values.initContainerImage.repository }}:{{ .Values.initContainerImage.tag }}"
+          command: ["/bin/sh", "-c"]
+          args: ["apt-get -qq update && apt-get -qq install -y ca-certificates && update-ca-certificates && cp -rL /etc/ssl/certs/* /ssl-certs/"]
+          env:
+            - name: DEBIAN_FRONTEND
+              value: noninteractive
+          volumeMounts:
+            - name: custom-ca-cert
+              mountPath: /usr/local/share/ca-certificates/rootCACert.crt
+              subPath: rootCACert.pem
+              readOnly: false
+            - name: ssl-certs
+              mountPath: /ssl-certs
+              readOnly: false
+      {{- end }}
+
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -52,6 +72,13 @@ spec:
             {{- with .Values.extraEnv }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
+
+          {{- if .Values.customCaCert }}
+          volumeMounts:
+            - name: ssl-certs
+              mountPath: /etc/ssl/certs
+              readOnly: false
+          {{- end }}
 
           ports:
             - name: http
@@ -85,4 +112,14 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+
+      {{- if .Values.customCaCert }}
+      volumes:
+        - name: custom-ca-cert
+          configMap:
+            name: {{ .Release.Name }}-custom-ca-cert
+        - name: ssl-certs
+          emptyDir: {}
+      {{- end }}
+
 {{- end }}
