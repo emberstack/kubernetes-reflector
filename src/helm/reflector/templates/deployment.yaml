@@ -69,6 +69,10 @@ spec:
               value: {{ .Values.configuration.logging.minimumLevel | quote }}
             - name: ES_Reflector__Watcher__Timeout
               value: {{ .Values.configuration.watcher.timeout | quote }}
+            {{- if .Values.customCaCert }}
+            - name: SSL_CERT_DIR
+              value: "/etc/ssl/certs"
+            {{- end }}
             {{- with .Values.extraEnv }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
