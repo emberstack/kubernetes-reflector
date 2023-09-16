@@ -32,29 +32,30 @@ $ helm upgrade --install reflector emberstack/reflector
 
 You can customize the values of the helm deployment by using the following Values:
 
-| Parameter                            | Description                                      | Default                                                 |
-| ------------------------------------ | ------------------------------------------------ | ------------------------------------------------------- |
-| `nameOverride`                       | Overrides release name                           | `""`                                                    |
-| `fullnameOverride`                   | Overrides release fullname                       | `""`                                                    |
-| `image.repository`                   | Container image repository                       | `emberstack/kubernetes-reflector`                       |
-| `image.tag`                          | Container image tag                              | `Same as chart version`                                 |
-| `image.pullPolicy`                   | Container image pull policy                      | `IfNotPresent`                                          |
-| `configuration.logging.minimumLevel` | Logging minimum level                            | `Information`                                           |
-| `configuration.watcher.timeout`      | Maximum watcher lifetime in seconds              | ``                                                      |
-| `rbac.enabled`                       | Create and use RBAC resources                    | `true`                                                  |
-| `serviceAccount.create`              | Create ServiceAccount                            | `true`                                                  |
-| `serviceAccount.name`                | ServiceAccount name                              | _release name_                                          |
-| `livenessProbe.initialDelaySeconds`  | `livenessProbe` initial delay                    | `5`                                                     |
-| `livenessProbe.periodSeconds`        | `livenessProbe` period                           | `10`                                                    |
-| `readinessProbe.initialDelaySeconds` | `readinessProbe` initial delay                   | `5`                                                     |
-| `readinessProbe.periodSeconds`       | `readinessProbe` period                          | `10`                                                    |
-| `startupProbe.failureThreshold`      | `startupProbe` failure threshold                 | `10`                                                    |
-| `startupProbe.periodSeconds`         | `startupProbe` period                            | `5`                                                     |
-| `resources`                          | Resource limits                                  | `{}`                                                    |
-| `nodeSelector`                       | Node labels for pod assignment                   | `{}`                                                    |
-| `tolerations`                        | Toleration labels for pod assignment             | `[]`                                                    |
-| `affinity`                           | Node affinity for pod assignment                 | `{}`                                                    |
-| `priorityClassName`                  | `priorityClassName` for pods                     | `""`                                                    |
+| Parameter                                | Description                                      | Default                                                 |
+| ---------------------------------------- | ------------------------------------------------ | ------------------------------------------------------- |
+| `nameOverride`                           | Overrides release name                           | `""`                                                    |
+| `fullnameOverride`                       | Overrides release fullname                       | `""`                                                    |
+| `image.repository`                       | Container image repository                       | `emberstack/kubernetes-reflector`                       |
+| `image.tag`                              | Container image tag                              | `Same as chart version`                                 |
+| `image.pullPolicy`                       | Container image pull policy                      | `IfNotPresent`                                          |
+| `configuration.logging.minimumLevel`     | Logging minimum level                            | `Information`                                           |
+| `configuration.watcher.timeout`          | Maximum watcher lifetime in seconds              | ``                                                      |
+| `configuration.kubernetes.skipTlsVerify` | Skip TLS verify when connecting the the cluster  | `false`                                                 |
+| `rbac.enabled`                           | Create and use RBAC resources                    | `true`                                                  |
+| `serviceAccount.create`                  | Create ServiceAccount                            | `true`                                                  |
+| `serviceAccount.name`                    | ServiceAccount name                              | _release name_                                          |
+| `livenessProbe.initialDelaySeconds`      | `livenessProbe` initial delay                    | `5`                                                     |
+| `livenessProbe.periodSeconds`            | `livenessProbe` period                           | `10`                                                    |
+| `readinessProbe.initialDelaySeconds`     | `readinessProbe` initial delay                   | `5`                                                     |
+| `readinessProbe.periodSeconds`           | `readinessProbe` period                          | `10`                                                    |
+| `startupProbe.failureThreshold`          | `startupProbe` failure threshold                 | `10`                                                    |
+| `startupProbe.periodSeconds`             | `startupProbe` period                            | `5`                                                     |
+| `resources`                              | Resource limits                                  | `{}`                                                    |
+| `nodeSelector`                           | Node labels for pod assignment                   | `{}`                                                    |
+| `tolerations`                            | Toleration labels for pod assignment             | `[]`                                                    |
+| `affinity`                               | Node affinity for pod assignment                 | `{}`                                                    |
+| `priorityClassName`                      | `priorityClassName` for pods                     | `""`                                                    |
 
 > Find us on [Artifact Hub](https://artifacthub.io/packages/helm/emberstack/reflector)
 

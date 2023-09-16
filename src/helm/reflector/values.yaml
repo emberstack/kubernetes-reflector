@@ -27,6 +27,8 @@ configuration:
     minimumLevel: Information
   watcher:
     timeout: ""
+  kubernetes:
+    skipTlsVerify: false
 
 rbac:
   enabled: true

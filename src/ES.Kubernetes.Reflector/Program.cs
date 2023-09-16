@@ -3,6 +3,7 @@ using Autofac.Extensions.DependencyInjection;
 using ES.Kubernetes.Reflector.Core;
 using ES.Kubernetes.Reflector.Core.Configuration;
 using k8s;
+using Microsoft.Extensions.Options;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -40,10 +41,20 @@ try
     builder.Services.AddMediatR(config => config.RegisterServicesFromAssembly(typeof(void).Assembly));
     builder.Services.AddControllers();
 
-    builder.Services.AddSingleton<KubernetesClientConfiguration>(_ =>
+    builder.Services.Configure<ReflectorOptions>(builder.Configuration.GetSection("Reflector"));
+
+
+    builder.Services.AddSingleton<KubernetesClientConfiguration>(s =>
     {
+        var reflectorOptions = s.GetRequiredService<IOptions<ReflectorOptions>>();
+
         var config = KubernetesClientConfiguration.BuildDefaultConfig();
         config.HttpClientTimeout = TimeSpan.FromMinutes(30);
+        if (reflectorOptions.Value.Kubernetes is not null)
+        {
+            config.SkipTlsVerify = 
+                reflectorOptions.Value.Kubernetes.SkipTlsVerify.GetValueOrDefault(false);
+        }
         return config;
     });
    
@@ -51,7 +62,6 @@ try
     builder.Services.AddSingleton<IKubernetes>(s =>
         new Kubernetes(s.GetRequiredService<KubernetesClientConfiguration>()));
 
-    builder.Services.Configure<ReflectorOptions>(builder.Configuration.GetSection("Reflector"));
 
 
     builder.Host.ConfigureContainer((ContainerBuilder container) =>
