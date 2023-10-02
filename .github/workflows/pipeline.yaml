@@ -67,7 +67,7 @@ jobs:
           docker buildx build --platform linux/arm64 -t ${{env.imageRepository}}:build-${{env.version}}-arm64v8 -f src/ES.Kubernetes.Reflector/Dockerfile src/
 
       - name: tools - docker - login
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.actor != 'dependabot[bot]'
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.ES_DOCKERHUB_USERNAME }}
@@ -75,7 +75,7 @@ jobs:
 
 
       - name: "docker - build and publish"
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.actor != 'dependabot[bot]'
         run: |
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
           docker buildx create --name builder --driver docker-container --use
