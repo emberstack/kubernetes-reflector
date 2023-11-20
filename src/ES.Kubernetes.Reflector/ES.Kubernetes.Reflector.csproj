@@ -16,7 +16,7 @@
 		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.5" />
 		<PackageReference Include="Serilog.Extensions.Hosting" Version="7.0.0" />
 		<PackageReference Include="Serilog.Extensions.Logging" Version="7.0.0" />
-		<PackageReference Include="Serilog.Settings.Configuration" Version="7.0.1" />
+		<PackageReference Include="Serilog.Settings.Configuration" Version="8.0.0" />
 		<PackageReference Include="Serilog.Sinks.Console" Version="4.1.0" />
 	</ItemGroup>
 
