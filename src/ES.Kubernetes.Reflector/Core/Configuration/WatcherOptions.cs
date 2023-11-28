@@ -2,5 +2,5 @@
 
 public class WatcherOptions
 {
-    public int? Timeout { get; set; }
+    public int? Timeout { get; init; }
 }

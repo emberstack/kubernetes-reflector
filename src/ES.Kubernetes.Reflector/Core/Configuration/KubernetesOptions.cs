@@ -2,5 +2,5 @@
 
 public class KubernetesOptions
 {
-    public bool? SkipTlsVerify { get; set; }
+    public bool? SkipTlsVerify { get; init; }
 }

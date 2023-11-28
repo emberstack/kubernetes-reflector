@@ -2,6 +2,6 @@
 
 public class ReflectorOptions
 {
-    public WatcherOptions? Watcher { get; set; }
-    public KubernetesOptions? Kubernetes { get; set; }
+    public WatcherOptions? Watcher { get; init; }
+    public KubernetesOptions? Kubernetes { get; init; }
 }
