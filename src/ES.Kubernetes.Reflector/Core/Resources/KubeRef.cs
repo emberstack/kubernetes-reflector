@@ -15,7 +15,7 @@ public sealed record KubeRef
     public KubeRef(string value)
     {
         if (string.IsNullOrWhiteSpace(value)) return;
-        var split = value.Split(new[] { "/" }, StringSplitOptions.RemoveEmptyEntries).ToList();
+        var split = value.Split(new[] {"/"}, StringSplitOptions.RemoveEmptyEntries).ToList();
         if (!split.Any()) return;
         switch (split.Count)
         {
@@ -44,7 +44,7 @@ public sealed record KubeRef
         id = Empty;
         if (string.IsNullOrWhiteSpace(value)) return false;
 
-        var split = value.Trim().Split(new[] { "/" }, StringSplitOptions.RemoveEmptyEntries).ToList();
+        var split = value.Trim().Split(new[] {"/"}, StringSplitOptions.RemoveEmptyEntries).ToList();
         if (!split.Any()) return false;
         if (split.Count > 2) return false;
         id = split.Count == 1
