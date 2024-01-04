@@ -11,13 +11,13 @@
 	<ItemGroup>
 		<PackageReference Include="Autofac.Extensions.DependencyInjection" Version="8.0.0" />
 		<PackageReference Include="KubernetesClient" Version="12.1.1" />
-		<PackageReference Include="MediatR" Version="12.1.1" />
-		<PackageReference Include="Microsoft.AspNetCore.JsonPatch" Version="7.0.12" />
+		<PackageReference Include="MediatR" Version="12.2.0" />
+		<PackageReference Include="Microsoft.AspNetCore.JsonPatch" Version="8.0.0" />
 		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.5" />
-		<PackageReference Include="Serilog.Extensions.Hosting" Version="7.0.0" />
-		<PackageReference Include="Serilog.Extensions.Logging" Version="7.0.0" />
-		<PackageReference Include="Serilog.Settings.Configuration" Version="7.0.1" />
-		<PackageReference Include="Serilog.Sinks.Console" Version="4.1.0" />
+		<PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
+		<PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
+		<PackageReference Include="Serilog.Settings.Configuration" Version="8.0.0" />
+		<PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
 	</ItemGroup>
 
 </Project>
