@@ -10,7 +10,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Autofac.Extensions.DependencyInjection" Version="8.0.0" />
-		<PackageReference Include="KubernetesClient" Version="12.1.1" />
+		<PackageReference Include="KubernetesClient" Version="13.0.1" />
 		<PackageReference Include="MediatR" Version="12.2.0" />
 		<PackageReference Include="Microsoft.AspNetCore.JsonPatch" Version="8.0.0" />
 		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.5" />
