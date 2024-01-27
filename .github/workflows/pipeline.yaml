@@ -65,7 +65,7 @@ jobs:
 
       - name: tools - docker - login
         if: github.event_name == 'push' && github.actor != 'dependabot[bot]'
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.ES_DOCKERHUB_USERNAME }}
           password: ${{ secrets.ES_DOCKERHUB_PAT }}
