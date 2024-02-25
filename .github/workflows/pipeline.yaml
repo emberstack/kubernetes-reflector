@@ -15,20 +15,12 @@ env:
   imageRepository: "emberstack/kubernetes-reflector"
   DOCKER_CLI_EXPERIMENTAL: "enabled"
 
-
 jobs:
   ci:
     name: CI
     runs-on: ubuntu-latest
     steps:
-
-      - name: tools - helm - install
-        uses: azure/setup-helm@v1
-
-
-
-      - name: checkout
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: artifacts - prepare directories
         run: |
@@ -45,13 +37,13 @@ jobs:
         run: helm template --namespace kube-system reflector .artifacts/helm/reflector-${{env.version}}.tgz > .artifacts/kubectl/reflector-${{env.version}}.yaml
 
       - name: "artifacts - upload - helm chart"
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: helm
           path: .artifacts/helm
 
       - name: "artifacts - upload - kubectl manifests"
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: kubectl
           path: .artifacts/kubectl
@@ -68,11 +60,10 @@ jobs:
 
       - name: tools - docker - login
         if: github.event_name == 'push' && github.actor != 'dependabot[bot]'
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.ES_DOCKERHUB_USERNAME }}
           password: ${{ secrets.ES_DOCKERHUB_PAT }}
-
 
       - name: "docker - build and publish"
         if: github.event_name == 'push' && github.actor != 'dependabot[bot]'
@@ -96,23 +87,20 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: tools - helm - install
-        uses: azure/setup-helm@v1
-
       - name: tools - docker - login
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.ES_DOCKERHUB_USERNAME }}
           password: ${{ secrets.ES_DOCKERHUB_PAT }}
 
       - name: artifacts - download - helm chart
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: helm
           path: .artifacts/helm
 
       - name: artifacts - download - kubectl manifests
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: kubectl
           path: .artifacts/kubectl
@@ -136,12 +124,11 @@ jobs:
           docker push ${{env.imageRepository}}:${{env.version}}-arm64v8
 
       - name: github - checkout - helm-charts
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: emberstack/helm-charts
-          token:  ${{ secrets.ES_GITHUB_PAT }}
+          token: ${{ secrets.ES_GITHUB_PAT }}
           path: helm-charts
-
 
       - name: github - publish - chart
         run: |
@@ -161,7 +148,7 @@ jobs:
 
       - name: github - release - set manifest name
         run: |
-          mkdir -p github 
+          mkdir -p github
           cp .artifacts/kubectl/reflector-${{env.version}}.yaml github/reflector.yaml
 
       - name: github - create release
@@ -174,4 +161,3 @@ jobs:
           token: ${{ secrets.ES_GITHUB_PAT }}
           files: |
             github/reflector.yaml
-            
