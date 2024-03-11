@@ -152,7 +152,7 @@ jobs:
           cp .artifacts/kubectl/reflector-${{env.version}}.yaml github/reflector.yaml
 
       - name: github - create release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           repository: emberstack/kubernetes-reflector
           tag_name: v${{env.version}}
