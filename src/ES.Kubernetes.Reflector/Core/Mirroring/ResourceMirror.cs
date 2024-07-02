@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+﻿﻿using System.Collections.Concurrent;
 using System.Net;
 using ES.Kubernetes.Reflector.Core.Extensions;
 using ES.Kubernetes.Reflector.Core.Json;
@@ -13,6 +13,7 @@ using MediatR;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.JsonPatch.Operations;
 using Newtonsoft.Json;
+using CloudNimble.EasyAF.NewtonsoftJson.Compatibility;
 
 namespace ES.Kubernetes.Reflector.Core.Mirroring;
 
@@ -478,7 +479,7 @@ public abstract class ResourceMirror<TResource> :
 
             await OnResourceConfigurePatch(source, patchDoc);
 
-            var patch = JsonConvert.SerializeObject(patchDoc, Formatting.Indented);
+            var patch = JsonConvert.SerializeObject(patchDoc, Formatting.Indented, new JsonSerializerSettings { ContractResolver = new SystemTextJsonContractResolver() });
             await OnResourceApplyPatch(new V1Patch(patch, V1Patch.PatchType.JsonPatch), targetId);
             Logger.LogInformation("Patched {id} as a reflection of {sourceId}", targetId, sourceId);
         }

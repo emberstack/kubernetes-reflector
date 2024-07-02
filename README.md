@@ -1,5 +1,5 @@
 # Reflector
-Reflector is a Kubernetes addon designed to monitor changes to resources (secrets and configmaps) and reflect changes to mirror resources in the same or other namespaces.
+Reflector is a Kubernetes addon designed to monitor changes to resources (secrets, configmaps, service accounts, roles and rolebindings) and reflect changes to mirror resources in the same or other namespaces.
 
 [![Pipeline](https://github.com/emberstack/kubernetes-reflector/actions/workflows/pipeline.yaml/badge.svg)](https://github.com/emberstack/kubernetes-reflector/actions/workflows/pipeline.yaml)
 [![Release](https://img.shields.io/github/release/emberstack/kubernetes-reflector.svg?style=flat-square)](https://github.com/emberstack/kubernetes-reflector/releases/latest)
@@ -70,7 +70,7 @@ $ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-refle
 
 ## Usage
 
-### 1. Annotate the source `secret` or `configmap`
+### 1. Annotate the source resource
   
   - Add `reflector.v1.k8s.emberstack.com/reflection-allowed: "true"` to the resource annotations to permit reflection to mirrors.
   - Add `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "<list>"` to the resource annotations to permit reflection from only the list of comma separated namespaces or regular expressions. Note: If this annotation is omitted or is empty, all namespaces are allowed.
@@ -110,7 +110,60 @@ $ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-refle
     ...
   ```
   
-### 2. Annotate the mirror secret or configmap
+  Example source service account:
+   ```yaml
+  piVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: source-service-account
+    namespace: default
+    annotations:
+      reflector.v1.k8s.emberstack.com/reflection-allowed: 'true'
+      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "namespace-1,namespace-2,namespace-[0-9]*"
+    ...
+  ```
+  Example source role:
+   ```yaml
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    name: source-role
+    namespace: default
+    annotations:
+      reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "namespace-1,namespace-2,namespace-[0-9]*"
+  rules:
+    - verbs:
+        - '*'
+      apiGroups:
+        - '*'
+      resources:
+        - '*'
+  ...
+  ```
+  Example source rolebindings:
+   ```yaml
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: source-role-binding
+    namespace: default
+    annotations:
+      reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "namespace-1,namespace-2,namespace-[0-9]*"
+    ...
+  subjects:
+    - kind: ServiceAccount
+      name: source-service-account
+      namespace: default
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: source-role
+  ```
+
+
+### 2. Annotate the mirror resource
 
   - Add `reflector.v1.k8s.emberstack.com/reflects: "<source namespace>/<source name>"` to the mirror object. The value of the annotation is the full name of the source object in `namespace/name` format.
 
@@ -140,14 +193,52 @@ $ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-refle
     ...
   ```
 
+  Example mirror service account:
+   ```yaml
+  apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: mirror-service-account
+    annotations:
+      reflector.v1.k8s.emberstack.com/reflects: "default/source-service-account"
+  data:
+    ...
+  ```
+
+  Example mirror role:
+   ```yaml
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    name: mirror-role
+    annotations:
+      reflector.v1.k8s.emberstack.com/reflects: "default/source-role"
+  data:
+    ...
+  ```
+
+  Example mirror rolebinding:
+   ```yaml
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: mirror-role-binding
+    annotations:
+      reflector.v1.k8s.emberstack.com/reflects: "default/source-role-binding"
+  data:
+    ...
+  ```
+
 ### 3. Done!
   Reflector will monitor any changes done to the source objects and copy the following fields:
   - `data` for secrets
   - `data` and `binaryData` for configmaps
+  - nothing for service accounts
+  - `rules` for roles
+  - `subjects` only for rolebindings, as `roleRef` is immutable
   Reflector keeps track of what was copied by annotating mirrors with the source object version.
 
  - - - -
-
 
 
 ## `cert-manager` support

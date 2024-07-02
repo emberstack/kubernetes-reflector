@@ -8,9 +8,12 @@ metadata:
     {{- include "reflector.labels" . | nindent 4 }}
 rules:
   - apiGroups: [""]
-    resources: ["configmaps", "secrets"]
+    resources: ["configmaps", "secrets", "serviceaccounts"]
     verbs: ["*"]
   - apiGroups: [""]
     resources: ["namespaces"]
     verbs: ["watch", "list"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: [ "roles", "rolebindings"]
+    verbs: ["*"]
 {{- end }}

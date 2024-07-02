@@ -75,6 +75,15 @@ try
 
         container.RegisterType<ConfigMapWatcher>().AsImplementedInterfaces().SingleInstance();
         container.RegisterType<ConfigMapMirror>().AsImplementedInterfaces().SingleInstance();
+
+        container.RegisterType<ServiceAccountWatcher>().AsImplementedInterfaces().SingleInstance();
+        container.RegisterType<ServiceAccountMirror>().AsImplementedInterfaces().SingleInstance();
+
+        container.RegisterType<RoleWatcher>().AsImplementedInterfaces().SingleInstance();
+        container.RegisterType<RoleMirror>().AsImplementedInterfaces().SingleInstance();
+
+        container.RegisterType<RoleBindingWatcher>().AsImplementedInterfaces().SingleInstance();
+        container.RegisterType<RoleBindingMirror>().AsImplementedInterfaces().SingleInstance();
     });
 
     builder.WebHost.ConfigureKestrel(options => { options.ListenAnyIP(25080); });
