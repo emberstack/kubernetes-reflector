@@ -24,7 +24,7 @@ version: 0.1.0
 appVersion: 0.1.0
 
 
-icon: https://raw.githubusercontent.com/emberstack/CDN/main/helm-charts/generic/emberstack_icon.png
+icon: https://raw.githubusercontent.com/emberstack/CDN/main/projects/helm-charts/generic/emberstack_icon.png
 keywords:
 - reflector
 - controller
