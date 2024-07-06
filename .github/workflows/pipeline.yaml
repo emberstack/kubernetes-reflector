@@ -132,12 +132,8 @@ jobs:
 
       - name: github - publish - chart
         run: |
-          mkdir -p helm-charts/charts
-          cp .artifacts/helm/reflector-${{env.version}}.tgz  helm-charts/charts
-
-          cd helm-charts
-          rm -f index.yaml
-          helm repo index ./
+          mkdir -p helm-charts/repository/reflector
+          cp .artifacts/helm/reflector-${{env.version}}.tgz  helm-charts/repository/reflector
 
           git config user.name "Romeo Dumitrescu"
           git config user.email "5931333+winromulus@users.noreply.github.com"
