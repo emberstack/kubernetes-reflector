@@ -129,6 +129,7 @@ jobs:
           repository: emberstack/helm-charts
           token: ${{ secrets.ES_GITHUB_PAT }}
           path: helm-charts
+          ref: main
 
       - name: github - publish - chart
         run: |
