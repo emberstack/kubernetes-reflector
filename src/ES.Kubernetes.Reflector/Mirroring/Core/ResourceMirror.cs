@@ -459,6 +459,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
             source = sourceObj;
         }
 
+        var sourceProperties = source.GetMirroringProperties();
 
         var patchAnnotations = new Dictionary<string, string>
         {
@@ -487,6 +488,17 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 newResourceAnnotations[Annotations.Reflection.MetaReflectedVersion] = source.Metadata.ResourceVersion;
                 newResourceAnnotations[Annotations.Reflection.MetaReflectedAt] = DateTimeOffset.UtcNow.ToString("O");
 
+                if (sourceProperties.Labels)
+                {
+                    newResource.Metadata.Labels ??= new Dictionary<string, string>();
+                    var newResourceLabels = newResource.Metadata.Labels;
+                    foreach (var label in source.Metadata.Labels)
+                    {
+                        if (sourceProperties.CanLabelBeReflected(label.Key))
+                            newResourceLabels[label.Key] = label.Value;
+                    }
+                }
+
                 try
                 {
                     await OnResourceCreate(newResource, reflectionNsName.Namespace);
@@ -514,6 +526,19 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
             foreach (var patchAnnotation in patchAnnotations)
                 annotations[patchAnnotation.Key] = patchAnnotation.Value;
             patchDoc.Replace(e => e.Metadata.Annotations, annotations);
+
+            if (sourceProperties.Labels && source.Metadata.Labels != null)
+            {
+                var labels = new Dictionary<string, string>();
+                if (reflectionObj.Metadata.Labels != null)
+                    labels = new Dictionary<string, string>(reflectionObj.Metadata.Labels);
+                foreach (var label in source.Metadata.Labels)
+                {
+                    if (sourceProperties.CanLabelBeReflected(label.Key))
+                        labels[label.Key] = label.Value;
+                }
+                patchDoc.Replace(e => e.Metadata.Labels, labels);
+            }
 
             await OnResourceConfigurePatch(source, patchDoc);
 

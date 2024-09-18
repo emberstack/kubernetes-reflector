@@ -1,4 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
 using ES.FX.KubernetesClient.Models;
 
 namespace ES.Kubernetes.Reflector.Mirroring.Core;
@@ -9,6 +9,8 @@ public class MirroringProperties
     public string AllowedNamespaces { get; set; } = string.Empty;
     public bool AutoEnabled { get; set; }
     public string AutoNamespaces { get; set; } = string.Empty;
+    public bool Labels { get; set; }
+    public string LabelsIncluded { get; set; } = string.Empty;
     public NamespacedName? Reflects { get; set; }
 
     public string ResourceVersion { get; set; } = string.Empty;
