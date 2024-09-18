@@ -17,6 +17,12 @@ public static class ReflectionStatusExtensions
     }
 
 
+    public static bool CanLabelBeReflected(this ReflectorProperties properties, string label)
+    {
+        return properties.Labels && PatternListMatch(properties.LabelsIncluded, label);
+    }
+
+
     private static bool PatternListMatch(string patternList, string value)
     {
         if (string.IsNullOrEmpty(patternList)) return true;
