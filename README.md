@@ -35,6 +35,7 @@ You can customize the values of the helm deployment by using the following Value
 | Parameter                                | Description                                      | Default                                                 |
 | ---------------------------------------- | ------------------------------------------------ | ------------------------------------------------------- |
 | `nameOverride`                           | Overrides release name                           | `""`                                                    |
+| `namespaceOverride`                      | Overrides namespace                              | `""`                                                    |
 | `fullnameOverride`                       | Overrides release fullname                       | `""`                                                    |
 | `image.repository`                       | Container image repository                       | `emberstack/kubernetes-reflector`                       |
 | `image.tag`                              | Container image tag                              | `Same as chart version`                                 |
