@@ -79,6 +79,7 @@ $ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-refle
   Reflector can create mirrors with the same name in other namespaces automatically. The following annotations control if and how the mirrors are created:
   - Add `reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"` to the resource annotations to automatically create mirrors in other namespaces. Note: Requires `reflector.v1.k8s.emberstack.com/reflection-allowed` to be `true` since mirrors need to able to reflect the source.
   - Add `reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "<list>"` to the resource annotations specify in which namespaces to automatically create mirrors. Note: If this annotation is omitted or is empty, all namespaces are allowed. Namespaces in this list will also be checked by `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces` since mirrors need to be in namespaces from where reflection is permitted.
+  - Optionally add `reflector.v1.k8s.emberstack.com/reflection-auto-key-mapping: "<list>"` to the resource annotations specify in the key mapping to use when automatically create mirrors. Expected format is a list of comma separated `src_key:dst_key`. 
 
   > Important: If the `source` is deleted, automatic mirrors are deleted. Also if either reflection or automirroring is turned off or the automatic mirror's namespace is no longer a valid match for the allowed namespaces, the automatic mirror is deleted.
 
@@ -109,10 +110,29 @@ $ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-refle
   data:
     ...
   ```
+
+  Example source secret with key mapping:
+   ```yaml
+  apiVersion: v1
+  kind: Secret
+  metadata:
+    name: source-secret
+    annotations:
+      reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "namespace-1,namespace-2,namespace-[0-9]*"
+      reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
+      reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "namespace-1"
+      reflector.v1.k8s.emberstack.com/reflection-auto-key-mapping: "user:username,pass:password"
+  data:
+    user: YWRtaW4K
+    pass: YWRtaW4K
+    ...
+  ```
   
 ### 2. Annotate the mirror secret or configmap
 
   - Add `reflector.v1.k8s.emberstack.com/reflects: "<source namespace>/<source name>"` to the mirror object. The value of the annotation is the full name of the source object in `namespace/name` format.
+  - Optionally add `reflector.v1.k8s.emberstack.com/reflection-key-mapping: "<list>"` to the resource annotations specify in the key mapping to use when mirroring. Expected format is a list of comma separated `src_key:dst_key`. All omitted source key will be copied as is. No warning will be issued if the source key does not exist.
 
   > Note: Add `reflector.v1.k8s.emberstack.com/reflected-version: ""` to the resource annotations when doing any manual changes to the mirror (for example when deploying with `helm` or re-applying the deployment script). This will reset the reflected version of the mirror.
   
@@ -136,6 +156,19 @@ $ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-refle
     name: mirror-config-map
     annotations:
       reflector.v1.k8s.emberstack.com/reflects: "default/source-config-map"
+  data:
+    ...
+  ```
+
+  Example mirror secret with key mapping :
+   ```yaml
+  apiVersion: v1
+  kind: Secret
+  metadata:
+    name: mirror-secret
+    annotations:
+      reflector.v1.k8s.emberstack.com/reflects: "default/source-secret"
+      reflector.v1.k8s.emberstack.com/reflection-key-mapping: "user:username,pass:password"
   data:
     ...
   ```

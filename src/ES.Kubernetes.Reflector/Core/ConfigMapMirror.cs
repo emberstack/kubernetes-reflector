@@ -23,10 +23,10 @@ public class ConfigMapMirror : ResourceMirror<V1ConfigMap>
         return Client.CoreV1.PatchNamespacedConfigMapAsync(patch, refId.Name, refId.Namespace);
     }
 
-    protected override Task OnResourceConfigurePatch(V1ConfigMap source, JsonPatchDocument<V1ConfigMap> patchDoc)
+    protected override Task OnResourceConfigurePatch(V1ConfigMap source, JsonPatchDocument<V1ConfigMap> patchDoc, Dictionary<string, string>? mapping)
     {
-        patchDoc.Replace(e => e.Data, source.Data);
-        patchDoc.Replace(e => e.BinaryData, source.BinaryData);
+        patchDoc.Replace(e => e.Data, MappedData(source.Data, mapping));
+        patchDoc.Replace(e => e.BinaryData, MappedData(source.BinaryData, mapping));
         return Task.CompletedTask;
     }
 
@@ -35,14 +35,14 @@ public class ConfigMapMirror : ResourceMirror<V1ConfigMap>
         return Client.CoreV1.CreateNamespacedConfigMapAsync(item, ns);
     }
 
-    protected override Task<V1ConfigMap> OnResourceClone(V1ConfigMap sourceResource)
+    protected override Task<V1ConfigMap> OnResourceClone(V1ConfigMap sourceResource, Dictionary<string, string>? mapping)
     {
         return Task.FromResult(new V1ConfigMap
         {
             ApiVersion = sourceResource.ApiVersion,
             Kind = sourceResource.Kind,
-            Data = sourceResource.Data,
-            BinaryData = sourceResource.BinaryData
+            Data =  MappedData(sourceResource.Data, mapping),
+            BinaryData = MappedData(sourceResource.BinaryData, mapping)
         });
     }
 

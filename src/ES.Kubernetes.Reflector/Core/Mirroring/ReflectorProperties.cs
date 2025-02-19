@@ -9,6 +9,8 @@ public class ReflectorProperties
     public bool AutoEnabled { get; set; }
     public string AutoNamespaces { get; set; } = string.Empty;
     public KubeRef Reflects { get; set; } = KubeRef.Empty;
+    public string KeyMapping { get; set; } = string.Empty;
+    public string AutoKeyMapping { get; set; } = string.Empty;
 
     public string Version { get; set; } = string.Empty;
 

@@ -149,6 +149,19 @@ public abstract class ResourceMirror<TResource> :
         }
     }
 
+    protected IDictionary<string, T> MappedData<T>(IDictionary<string, T>? data, Dictionary<string, string>? mapping = null)
+    {
+        mapping ??= new Dictionary<string, string>();
+        IDictionary<string, T> newData = new Dictionary<string, T>();
+        if (data != null)
+        {
+            foreach (var (key, value) in data)
+            {
+                newData.Add(mapping.GetValueOrDefault(key, key), value);
+            }
+        }
+        return newData;
+    }
 
     private async Task HandleUpsert(TResource resource, WatchEventType eventType, CancellationToken cancellationToken)
     {
@@ -428,13 +441,31 @@ public abstract class ResourceMirror<TResource> :
             [Annotations.Reflection.MetaReflectedVersion] = source.Metadata.ResourceVersion,
             [Annotations.Reflection.MetaReflectedAt] = JsonConvert.SerializeObject(DateTimeOffset.UtcNow)
         };
+        patchAnnotations[Annotations.Reflection.KeyMapping] = "";
+        if (autoReflection)
+        {
+            patchAnnotations[Annotations.Reflection.KeyMapping] = autoReflection ? source.GetReflectionProperties().AutoKeyMapping : string.Empty;
+        } else if (targetResource is not null)
+        {
+            patchAnnotations[Annotations.Reflection.KeyMapping] =
+                targetResource.Metadata.Annotations.TryGetValue(Annotations.Reflection.KeyMapping, out var keyMapping) ? keyMapping : string.Empty;
+        }
 
+        Dictionary<string, string> mapping = new Dictionary<string, string>();
+        try
+        {
+            mapping = Mapping(patchAnnotations[Annotations.Reflection.KeyMapping]);
+        }
+        catch (FormatException e)
+        {
+            Logger.LogError(e, e.Message);
+        }
 
         try
         {
             if (targetResource is null)
             {
-                var newResource = await OnResourceClone(source);
+                var newResource = await OnResourceClone(source, mapping);
                 newResource.Metadata ??= new V1ObjectMeta();
                 newResource.Metadata.Name = targetId.Name;
                 newResource.Metadata.NamespaceProperty = targetId.Namespace;
@@ -442,11 +473,6 @@ public abstract class ResourceMirror<TResource> :
                 var newResourceAnnotations = newResource.Metadata.Annotations;
                 foreach (var patchAnnotation in patchAnnotations)
                     newResourceAnnotations[patchAnnotation.Key] = patchAnnotation.Value;
-                newResourceAnnotations[Annotations.Reflection.MetaAutoReflects] = autoReflection.ToString();
-                newResourceAnnotations[Annotations.Reflection.Reflects] = sourceId.ToString();
-                newResourceAnnotations[Annotations.Reflection.MetaReflectedVersion] = source.Metadata.ResourceVersion;
-                newResourceAnnotations[Annotations.Reflection.MetaReflectedAt] =
-                    JsonConvert.SerializeObject(DateTimeOffset.UtcNow);
 
                 try
                 {
@@ -476,7 +502,7 @@ public abstract class ResourceMirror<TResource> :
                 annotations[patchAnnotation.Key] = patchAnnotation.Value;
             patchDoc.Replace(e => e.Metadata.Annotations, annotations);
 
-            await OnResourceConfigurePatch(source, patchDoc);
+            await OnResourceConfigurePatch(source, patchDoc, mapping);
 
             var patch = JsonConvert.SerializeObject(patchDoc, Formatting.Indented);
             await OnResourceApplyPatch(new V1Patch(patch, V1Patch.PatchType.JsonPatch), targetId);
@@ -488,11 +514,31 @@ public abstract class ResourceMirror<TResource> :
         }
     }
 
+    private Dictionary<string, string> Mapping(string? keyMapping)
+    {
+        var mappings = new Dictionary<string, string>();
+        if (string.IsNullOrEmpty(keyMapping)) return mappings;
+
+        foreach (var definition in keyMapping.Split(","))
+        {
+            var definitionDetail = definition.Split(":");
+            if (definitionDetail.Length == 2)
+            {
+                mappings.Add(definitionDetail[0], definitionDetail[1]);
+            }
+            else
+            {
+                throw new FormatException("Invalid key mapping, format is src_key:dst_key,src_other:dst_other. Received: " + definition);
+            }
+        }
+        return mappings;
+    }
+
 
     protected abstract Task OnResourceApplyPatch(V1Patch source, KubeRef refId);
-    protected abstract Task OnResourceConfigurePatch(TResource source, JsonPatchDocument<TResource> patchDoc);
+    protected abstract Task OnResourceConfigurePatch(TResource source, JsonPatchDocument<TResource> patchDoc, Dictionary<string, string> mapping);
     protected abstract Task OnResourceCreate(TResource item, string ns);
-    protected abstract Task<TResource> OnResourceClone(TResource sourceResource);
+    protected abstract Task<TResource> OnResourceClone(TResource sourceResource, Dictionary<string, string> mapping);
     protected abstract Task OnResourceDelete(KubeRef resourceId);
 
 
