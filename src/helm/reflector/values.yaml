@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: emberstack/kubernetes-reflector
+  repository: docker.io/emberstack/kubernetes-reflector
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
@@ -101,6 +101,8 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+topologySpreadConstraints: []
 
 priorityClassName: ""
 
