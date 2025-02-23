@@ -56,7 +56,7 @@ securityContext:
   capabilities:
     drop:
       - ALL
-  readOnlyRootFilesystem: false
+  readOnlyRootFilesystem: true
   runAsNonRoot: true
   runAsUser: 1000
 
@@ -105,3 +105,12 @@ affinity: {}
 topologySpreadConstraints: []
 
 priorityClassName: ""
+
+#mount external persistent/ephemeral storage to required locations if readOnlyRootFileSystem=true
+volumes:
+  - name: tmp
+    emptyDir: {}
+
+volumeMounts:
+  - name: tmp
+    mountPath: /tmp
