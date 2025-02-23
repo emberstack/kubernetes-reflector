@@ -35,6 +35,7 @@ You can customize the values of the helm deployment by using the following Value
 | Parameter                                | Description                                      | Default                                                 |
 | ---------------------------------------- | ------------------------------------------------ | ------------------------------------------------------- |
 | `nameOverride`                           | Overrides release name                           | `""`                                                    |
+| `namespaceOverride`                      | Overrides namespace                              | `""`                                                    |
 | `fullnameOverride`                       | Overrides release fullname                       | `""`                                                    |
 | `image.repository`                       | Container image repository                       | `emberstack/kubernetes-reflector`                       |
 | `image.tag`                              | Container image tag                              | `Same as chart version`                                 |
@@ -165,6 +166,8 @@ spec:
       reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: ""
   ...
   ```
+
+=======
 > Since version 1.15 of cert-manager you can annotate `Ingress` to create secrets created from certificates for mirroring using `cert-manager.io/secret-template` annotation  (see https://github.com/cert-manager/cert-manager/pull/6839).
 ```yaml
 apiVersion: networking.k8s.io/v1

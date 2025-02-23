@@ -12,6 +12,7 @@ image:
 
 imagePullSecrets: []
 nameOverride: ""
+namespaceOverride: ""
 fullnameOverride: ""
 
 cron:
