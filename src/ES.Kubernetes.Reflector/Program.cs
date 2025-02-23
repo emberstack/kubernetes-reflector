@@ -35,7 +35,7 @@ try
     builder.Services.AddHttpClient();
     builder.Services.AddOptions();
     builder.Services.AddHealthChecks();
-    builder.Services.AddMediatR(config => config.RegisterServicesFromAssembly(typeof(void).Assembly));
+    builder.Services.AddMediatR(config => config.RegisterServicesFromAssembly(typeof(Program).Assembly));
     builder.Services.AddControllers();
 
     builder.Services.Configure<ReflectorOptions>(builder.Configuration.GetSection("Reflector"));
@@ -61,9 +61,6 @@ try
     builder.Services.AddHostedService<NamespaceWatcher>();
     builder.Services.AddHostedService<SecretWatcher>();
     builder.Services.AddHostedService<ConfigMapWatcher>();
-    
-    builder.Services.AddSingleton<SecretMirror>();
-    builder.Services.AddSingleton<ConfigMapMirror>();
 
     builder.WebHost.ConfigureKestrel(options => { options.ListenAnyIP(25080); });
 
