@@ -1,5 +1,3 @@
-using Autofac;
-using Autofac.Extensions.DependencyInjection;
 using ES.Kubernetes.Reflector.Core;
 using ES.Kubernetes.Reflector.Core.Configuration;
 using k8s;
@@ -30,7 +28,6 @@ try
     builder.Configuration.AddEnvironmentVariables("ES_");
     builder.Configuration.AddCommandLine(args);
 
-    builder.Host.UseServiceProviderFactory(new AutofacServiceProviderFactory());
     builder.Host.UseSerilog();
     builder.Host.UseConsoleLifetime();
 
@@ -57,25 +54,16 @@ try
         }
         return config;
     });
-   
-
+    
     builder.Services.AddSingleton<IKubernetes>(s =>
         new Kubernetes(s.GetRequiredService<KubernetesClientConfiguration>()));
-
-
-
-    builder.Host.ConfigureContainer((ContainerBuilder container) =>
-    {
-        container.Register(c => c.Resolve<IHttpClientFactory>().CreateClient()).AsSelf();
-
-        container.RegisterType<NamespaceWatcher>().AsImplementedInterfaces().SingleInstance();
-
-        container.RegisterType<SecretWatcher>().AsImplementedInterfaces().SingleInstance();
-        container.RegisterType<SecretMirror>().AsImplementedInterfaces().SingleInstance();
-
-        container.RegisterType<ConfigMapWatcher>().AsImplementedInterfaces().SingleInstance();
-        container.RegisterType<ConfigMapMirror>().AsImplementedInterfaces().SingleInstance();
-    });
+    
+    builder.Services.AddHostedService<NamespaceWatcher>();
+    builder.Services.AddHostedService<SecretWatcher>();
+    builder.Services.AddHostedService<ConfigMapWatcher>();
+    
+    builder.Services.AddSingleton<SecretMirror>();
+    builder.Services.AddSingleton<ConfigMapMirror>();
 
     builder.WebHost.ConfigureKestrel(options => { options.ListenAnyIP(25080); });
 
