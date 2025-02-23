@@ -374,7 +374,7 @@ public abstract class ResourceMirror<TResource> :
                         m.GetReflectionProperties().Reflects.Equals(resourceRef))
             .Select(m => m.GetRef()).ToList();
 
-        
+
 
         autoReflectionList.Clear();
         autoReflectionList.AddRange(toCreate);
@@ -438,15 +438,10 @@ public abstract class ResourceMirror<TResource> :
                 newResource.Metadata ??= new V1ObjectMeta();
                 newResource.Metadata.Name = targetId.Name;
                 newResource.Metadata.NamespaceProperty = targetId.Namespace;
-                newResource.Metadata.Annotations ??= new Dictionary<string, string>();
-                var newResourceAnnotations = newResource.Metadata.Annotations;
+                newResource.Metadata.Labels = source.Metadata.Labels ?? new Dictionary<string, string>();
+                newResource.Metadata.Annotations = source.Metadata.Annotations ?? new Dictionary<string, string>();
                 foreach (var patchAnnotation in patchAnnotations)
-                    newResourceAnnotations[patchAnnotation.Key] = patchAnnotation.Value;
-                newResourceAnnotations[Annotations.Reflection.MetaAutoReflects] = autoReflection.ToString();
-                newResourceAnnotations[Annotations.Reflection.Reflects] = sourceId.ToString();
-                newResourceAnnotations[Annotations.Reflection.MetaReflectedVersion] = source.Metadata.ResourceVersion;
-                newResourceAnnotations[Annotations.Reflection.MetaReflectedAt] =
-                    JsonConvert.SerializeObject(DateTimeOffset.UtcNow);
+                    newResource.Metadata.Annotations[patchAnnotation.Key] = patchAnnotation.Value;
 
                 try
                 {
@@ -471,10 +466,17 @@ public abstract class ResourceMirror<TResource> :
 
             var patchDoc = new JsonPatchDocument<TResource>(new List<Operation<TResource>>(),
                 new JsonPropertyNameContractResolver());
-            var annotations = new Dictionary<string, string>(targetResource.Metadata.Annotations);
+
+            var annotations = source.Metadata.Annotations ?? new Dictionary<string, string>();
+
             foreach (var patchAnnotation in patchAnnotations)
                 annotations[patchAnnotation.Key] = patchAnnotation.Value;
+
             patchDoc.Replace(e => e.Metadata.Annotations, annotations);
+
+            var labels = source.Metadata.Labels ?? new Dictionary<string, string>();
+
+            patchDoc.Replace(e => e.Metadata.Labels, labels);
 
             await OnResourceConfigurePatch(source, patchDoc);
 
