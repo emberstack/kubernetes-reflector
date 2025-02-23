@@ -8,18 +8,18 @@ using Microsoft.Extensions.Options;
 
 namespace ES.Kubernetes.Reflector.Core;
 
-public class ConfigMapWatcher : WatcherBackgroundService<V1ConfigMap, V1ConfigMapList>
+public class ConfigMapWatcher(
+    ILogger<ConfigMapWatcher> logger,
+    IMediator mediator,
+    IServiceProvider serviceProvider,
+    IOptionsMonitor<ReflectorOptions> options)
+    : WatcherBackgroundService<V1ConfigMap, V1ConfigMapList>(logger, mediator, serviceProvider, options)
 {
-    public ConfigMapWatcher(ILogger<ConfigMapWatcher> logger, IMediator mediator, IKubernetes client,
-        IOptionsMonitor<ReflectorOptions> options) :
-        base(logger, mediator, client, options)
+    protected override Task<HttpOperationResponse<V1ConfigMapList>> OnGetWatcher(IKubernetes client,
+        CancellationToken cancellationToken)
     {
-    }
-
-
-    protected override Task<HttpOperationResponse<V1ConfigMapList>> OnGetWatcher(CancellationToken cancellationToken)
-    {
-        return Client.CoreV1.ListConfigMapForAllNamespacesWithHttpMessagesAsync(watch: true, timeoutSeconds: WatcherTimeout,
+        return client.CoreV1.ListConfigMapForAllNamespacesWithHttpMessagesAsync(watch: true,
+            timeoutSeconds: WatcherTimeout,
             cancellationToken: cancellationToken);
     }
 }

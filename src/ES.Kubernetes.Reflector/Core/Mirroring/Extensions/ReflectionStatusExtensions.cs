@@ -20,7 +20,7 @@ public static class ReflectionStatusExtensions
     private static bool PatternListMatch(string patternList, string value)
     {
         if (string.IsNullOrEmpty(patternList)) return true;
-        var regexPatterns = patternList.Split(new[] {","}, StringSplitOptions.RemoveEmptyEntries);
+        var regexPatterns = patternList.Split(new[] { "," }, StringSplitOptions.RemoveEmptyEntries);
         return regexPatterns.Where(s => !string.IsNullOrWhiteSpace(s)).Select(s => s.Trim())
             .Select(pattern => Regex.Match(value, pattern))
             .Any(match => match.Success && match.Value.Length == value.Length);

@@ -6,21 +6,23 @@ using Microsoft.AspNetCore.JsonPatch;
 
 namespace ES.Kubernetes.Reflector.Core;
 
-public class SecretMirror : ResourceMirror<V1Secret>
+public class SecretMirror(ILogger<SecretMirror> logger, IServiceProvider serviceProvider)
+    : ResourceMirror<V1Secret>(logger, serviceProvider)
 {
-    public SecretMirror(ILogger<SecretMirror> logger, IKubernetes client) : base(logger, client)
-    {
-    }
+    private readonly IServiceProvider _serviceProvider = serviceProvider;
 
     protected override async Task<V1Secret[]> OnResourceWithNameList(string itemRefName)
     {
-        return (await Client.CoreV1.ListSecretForAllNamespacesAsync(fieldSelector: $"metadata.name={itemRefName}")).Items
+        using var client = _serviceProvider.GetRequiredService<IKubernetes>();
+        return (await client.CoreV1.ListSecretForAllNamespacesAsync(fieldSelector: $"metadata.name={itemRefName}"))
+            .Items
             .ToArray();
     }
 
-    protected override Task OnResourceApplyPatch(V1Patch patch, KubeRef refId)
+    protected override async Task OnResourceApplyPatch(V1Patch patch, KubeRef refId)
     {
-        return Client.CoreV1.PatchNamespacedSecretWithHttpMessagesAsync(patch, refId.Name, refId.Namespace);
+        using var client = _serviceProvider.GetRequiredService<IKubernetes>();
+        await client.CoreV1.PatchNamespacedSecretWithHttpMessagesAsync(patch, refId.Name, refId.Namespace);
     }
 
     protected override Task OnResourceConfigurePatch(V1Secret source, JsonPatchDocument<V1Secret> patchDoc)
@@ -29,9 +31,10 @@ public class SecretMirror : ResourceMirror<V1Secret>
         return Task.CompletedTask;
     }
 
-    protected override Task OnResourceCreate(V1Secret item, string ns)
+    protected override async Task OnResourceCreate(V1Secret item, string ns)
     {
-        return Client.CoreV1.CreateNamespacedSecretAsync(item, ns);
+        using var client = _serviceProvider.GetRequiredService<IKubernetes>();
+        await client.CoreV1.CreateNamespacedSecretAsync(item, ns);
     }
 
     protected override Task<V1Secret> OnResourceClone(V1Secret sourceResource)
@@ -45,14 +48,16 @@ public class SecretMirror : ResourceMirror<V1Secret>
         });
     }
 
-    protected override Task OnResourceDelete(KubeRef resourceId)
+    protected override async Task OnResourceDelete(KubeRef resourceId)
     {
-        return Client.CoreV1.DeleteNamespacedSecretAsync(resourceId.Name, resourceId.Namespace);
+        using var client = _serviceProvider.GetRequiredService<IKubernetes>();
+        await client.CoreV1.DeleteNamespacedSecretAsync(resourceId.Name, resourceId.Namespace);
     }
 
-    protected override Task<V1Secret> OnResourceGet(KubeRef refId)
+    protected override async Task<V1Secret> OnResourceGet(KubeRef refId)
     {
-        return Client.CoreV1.ReadNamespacedSecretAsync(refId.Name, refId.Namespace);
+        using var client = _serviceProvider.GetRequiredService<IKubernetes>();
+        return await client.CoreV1.ReadNamespacedSecretAsync(refId.Name, refId.Namespace);
     }
 
     protected override Task<bool> OnResourceIgnoreCheck(V1Secret item)

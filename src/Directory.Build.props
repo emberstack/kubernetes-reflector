@@ -1,0 +1,34 @@
+<Project>
+	<!-- Project defaults -->
+	<PropertyGroup>
+		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<!--Generate debug symbols and embed them in the build output.-->
+		<DebugType>embedded</DebugType>
+		<DebugSymbols>true</DebugSymbols>
+		<!--Set the solution directory to the parent directory of the build file.-->
+		<SolutionDir Condition="'$(SolutionDir)' == ''">$(MSBuildThisFileDirectory)..\</SolutionDir>
+		<!--Generate XML documentation file-->
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<!--Disable warnings from XML documentation - CS1591;CS1571;CS1573;CS1574;CS1723; - -->
+		<!--Disable warnings NuGet vulnerabilities - NU1901;NU1902;NU1903; - -->
+		<NoWarn>CS1591;CS1571;CS1573;CS1574;CS1723;NU1901;NU1902;NU1903;</NoWarn>
+	</PropertyGroup>
+
+	<!-- JetBrains.Annotations -->
+	<ItemGroup>
+		<PackageReference Include="JetBrains.Annotations" PrivateAssets="All" />
+	</ItemGroup>
+
+	<!--Test projects-->
+	<ItemGroup Condition="'$(MSBuildProjectName)' == '' Or $(MSBuildProjectName.Contains('.Tests'))">
+		<AssemblyAttribute Include="System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute" />
+	</ItemGroup>
+	<PropertyGroup Condition="'$(MSBuildProjectName)' == '' Or $(MSBuildProjectName.Contains('.Tests'))">
+		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+		<VSTestLogger>trx%3bLogFileName=$(MSBuildProjectName).trx</VSTestLogger>
+		<VSTestResultsDirectory>$(MSBuildThisFileDirectory).artifacts/TestResults</VSTestResultsDirectory>
+	</PropertyGroup>
+</Project>

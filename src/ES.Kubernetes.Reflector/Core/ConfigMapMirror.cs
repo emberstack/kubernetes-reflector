@@ -6,21 +6,23 @@ using Microsoft.AspNetCore.JsonPatch;
 
 namespace ES.Kubernetes.Reflector.Core;
 
-public class ConfigMapMirror : ResourceMirror<V1ConfigMap>
+public class ConfigMapMirror(ILogger<ConfigMapMirror> logger, IServiceProvider serviceProvider)
+    : ResourceMirror<V1ConfigMap>(logger, serviceProvider)
 {
-    public ConfigMapMirror(ILogger<ConfigMapMirror> logger, IKubernetes client) : base(logger, client)
-    {
-    }
+    private readonly IServiceProvider _serviceProvider = serviceProvider;
 
     protected override async Task<V1ConfigMap[]> OnResourceWithNameList(string itemRefName)
     {
-        return (await Client.CoreV1.ListConfigMapForAllNamespacesAsync(fieldSelector: $"metadata.name={itemRefName}")).Items
+        using var client = _serviceProvider.GetRequiredService<IKubernetes>();
+        return (await client.CoreV1.ListConfigMapForAllNamespacesAsync(fieldSelector: $"metadata.name={itemRefName}"))
+            .Items
             .ToArray();
     }
 
-    protected override Task OnResourceApplyPatch(V1Patch patch, KubeRef refId)
+    protected override async Task OnResourceApplyPatch(V1Patch patch, KubeRef refId)
     {
-        return Client.CoreV1.PatchNamespacedConfigMapAsync(patch, refId.Name, refId.Namespace);
+        using var client = _serviceProvider.GetRequiredService<IKubernetes>();
+        await client.CoreV1.PatchNamespacedConfigMapAsync(patch, refId.Name, refId.Namespace);
     }
 
     protected override Task OnResourceConfigurePatch(V1ConfigMap source, JsonPatchDocument<V1ConfigMap> patchDoc)
@@ -30,9 +32,10 @@ public class ConfigMapMirror : ResourceMirror<V1ConfigMap>
         return Task.CompletedTask;
     }
 
-    protected override Task OnResourceCreate(V1ConfigMap item, string ns)
+    protected override async Task OnResourceCreate(V1ConfigMap item, string ns)
     {
-        return Client.CoreV1.CreateNamespacedConfigMapAsync(item, ns);
+        using var client = _serviceProvider.GetRequiredService<IKubernetes>();
+        await client.CoreV1.CreateNamespacedConfigMapAsync(item, ns);
     }
 
     protected override Task<V1ConfigMap> OnResourceClone(V1ConfigMap sourceResource)
@@ -46,13 +49,15 @@ public class ConfigMapMirror : ResourceMirror<V1ConfigMap>
         });
     }
 
-    protected override Task OnResourceDelete(KubeRef resourceId)
+    protected override async Task OnResourceDelete(KubeRef resourceId)
     {
-        return Client.CoreV1.DeleteNamespacedConfigMapAsync(resourceId.Name, resourceId.Namespace);
+        using var client = _serviceProvider.GetRequiredService<IKubernetes>();
+        await client.CoreV1.DeleteNamespacedConfigMapAsync(resourceId.Name, resourceId.Namespace);
     }
 
-    protected override Task<V1ConfigMap> OnResourceGet(KubeRef refId)
+    protected override async Task<V1ConfigMap> OnResourceGet(KubeRef refId)
     {
-        return Client.CoreV1.ReadNamespacedConfigMapAsync(refId.Name, refId.Namespace);
+        using var client = _serviceProvider.GetRequiredService<IKubernetes>();
+        return await client.CoreV1.ReadNamespacedConfigMapAsync(refId.Name, refId.Namespace);
     }
 }

@@ -9,41 +9,43 @@ using Microsoft.Extensions.Options;
 
 namespace ES.Kubernetes.Reflector.Core.Watchers;
 
-public abstract class WatcherBackgroundService<TResource, TResourceList> : BackgroundService
+public abstract class WatcherBackgroundService<TResource, TResourceList>(
+    ILogger logger,
+    IMediator mediator,
+    IServiceProvider serviceProvider,
+    IOptionsMonitor<ReflectorOptions> options)
+    : BackgroundService
     where TResource : IKubernetesObject<V1ObjectMeta>
 {
-    private readonly IOptionsMonitor<ReflectorOptions> _options;
-    protected readonly IKubernetes Client;
-    protected readonly ILogger Logger;
-    protected readonly IMediator Mediator;
+    protected readonly ILogger Logger = logger;
+    protected readonly IMediator Mediator = mediator;
 
-    protected WatcherBackgroundService(ILogger logger, IMediator mediator, IKubernetes client,
-        IOptionsMonitor<ReflectorOptions> options)
-    {
-        Logger = logger;
-        Mediator = mediator;
-        Client = client;
-        _options = options;
-    }
-
-    protected int? WatcherTimeout => _options.CurrentValue.Watcher?.Timeout;
+    protected int WatcherTimeout => options.CurrentValue.Watcher?.Timeout ?? 3600;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var sessionStopwatch = new Stopwatch();
         while (!stoppingToken.IsCancellationRequested)
         {
+            await using var scope = serviceProvider.CreateAsyncScope();
+
             var sessionFaulted = false;
             sessionStopwatch.Restart();
+
 
             try
             {
                 Logger.LogInformation("Requesting {type} resources", typeof(TResource).Name);
-                using var watcher = OnGetWatcher(stoppingToken);
-                var watchList = watcher.WatchAsync<TResource, TResourceList>(cancellationToken: stoppingToken);
 
-                await foreach (var (type, item) in watchList
-                                   .WithCancellation(stoppingToken))
+
+                using var absoluteTimeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(WatcherTimeout + 3));
+                using var cancellationCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, absoluteTimeoutCts.Token);
+                using var client = scope.ServiceProvider.GetRequiredService<IKubernetes>();
+
+                using var watcher = OnGetWatcher(client, stoppingToken);
+                var watchList = watcher.WatchAsync<TResource, TResourceList>(cancellationToken: cancellationCts.Token);
+
+                await foreach (var (type, item) in watchList)
                     await Mediator.Publish(new WatcherEvent
                     {
                         Item = item,
@@ -77,5 +79,6 @@ public abstract class WatcherBackgroundService<TResource, TResourceList> : Backg
         }
     }
 
-    protected abstract Task<HttpOperationResponse<TResourceList>> OnGetWatcher(CancellationToken cancellationToken);
+    protected abstract Task<HttpOperationResponse<TResourceList>> OnGetWatcher(IKubernetes client,
+        CancellationToken cancellationToken);
 }

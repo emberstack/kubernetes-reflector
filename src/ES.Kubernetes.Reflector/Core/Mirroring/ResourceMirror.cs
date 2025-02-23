@@ -16,7 +16,7 @@ using Newtonsoft.Json;
 
 namespace ES.Kubernetes.Reflector.Core.Mirroring;
 
-public abstract class ResourceMirror<TResource> :
+public abstract class ResourceMirror<TResource>(ILogger logger, IServiceProvider serviceProvider) :
     INotificationHandler<WatcherEvent>,
     INotificationHandler<WatcherClosed>
     where TResource : class, IKubernetesObject<V1ObjectMeta>
@@ -27,23 +27,14 @@ public abstract class ResourceMirror<TResource> :
 
     private readonly ConcurrentDictionary<KubeRef, bool> _notFoundCache = new();
     private readonly ConcurrentDictionary<KubeRef, ReflectorProperties> _propertiesCache = new();
-    protected readonly IKubernetes Client;
-    protected readonly ILogger Logger;
-
-
-    protected ResourceMirror(ILogger logger, IKubernetes client)
-    {
-        Logger = logger;
-        Client = client;
-    }
+    protected readonly ILogger Logger = logger;
 
 
     /// <summary>
-    /// Handles <see cref="WatcherClosed"/> notifications
+    ///     Handles <see cref="WatcherClosed" /> notifications
     /// </summary>
     public Task Handle(WatcherClosed notification, CancellationToken cancellationToken)
     {
-
         //If not TResource or Namespace, not something this instance should handle
         if (notification.ResourceType != typeof(TResource) &&
             notification.ResourceType != typeof(V1Namespace)) return Task.CompletedTask;
@@ -60,9 +51,8 @@ public abstract class ResourceMirror<TResource> :
     }
 
     /// <summary>
-    /// Handles <see cref="WatcherEvent"/> notifications
+    ///     Handles <see cref="WatcherEvent" /> notifications
     /// </summary>
-
     public async Task Handle(WatcherEvent notification, CancellationToken cancellationToken)
     {
         switch (notification.Item)
@@ -82,37 +72,37 @@ public abstract class ResourceMirror<TResource> :
                 {
                     case WatchEventType.Added:
                     case WatchEventType.Modified:
-                        {
-                            await HandleUpsert(resource, notification.Type, cancellationToken);
-                        }
+                    {
+                        await HandleUpsert(resource, cancellationToken);
+                    }
                         break;
                     case WatchEventType.Deleted:
+                    {
+                        _propertiesCache.Remove(itemRef, out _);
+                        var properties = resource.GetReflectionProperties();
+
+
+                        if (!properties.IsReflection)
                         {
-                            _propertiesCache.Remove(itemRef, out _);
-                            var properties = resource.GetReflectionProperties();
+                            if (properties is { Allowed: true, AutoEnabled: true } &&
+                                _autoReflectionCache.TryGetValue(itemRef, out var reflectionList))
+                                foreach (var reflectionId in reflectionList.ToArray())
+                                {
+                                    Logger.LogDebug("Deleting {id} - Source {sourceId} has been deleted", reflectionId,
+                                        itemRef);
+                                    await OnResourceDelete(reflectionId);
+                                }
 
-
-                            if (!properties.IsReflection)
-                            {
-                                if (properties is { Allowed: true, AutoEnabled: true } &&
-                                    _autoReflectionCache.TryGetValue(itemRef, out var reflectionList))
-                                    foreach (var reflectionId in reflectionList.ToArray())
-                                    {
-                                        Logger.LogDebug("Deleting {id} - Source {sourceId} has been deleted", reflectionId,
-                                            itemRef);
-                                        await OnResourceDelete(reflectionId);
-                                    }
-
-                                _autoSources.Remove(itemRef, out _);
-                                _directReflectionCache.Remove(itemRef, out _);
-                                _autoReflectionCache.Remove(itemRef, out _);
-                            }
-                            else
-                            {
-                                foreach (var item in _directReflectionCache) item.Value.Remove(itemRef);
-                                foreach (var item in _autoReflectionCache) item.Value.Remove(itemRef);
-                            }
+                            _autoSources.Remove(itemRef, out _);
+                            _directReflectionCache.Remove(itemRef, out _);
+                            _autoReflectionCache.Remove(itemRef, out _);
                         }
+                        else
+                        {
+                            foreach (var item in _directReflectionCache) item.Value.Remove(itemRef);
+                            foreach (var item in _autoReflectionCache) item.Value.Remove(itemRef);
+                        }
+                    }
                         break;
                     case WatchEventType.Error:
                     case WatchEventType.Bookmark:
@@ -122,35 +112,35 @@ public abstract class ResourceMirror<TResource> :
 
                 break;
             case V1Namespace ns:
+            {
+                if (notification.Type != WatchEventType.Added) return;
+                Logger.LogTrace("Handling {eventType} {resourceType} {resourceRef}", notification.Type, ns.Kind,
+                    ns.GetRef());
+
+
+                foreach (var autoSourceRef in _autoSources.Keys)
                 {
-                    if (notification.Type != WatchEventType.Added) return;
-                    Logger.LogTrace("Handling {eventType} {resourceType} {resourceRef}", notification.Type, ns.Kind,
-                        ns.GetRef());
+                    var properties = _propertiesCache[autoSourceRef];
+                    if (!properties.CanBeAutoReflectedToNamespace(ns.Name())) continue;
 
 
-                    foreach (var autoSourceRef in _autoSources.Keys)
-                    {
-                        var properties = _propertiesCache[autoSourceRef];
-                        if (!properties.CanBeAutoReflectedToNamespace(ns.Name())) continue;
+                    var reflectionRef = new KubeRef(ns.Name(), autoSourceRef.Name);
+                    var autoReflectionList = _autoReflectionCache.GetOrAdd(autoSourceRef, new List<KubeRef>());
 
+                    if (autoReflectionList.Contains(reflectionRef)) return;
 
-                        var reflectionRef = new KubeRef(ns.Name(), autoSourceRef.Name);
-                        var autoReflectionList = _autoReflectionCache.GetOrAdd(autoSourceRef, new List<KubeRef>());
+                    await ResourceReflect(autoSourceRef, reflectionRef, null, null, true);
 
-                        if (autoReflectionList.Contains(reflectionRef)) return;
-
-                        await ResourceReflect(autoSourceRef, reflectionRef, null, null, true);
-
-                        if (!autoReflectionList.Contains(reflectionRef))
-                            autoReflectionList.Add(reflectionRef);
-                    }
+                    if (!autoReflectionList.Contains(reflectionRef))
+                        autoReflectionList.Add(reflectionRef);
                 }
+            }
                 break;
         }
     }
 
 
-    private async Task HandleUpsert(TResource resource, WatchEventType eventType, CancellationToken cancellationToken)
+    private async Task HandleUpsert(TResource resource, CancellationToken cancellationToken)
     {
         var resourceRef = resource.GetRef();
         var properties = resource.GetReflectionProperties();
@@ -187,13 +177,13 @@ public abstract class ResourceMirror<TResource> :
                     await OnResourceDelete(reflectionId);
                 }
 
-            var isAutoSource = properties is { Allowed: true, AutoEnabled: true};
+            var isAutoSource = properties is { Allowed: true, AutoEnabled: true };
 
             //Update the status of an auto-source
             _autoSources.AddOrUpdate(resourceRef, isAutoSource, (_, _) => isAutoSource);
 
             //If not allowed or auto is disabled, remove the cache for auto-reflections
-            if (!isAutoSource) { _autoReflectionCache.Remove(resourceRef, out _); }
+            if (!isAutoSource) _autoReflectionCache.Remove(resourceRef, out _);
 
             //If reflection is disabled, remove the reflections cache and stop reflecting
             if (!properties.Allowed)
@@ -207,7 +197,7 @@ public abstract class ResourceMirror<TResource> :
             if (_directReflectionCache.TryGetValue(resourceRef, out reflectionList))
                 foreach (var reflectionRef in reflectionList.ToArray())
                 {
-                    //Try to get the properties for the reflection. Otherwise remove it
+                    //Try to get the properties for the reflection. Otherwise, remove it
                     if (!_propertiesCache.TryGetValue(reflectionRef, out var reflectionProperties))
                     {
                         reflectionList.Remove(reflectionRef);
@@ -334,7 +324,8 @@ public abstract class ResourceMirror<TResource> :
         var autoReflectionList = _autoReflectionCache.GetOrAdd(resourceRef, _ => new List<KubeRef>());
 
         var matches = await OnResourceWithNameList(resourceRef.Name);
-        var namespaces = (await Client.CoreV1.ListNamespaceAsync(cancellationToken: cancellationToken)).Items;
+        using var client = serviceProvider.GetRequiredService<IKubernetes>();
+        var namespaces = (await client.CoreV1.ListNamespaceAsync(cancellationToken: cancellationToken)).Items;
 
         foreach (var match in matches)
         {
@@ -374,7 +365,6 @@ public abstract class ResourceMirror<TResource> :
                         m.GetReflectionProperties().Reflects.Equals(resourceRef))
             .Select(m => m.GetRef()).ToList();
 
-        
 
         autoReflectionList.Clear();
         autoReflectionList.AddRange(toCreate);

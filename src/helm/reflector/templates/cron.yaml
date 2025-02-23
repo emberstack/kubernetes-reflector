@@ -68,6 +68,11 @@ spec:
                   value: {{ .Values.configuration.logging.minimumLevel | quote }}
                 - name: ES_Reflector__Watcher__Timeout
                   value: {{ .Values.configuration.watcher.timeout | quote }}
+                - name: ES_Reflector__Kubernetes__SkipTlsVerify
+                  value: {{ .Values.configuration.kubernetes.skipTlsVerify | quote }}
+                {{- with .Values.extraEnv }}
+                  {{- toYaml . | nindent 12 }}
+                {{- end }}
               resources:
                 {{- toYaml .Values.resources | nindent 16 }}
 {{- end }}

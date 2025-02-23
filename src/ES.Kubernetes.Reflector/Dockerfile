@@ -1,8 +1,9 @@
-FROM mcr.microsoft.com/dotnet/aspnet:7.0-bookworm-slim AS base
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-bookworm-slim AS base
+USER app
 WORKDIR /app
-EXPOSE 25080
+EXPOSE 8080
 
-FROM mcr.microsoft.com/dotnet/sdk:7.0-bookworm-slim-amd64 AS build
+FROM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim-amd64 AS build
 WORKDIR /src
 COPY ["ES.Kubernetes.Reflector/ES.Kubernetes.Reflector.csproj", "ES.Kubernetes.Reflector/"]
 RUN dotnet restore "ES.Kubernetes.Reflector/ES.Kubernetes.Reflector.csproj"

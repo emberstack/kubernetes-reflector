@@ -11,7 +11,7 @@ public static class MetadataExtensions
 
     public static IReadOnlyDictionary<string, string> SafeAnnotations(this V1ObjectMeta metadata)
     {
-        return (IReadOnlyDictionary<string, string>) (metadata.Annotations ?? new Dictionary<string, string>());
+        return (IReadOnlyDictionary<string, string>)(metadata.Annotations ?? new Dictionary<string, string>());
     }
 
     public static KubeRef GetRef(this IKubernetesObject<V1ObjectMeta> resource)
@@ -39,11 +39,11 @@ public static class MetadataExtensions
                     Converters.TryAdd(typeof(T), conv);
                 }
 
-                value = (T?) conv.ConvertFromString(raw.Trim());
+                value = (T?)conv.ConvertFromString(raw.Trim());
             }
             else
             {
-                value = (T) Convert.ChangeType(raw.Trim(), typeof(T));
+                value = (T)Convert.ChangeType(raw.Trim(), typeof(T));
             }
 
             return true;

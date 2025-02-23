@@ -18,6 +18,5 @@ public class JsonPropertyNameContractResolver : DefaultContractResolver
         if (member.GetCustomAttribute<JsonPropertyNameAttribute>() is not { } propertyNameAttribute) return property;
         property.PropertyName = propertyNameAttribute.Name;
         return property;
-
     }
 }

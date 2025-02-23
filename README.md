@@ -18,7 +18,7 @@ If you need help or found a bug, please feel free to open an Issue on GitHub (ht
 Reflector can be deployed either manually or using Helm (recommended).
 
 ### Prerequisites
-- Kubernetes 1.14+
+- Kubernetes 1.22+
 - Helm 3 (if deployed using Helm)
 
 #### Deployment using Helm

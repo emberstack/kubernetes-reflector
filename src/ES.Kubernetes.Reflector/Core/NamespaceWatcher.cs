@@ -8,18 +8,17 @@ using Microsoft.Extensions.Options;
 
 namespace ES.Kubernetes.Reflector.Core;
 
-public class NamespaceWatcher : WatcherBackgroundService<V1Namespace, V1NamespaceList>
+public class NamespaceWatcher(
+    ILogger<NamespaceWatcher> logger,
+    IMediator mediator,
+    IServiceProvider serviceProvider,
+    IOptionsMonitor<ReflectorOptions> options)
+    : WatcherBackgroundService<V1Namespace, V1NamespaceList>(logger, mediator, serviceProvider, options)
 {
-    public NamespaceWatcher(ILogger<NamespaceWatcher> logger, IMediator mediator, IKubernetes client,
-        IOptionsMonitor<ReflectorOptions> options) :
-        base(logger, mediator, client, options)
+    protected override Task<HttpOperationResponse<V1NamespaceList>> OnGetWatcher(IKubernetes client,
+        CancellationToken cancellationToken)
     {
-    }
-
-
-    protected override Task<HttpOperationResponse<V1NamespaceList>> OnGetWatcher(CancellationToken cancellationToken)
-    {
-        return Client.CoreV1.ListNamespaceWithHttpMessagesAsync(watch: true, timeoutSeconds: WatcherTimeout,
+        return client.CoreV1.ListNamespaceWithHttpMessagesAsync(watch: true, timeoutSeconds: WatcherTimeout,
             cancellationToken: cancellationToken);
     }
 }

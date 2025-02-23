@@ -15,7 +15,7 @@ public sealed record KubeRef
     public KubeRef(string value)
     {
         if (string.IsNullOrWhiteSpace(value)) return;
-        var split = value.Split(new[] {"/"}, StringSplitOptions.RemoveEmptyEntries).ToList();
+        var split = value.Split(new[] { "/" }, StringSplitOptions.RemoveEmptyEntries).ToList();
         if (!split.Any()) return;
         switch (split.Count)
         {
@@ -39,12 +39,19 @@ public sealed record KubeRef
     public string Name { get; } = string.Empty;
 
 
+    public bool Equals(KubeRef? other)
+    {
+        if (ReferenceEquals(this, other)) return true;
+        return string.Equals(Namespace, other?.Namespace) && string.Equals(Name, other?.Name);
+    }
+
+
     public static bool TryParse(string value, out KubeRef id)
     {
         id = Empty;
         if (string.IsNullOrWhiteSpace(value)) return false;
 
-        var split = value.Trim().Split(new[] {"/"}, StringSplitOptions.RemoveEmptyEntries).ToList();
+        var split = value.Trim().Split(new[] { "/" }, StringSplitOptions.RemoveEmptyEntries).ToList();
         if (!split.Any()) return false;
         if (split.Count > 2) return false;
         id = split.Count == 1
@@ -53,15 +60,6 @@ public sealed record KubeRef
 
         return true;
     }
-
-
-    public bool Equals(KubeRef? other)
-    {
-        if (ReferenceEquals(this, other)) return true;
-        return string.Equals(Namespace, other?.Namespace) && string.Equals(Name, other?.Name);
-    }
-
-
 
 
     public override int GetHashCode()
