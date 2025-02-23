@@ -1,1 +1,1 @@
-Reflector can now be used to perform automatic copy actions on secrets and configmaps.
+Reflector can now be used to perform automatic copy actions on secrets, configmaps, service accounts, roles and rolebindings.
