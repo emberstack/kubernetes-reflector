@@ -61,21 +61,31 @@ securityContext:
   runAsNonRoot: true
   runAsUser: 1000
 
-healthcheck:
-  httpGet:
-    path: /healthz
-    port: http
-
 livenessProbe:
+  httpGet:
+    path: /health/live
+    port: http
+  timeoutSeconds: 10
   initialDelaySeconds: 5
   periodSeconds: 10
+  failureThreshold: 5
 readinessProbe:
+  httpGet:
+    path: /health/ready
+    port: http
+  timeoutSeconds: 10
   initialDelaySeconds: 5
   periodSeconds: 10
+  failureThreshold: 5
 startupProbe:
-  # The application will have a maximum of 50s (10 * 5 = 50s) to finish its startup.
-  failureThreshold: 10
-  periodSeconds: 5
+  httpGet:
+    path: /health/ready
+    port: http
+  timeoutSeconds: 10
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  failureThreshold: 5
+
 
 resources:
   {}
@@ -107,11 +117,6 @@ topologySpreadConstraints: []
 
 priorityClassName: ""
 
-#mount external persistent/ephemeral storage to required locations if readOnlyRootFileSystem=true
-volumes:
-  - name: tmp
-    emptyDir: {}
+volumes: []
 
-volumeMounts:
-  - name: tmp
-    mountPath: /tmp
+volumeMounts: []

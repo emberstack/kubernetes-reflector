@@ -4,9 +4,9 @@
       "commandName": "Project",
       "launchBrowser": false,
       "environmentVariables": {
-        "ES_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       },
-      "applicationUrl": "http://0.0.0.0:25080",
+      "applicationUrl": "http://0.0.0.0:8080",
       "dotnetRunMessages": false
     },
     "Docker": {
