@@ -1,16 +1,16 @@
 <Project>
-	<PropertyGroup>
-		<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-		<CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>
-	</PropertyGroup>
-	<ItemGroup>
-		<PackageVersion Include="ES.FX.Ignite" Version="9.0.2" />
-		<PackageVersion Include="ES.FX.Ignite.OpenTelemetry.Exporter.Seq" Version="9.0.2" />
-		<PackageVersion Include="ES.FX.Ignite.Serilog" Version="9.0.2" />
-		<PackageVersion Include="JetBrains.Annotations" Version="2024.3.0" />
-		<PackageVersion Include="KubernetesClient" Version="16.0.2" />
-		<PackageVersion Include="MediatR" Version="12.4.1" />
-		<PackageVersion Include="Microsoft.AspNetCore.JsonPatch" Version="9.0.2" />
-		<PackageVersion Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
-	</ItemGroup>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>false</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="ES.FX.Ignite" Version="9.0.3" />
+    <PackageVersion Include="ES.FX.Ignite.OpenTelemetry.Exporter.Seq" Version="9.0.3" />
+    <PackageVersion Include="ES.FX.Ignite.Serilog" Version="9.0.3" />
+    <PackageVersion Include="JetBrains.Annotations" Version="2024.3.0" />
+    <PackageVersion Include="KubernetesClient" Version="16.0.2" />
+    <PackageVersion Include="MediatR" Version="12.4.1" />
+    <PackageVersion Include="Microsoft.AspNetCore.JsonPatch" Version="9.0.2" />
+    <PackageVersion Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.2" />
+  </ItemGroup>
 </Project>
