@@ -35,6 +35,14 @@ public static class ReflectorExtensions
                 ? autoNamespaces ?? string.Empty
                 : string.Empty,
 
+            Labels = metadata.SafeAnnotations()
+                .TryGet(Annotations.Reflection.Labels, out bool labels) && labels,
+
+            LabelsIncluded = metadata.SafeAnnotations()
+                .TryGet(Annotations.Reflection.LabelsIncluded, out string? labelsIncluded)
+                ? labelsIncluded ?? string.Empty
+                : string.Empty,
+
             Reflects = metadata.SafeAnnotations()
                 .TryGet(Annotations.Reflection.Reflects, out string? metaReflects)
                 ? string.IsNullOrWhiteSpace(metaReflects) ? KubeRef.Empty :
