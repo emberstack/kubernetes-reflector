@@ -10,6 +10,8 @@ public static class Annotations
         public static string AllowedNamespaces => $"{Prefix}/reflection-allowed-namespaces";
         public static string AutoEnabled => $"{Prefix}/reflection-auto-enabled";
         public static string AutoNamespaces => $"{Prefix}/reflection-auto-namespaces";
+        public static string KeyMapping => $"{Prefix}/reflection-key-mapping";
+        public static string AutoKeyMapping => $"{Prefix}/reflection-auto-key-mapping";
         public static string Reflects => $"{Prefix}/reflects";
 
 
