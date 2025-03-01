@@ -42,10 +42,6 @@ return await ProgramEntry.CreateBuilder(args).UseSerilog().Build().RunAsync(asyn
     builder.Services.AddHostedService<SecretWatcher>();
     builder.Services.AddHostedService<ConfigMapWatcher>();
 
-    builder.Services.AddSingleton<SecretMirror>();
-    builder.Services.AddSingleton<ConfigMapMirror>();
-
-
     var app = builder.Build();
     app.Ignite();
     await app.RunAsync();
