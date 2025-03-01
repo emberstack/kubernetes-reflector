@@ -6,24 +6,18 @@ using Microsoft.AspNetCore.JsonPatch;
 
 namespace ES.Kubernetes.Reflector.Core;
 
-public class SecretMirror(ILogger<SecretMirror> logger, IServiceProvider serviceProvider)
-    : ResourceMirror<V1Secret>(logger, serviceProvider)
+public class SecretMirror(ILogger<SecretMirror> logger, IKubernetes kubernetesClient)
+    : ResourceMirror<V1Secret>(logger, kubernetesClient)
 {
-    private readonly IServiceProvider _serviceProvider = serviceProvider;
-
     protected override async Task<V1Secret[]> OnResourceWithNameList(string itemRefName)
     {
-        using var client = _serviceProvider.GetRequiredService<IKubernetes>();
-        return (await client.CoreV1.ListSecretForAllNamespacesAsync(fieldSelector: $"metadata.name={itemRefName}"))
+        return (await KubernetesClient.CoreV1.ListSecretForAllNamespacesAsync(fieldSelector: $"metadata.name={itemRefName}"))
             .Items
             .ToArray();
     }
 
     protected override async Task OnResourceApplyPatch(V1Patch patch, KubeRef refId)
-    {
-        using var client = _serviceProvider.GetRequiredService<IKubernetes>();
-        await client.CoreV1.PatchNamespacedSecretWithHttpMessagesAsync(patch, refId.Name, refId.Namespace);
-    }
+        => await KubernetesClient.CoreV1.PatchNamespacedSecretWithHttpMessagesAsync(patch, refId.Name, refId.Namespace);
 
     protected override Task OnResourceConfigurePatch(V1Secret source, JsonPatchDocument<V1Secret> patchDoc)
     {
@@ -32,10 +26,7 @@ public class SecretMirror(ILogger<SecretMirror> logger, IServiceProvider service
     }
 
     protected override async Task OnResourceCreate(V1Secret item, string ns)
-    {
-        using var client = _serviceProvider.GetRequiredService<IKubernetes>();
-        await client.CoreV1.CreateNamespacedSecretAsync(item, ns);
-    }
+        => await KubernetesClient.CoreV1.CreateNamespacedSecretAsync(item, ns);
 
     protected override Task<V1Secret> OnResourceClone(V1Secret sourceResource)
     {
@@ -49,16 +40,10 @@ public class SecretMirror(ILogger<SecretMirror> logger, IServiceProvider service
     }
 
     protected override async Task OnResourceDelete(KubeRef resourceId)
-    {
-        using var client = _serviceProvider.GetRequiredService<IKubernetes>();
-        await client.CoreV1.DeleteNamespacedSecretAsync(resourceId.Name, resourceId.Namespace);
-    }
+        => await KubernetesClient.CoreV1.DeleteNamespacedSecretAsync(resourceId.Name, resourceId.Namespace);
 
     protected override async Task<V1Secret> OnResourceGet(KubeRef refId)
-    {
-        using var client = _serviceProvider.GetRequiredService<IKubernetes>();
-        return await client.CoreV1.ReadNamespacedSecretAsync(refId.Name, refId.Namespace);
-    }
+        => await KubernetesClient.CoreV1.ReadNamespacedSecretAsync(refId.Name, refId.Namespace);
 
     protected override Task<bool> OnResourceIgnoreCheck(V1Secret item)
     {

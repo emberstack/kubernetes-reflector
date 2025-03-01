@@ -11,14 +11,13 @@ namespace ES.Kubernetes.Reflector.Core;
 public class NamespaceWatcher(
     ILogger<NamespaceWatcher> logger,
     IMediator mediator,
-    IServiceProvider serviceProvider,
+    IKubernetes kubernetesClient,
     IOptionsMonitor<ReflectorOptions> options)
-    : WatcherBackgroundService<V1Namespace, V1NamespaceList>(logger, mediator, serviceProvider, options)
+    : WatcherBackgroundService<V1Namespace, V1NamespaceList>(logger, mediator, options)
 {
-    protected override Task<HttpOperationResponse<V1NamespaceList>> OnGetWatcher(IKubernetes client,
-        CancellationToken cancellationToken)
+    protected override Task<HttpOperationResponse<V1NamespaceList>> OnGetWatcher(CancellationToken cancellationToken)
     {
-        return client.CoreV1.ListNamespaceWithHttpMessagesAsync(watch: true, timeoutSeconds: WatcherTimeout,
+        return kubernetesClient.CoreV1.ListNamespaceWithHttpMessagesAsync(watch: true, timeoutSeconds: WatcherTimeout,
             cancellationToken: cancellationToken);
     }
 }
