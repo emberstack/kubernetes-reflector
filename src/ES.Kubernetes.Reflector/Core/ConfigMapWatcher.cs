@@ -11,14 +11,13 @@ namespace ES.Kubernetes.Reflector.Core;
 public class ConfigMapWatcher(
     ILogger<ConfigMapWatcher> logger,
     IMediator mediator,
-    IServiceProvider serviceProvider,
+    IKubernetes kubernetesClient,
     IOptionsMonitor<ReflectorOptions> options)
-    : WatcherBackgroundService<V1ConfigMap, V1ConfigMapList>(logger, mediator, serviceProvider, options)
+    : WatcherBackgroundService<V1ConfigMap, V1ConfigMapList>(logger, mediator, options)
 {
-    protected override Task<HttpOperationResponse<V1ConfigMapList>> OnGetWatcher(IKubernetes client,
-        CancellationToken cancellationToken)
+    protected override Task<HttpOperationResponse<V1ConfigMapList>> OnGetWatcher(CancellationToken cancellationToken)
     {
-        return client.CoreV1.ListConfigMapForAllNamespacesWithHttpMessagesAsync(watch: true,
+        return kubernetesClient.CoreV1.ListConfigMapForAllNamespacesWithHttpMessagesAsync(watch: true,
             timeoutSeconds: WatcherTimeout,
             cancellationToken: cancellationToken);
     }

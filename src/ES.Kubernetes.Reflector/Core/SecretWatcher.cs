@@ -11,14 +11,13 @@ namespace ES.Kubernetes.Reflector.Core;
 public class SecretWatcher(
     ILogger<SecretWatcher> logger,
     IMediator mediator,
-    IServiceProvider serviceProvider,
+    IKubernetes kubernetesClient,
     IOptionsMonitor<ReflectorOptions> options)
-    : WatcherBackgroundService<V1Secret, V1SecretList>(logger, mediator, serviceProvider, options)
+    : WatcherBackgroundService<V1Secret, V1SecretList>(logger, mediator, options)
 {
-    protected override Task<HttpOperationResponse<V1SecretList>> OnGetWatcher(IKubernetes client,
-        CancellationToken cancellationToken)
+    protected override Task<HttpOperationResponse<V1SecretList>> OnGetWatcher(CancellationToken cancellationToken)
     {
-        return client.CoreV1.ListSecretForAllNamespacesWithHttpMessagesAsync(watch: true,
+        return kubernetesClient.CoreV1.ListSecretForAllNamespacesWithHttpMessagesAsync(watch: true,
             timeoutSeconds: WatcherTimeout,
             cancellationToken: cancellationToken);
     }

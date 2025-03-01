@@ -16,7 +16,7 @@ using Newtonsoft.Json;
 
 namespace ES.Kubernetes.Reflector.Core.Mirroring;
 
-public abstract class ResourceMirror<TResource>(ILogger logger, IServiceProvider serviceProvider) :
+public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kubernetesClient) :
     INotificationHandler<WatcherEvent>,
     INotificationHandler<WatcherClosed>
     where TResource : class, IKubernetesObject<V1ObjectMeta>
@@ -28,6 +28,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IServiceProvider
     private readonly ConcurrentDictionary<KubeRef, bool> _notFoundCache = new();
     private readonly ConcurrentDictionary<KubeRef, ReflectorProperties> _propertiesCache = new();
     protected readonly ILogger Logger = logger;
+    protected readonly IKubernetes KubernetesClient = kubernetesClient;
 
 
     /// <summary>
@@ -324,8 +325,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IServiceProvider
         var autoReflectionList = _autoReflectionCache.GetOrAdd(resourceRef, _ => new List<KubeRef>());
 
         var matches = await OnResourceWithNameList(resourceRef.Name);
-        using var client = serviceProvider.GetRequiredService<IKubernetes>();
-        var namespaces = (await client.CoreV1.ListNamespaceAsync(cancellationToken: cancellationToken)).Items;
+        var namespaces = (await KubernetesClient.CoreV1.ListNamespaceAsync(cancellationToken: cancellationToken)).Items;
 
         foreach (var match in matches)
         {

@@ -12,7 +12,6 @@ namespace ES.Kubernetes.Reflector.Core.Watchers;
 public abstract class WatcherBackgroundService<TResource, TResourceList>(
     ILogger logger,
     IMediator mediator,
-    IServiceProvider serviceProvider,
     IOptionsMonitor<ReflectorOptions> options)
     : BackgroundService
     where TResource : IKubernetesObject<V1ObjectMeta>
@@ -27,8 +26,6 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
         var sessionStopwatch = new Stopwatch();
         while (!stoppingToken.IsCancellationRequested)
         {
-            await using var scope = serviceProvider.CreateAsyncScope();
-
             var sessionFaulted = false;
             sessionStopwatch.Restart();
 
@@ -40,9 +37,8 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
 
                 using var absoluteTimeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(WatcherTimeout + 3));
                 using var cancellationCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, absoluteTimeoutCts.Token);
-                using var client = scope.ServiceProvider.GetRequiredService<IKubernetes>();
 
-                using var watcher = OnGetWatcher(client, stoppingToken);
+                using var watcher = OnGetWatcher(stoppingToken);
                 var watchList = watcher.WatchAsync<TResource, TResourceList>(cancellationToken: cancellationCts.Token);
 
                 await foreach (var (type, item) in watchList)
@@ -79,6 +75,5 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
         }
     }
 
-    protected abstract Task<HttpOperationResponse<TResourceList>> OnGetWatcher(IKubernetes client,
-        CancellationToken cancellationToken);
+    protected abstract Task<HttpOperationResponse<TResourceList>> OnGetWatcher(CancellationToken cancellationToken);
 }
