@@ -23,7 +23,7 @@ return await ProgramEntry.CreateBuilder(args).UseSerilog().Build().RunAsync(asyn
 
     builder.Services.Configure<ReflectorOptions>(builder.Configuration.GetSection(nameof(ES.Kubernetes.Reflector)));
 
-    builder.Services.AddTransient(s =>
+    builder.Services.AddSingleton(s =>
     {
         var reflectorOptions = s.GetRequiredService<IOptions<ReflectorOptions>>();
 
@@ -35,7 +35,7 @@ return await ProgramEntry.CreateBuilder(args).UseSerilog().Build().RunAsync(asyn
     });
 
 
-    builder.Services.AddTransient<IKubernetes>(s =>
+    builder.Services.AddSingleton<IKubernetes>(s =>
         new Kubernetes(s.GetRequiredService<KubernetesClientConfiguration>()));
 
     builder.Services.AddHostedService<NamespaceWatcher>();
