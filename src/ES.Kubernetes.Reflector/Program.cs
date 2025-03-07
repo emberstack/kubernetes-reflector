@@ -38,9 +38,14 @@ return await ProgramEntry.CreateBuilder(args).UseSerilog().Build().RunAsync(asyn
     builder.Services.AddSingleton<IKubernetes>(s =>
         new Kubernetes(s.GetRequiredService<KubernetesClientConfiguration>()));
 
+    builder.Services.AddSingleton<SecretMirror>();
+    builder.Services.AddSingleton<ConfigMapMirror>();
+
     builder.Services.AddHostedService<NamespaceWatcher>();
     builder.Services.AddHostedService<SecretWatcher>();
     builder.Services.AddHostedService<ConfigMapWatcher>();
+
+
 
     var app = builder.Build();
     app.Ignite();
