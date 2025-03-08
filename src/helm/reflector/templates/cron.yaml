@@ -68,7 +68,7 @@ spec:
                   value: {{ .Values.configuration.logging.minimumLevel | quote }}
                 - name: ES_Reflector__Watcher__Timeout
                   value: {{ .Values.configuration.watcher.timeout | quote }}
-                - name: ES_Reflector__Kubernetes__SkipTlsVerify
+                - name: ES_Ignite__KubernetesClient__SkipTlsVerify
                   value: {{ .Values.configuration.kubernetes.skipTlsVerify | quote }}
                 {{- with .Values.extraEnv }}
                   {{- toYaml . | nindent 12 }}
