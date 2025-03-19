@@ -82,4 +82,49 @@ public class SecretMirrorTests(CustomWebApplicationFactory factory, ITestOutputH
         }));
     }
     
+    
+    [Fact]
+    public async Task Create_secret_With_ReflectionEnabled_Should_Replicated_To_Newly_Created_Namespaces()
+    {
+        // Arrange
+        const string sourceNamespace = "dev004";
+        string sourceSecret = $"test-secret-{Guid.NewGuid()}";
+        var secretData = new Dictionary<string, string>
+        {
+            { "key1", "value1" },
+            { "key2", "value2" }
+        };
+        var reflectorAnnotations = new ReflectorAnnotations();
+
+        var createdSourceNs = await CreateNamespaceAsync(sourceNamespace);
+        createdSourceNs.ShouldBeCreated(sourceNamespace);
+        testOutputHelper.WriteLine($"Namespace {sourceNamespace} created");
+        
+        var createdSecret = await CreateSecretAsync(
+            sourceSecret,
+            secretData,
+            sourceNamespace,
+            reflectorAnnotations);
+        createdSecret.ShouldBeCreated(sourceSecret);
+        testOutputHelper.WriteLine($"Secret {sourceSecret} created in {sourceNamespace} namespace");
+        
+        // Act
+        const string destinationNamespace = "qa004";
+        var createdDestinationNs = await CreateNamespaceAsync(destinationNamespace);
+        createdDestinationNs.ShouldBeCreated(destinationNamespace);
+        testOutputHelper.WriteLine($"Namespace {destinationNamespace} created");
+
+        // Assert
+        await K8SClient.ShouldFindReplicatedResourceAsync(createdSecret, destinationNamespace, Pipeline);
+        
+        
+        // another namespace
+        const string destinationNamespace2 = "stg004";
+        var createdDestinationNs2 = await CreateNamespaceAsync(destinationNamespace2);
+        createdDestinationNs2.ShouldBeCreated(destinationNamespace2);
+        testOutputHelper.WriteLine($"Namespace {destinationNamespace2} created");
+        
+        // Assert
+        await K8SClient.ShouldFindReplicatedResourceAsync(createdSecret, destinationNamespace2, Pipeline);
+    }
 } 
