@@ -16,7 +16,7 @@ env:
   version: 9.0.${{github.run_number}}
   imageRepository: "emberstack/kubernetes-reflector"
   DOCKER_CLI_EXPERIMENTAL: "enabled"
-  DOTNET_VERSION: "9.x"
+  DOTNET_VERSION: "9.0.x"
 
 jobs:
   ci:
