@@ -82,9 +82,8 @@ public class SecretMirrorTests(CustomWebApplicationFactory factory, ITestOutputH
         }));
     }
     
-    
     [Fact]
-    public async Task Create_secret_With_ReflectionEnabled_Should_Replicated_To_Newly_Created_Namespaces()
+    public async Task Create_secret_With_DefaultReflectorAnnotations_Should_Replicated_To_All_Newly_Created_Namespaces()
     {
         // Arrange
         const string sourceNamespace = "dev004";
