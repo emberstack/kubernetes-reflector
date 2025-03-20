@@ -15,16 +15,7 @@ public static class K8SResourceAssertionExtensions
         resource.Metadata.ShouldNotBeNull();
         resource.Metadata.Name.ShouldBe(metadataName);
     }
-
-    public static void ShouldBeDeleted<T>([NotNull] this T resource, V1Status deletionStatus)
-        where T : class, IKubernetesObject<V1ObjectMeta>
-    {
-        resource.ShouldNotBeNull();
-        deletionStatus.ShouldNotBeNull();
-        deletionStatus.Status.ShouldBe("Success");
-    }
-
-
+    
     public static async Task ShouldFindReplicatedResourceAsync<T>(this IKubernetes client,
         T resource,
         string namespaceName,

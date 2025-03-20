@@ -16,15 +16,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         .Build();
     private static readonly Lock Lock = new();
     
-    /// <summary>
-    /// https://github.com/serilog/serilog-aspnetcore/issues/289
-    /// https://github.com/dotnet/AspNetCore.Docs/issues/26609
-    /// There is a problem with using Serilog's "CreateBootstrapLogger" when trying to initialize a web host.
-    /// This is because in tests, multiple hosts are created in parallel, and Serilog's static logger is not thread-safe.
-    /// The way around this without touching the host code is to lock the creation of the host to a single thread at a time.
-    /// </summary>
-    /// <param name="builder"></param>
-    /// <returns></returns>
+    // https://github.com/serilog/serilog-aspnetcore/issues/289
+    // https://github.com/dotnet/AspNetCore.Docs/issues/26609
     protected override IHost CreateHost(IHostBuilder builder)
     {
         lock (Lock)
