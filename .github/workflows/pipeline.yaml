@@ -14,6 +14,7 @@ env:
   version: 9.0.${{github.run_number}}
   imageRepository: "emberstack/kubernetes-reflector"
   DOCKER_CLI_EXPERIMENTAL: "enabled"
+  DOTNET_VERSION: "9.x"
 
 jobs:
   ci:
@@ -21,6 +22,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      
+      - name: Test
+        run: dotnet test -c Release --verbosity normal
+        working-directory: ./tests/ES.Kubernetes.Reflector.Tests
 
       - name: artifacts - prepare directories
         run: |
