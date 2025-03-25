@@ -1,4 +1,4 @@
-﻿namespace ES.Kubernetes.Reflector.Mirroring.Core;
+namespace ES.Kubernetes.Reflector.Mirroring.Core;
 
 public static class Annotations
 {
@@ -10,6 +10,8 @@ public static class Annotations
         public static string AllowedNamespaces => $"{Prefix}/reflection-allowed-namespaces";
         public static string AutoEnabled => $"{Prefix}/reflection-auto-enabled";
         public static string AutoNamespaces => $"{Prefix}/reflection-auto-namespaces";
+        public static string Labels => $"{Prefix}/reflection-labels";
+        public static string LabelsIncluded => $"{Prefix}/reflection-labels-included";
         public static string Reflects => $"{Prefix}/reflects";
 
 

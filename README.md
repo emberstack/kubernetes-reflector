@@ -75,6 +75,8 @@ $ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-refle
   
   - Add `reflector.v1.k8s.emberstack.com/reflection-allowed: "true"` to the resource annotations to permit reflection to mirrors.
   - Add `reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "<list>"` to the resource annotations to permit reflection from only the list of comma separated namespaces or regular expressions. Note: If this annotation is omitted or is empty, all namespaces are allowed.
+  - Add `reflector.v1.k8s.emberstack.com/reflection-labels: "true"` to the resource annotations to permit reflection of labels to mirrors. Note: If this annotation is ommitted or empty no labels are mirrored.
+  - Add `reflector.v1.k8s.emberstack.com/reflection-labels-included: "<list>"` to the resource annotations to permit reflection of only the list of comma separated labels or regular expressions. Note: If this annotation is ommitted or empty all labels are reflected.
 
   #### Automatic mirror creation:
   Reflector can create mirrors with the same name in other namespaces automatically. The following annotations control if and how the mirrors are created:
@@ -107,6 +109,24 @@ $ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-refle
     annotations:
       reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
       reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "namespace-1,namespace-2,namespace-[0-9]*"
+  data:
+    ...
+  ```
+
+  Example source configmap with labels:
+   ```yaml
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: source-config-map
+    labels:
+      emberstack.com/included-label: to-be-included
+      example.com/excluded-label: to-be-excluded
+    annotations:
+      reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
+      reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "namespace-1,namespace-2,namespace-[0-9]*"
+      reflector.v1.k8s.emberstack.com/reflection-labels: "true"
+      reflector.v1.k8s.emberstack.com/reflection-labels-included: "emberstack\\.com/.*"
   data:
     ...
   ```

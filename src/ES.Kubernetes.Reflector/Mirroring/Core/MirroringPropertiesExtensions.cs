@@ -32,6 +32,14 @@ public static class MirroringPropertiesExtensions
                 ? autoNamespaces ?? string.Empty
                 : string.Empty,
 
+            Labels = metadata
+                .TryGetAnnotationValue(Annotations.Reflection.Labels, out bool labels) && labels,
+
+            LabelsIncluded = metadata
+                .TryGetAnnotationValue(Annotations.Reflection.LabelsIncluded, out string? labelsIncluded)
+                ? labelsIncluded ?? string.Empty
+                : string.Empty,
+
             Reflects = metadata
                 .TryGetAnnotationValue(Annotations.Reflection.Reflects, out string? metaReflects)
                 ? NamespacedName.TryParse(metaReflects, out var id) ? id : null
@@ -63,6 +71,8 @@ public static class MirroringPropertiesExtensions
         properties.CanBeReflectedToNamespace(ns) && properties.AutoEnabled &&
         PatternListMatch(properties.AutoNamespaces, ns);
 
+    public static bool CanLabelBeReflected(this MirroringProperties properties, string label) =>
+        properties.Labels && PatternListMatch(properties.LabelsIncluded, label);
 
     private static bool PatternListMatch(string patternList, string value)
     {
