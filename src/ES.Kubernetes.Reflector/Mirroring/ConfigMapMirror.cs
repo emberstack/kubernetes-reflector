@@ -50,3 +50,5 @@ public class ConfigMapMirror(ILogger<ConfigMapMirror> logger, IKubernetes kubern
     protected override async Task<V1ConfigMap> OnResourceGet(NamespacedName refId) =>
         await Kubernetes.CoreV1.ReadNamespacedConfigMapAsync(refId.Name, refId.Namespace);
 }
+
+public class ConfigMapEventHandler(ConfigMapMirror mirror) : ResourceEventHandler<V1ConfigMap>(mirror) { }
