@@ -84,7 +84,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                                 {
                                     Logger.LogDebug("Deleting {objNsName} - Source {sourceNsName} has been deleted",
                                         reflectionNsName, objNsName);
-                                    await OnResourceDelete(objNsName);
+                                    await OnResourceDelete(reflectionNsName);
                                 }
 
                             _autoSources.Remove(objNsName, out _);
