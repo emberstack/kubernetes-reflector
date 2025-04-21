@@ -13,7 +13,10 @@ on:
       - ".github/workflows/**"
 
 env:
-  version: 9.0.${{github.run_number}}
+  ## This keeps the same base number but run-number is not really correct.
+  ## I'll likely need to replace this with something that can reset when
+  ## the base version changes
+  version: 9.0.322-${{github.run_number}}
 
 jobs:
   build:
