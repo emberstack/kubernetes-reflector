@@ -21,7 +21,7 @@ jobs:
     steps:
       - id: get-version-id
         run: |
-          VERSION_ID=$(gh api '/orgs/kflow-ai/packages/container/kubernetes-reflector/versions' | jq '.[] | select(.metadata.container.tags | any(index("${{inputs.pr-id || github.event.pull_request.number }}"))) | .id')
+          VERSION_ID=$(gh api '/orgs/kflow-ai/packages/container/kubernetes-reflector/versions' | jq '.[] | select(.metadata.container.tags | any(index("pr-${{inputs.pr-id || github.event.pull_request.number }}"))) | .id')
           echo "VERSION_ID=$VERSION_ID" >> $GITHUB_OUTPUT
 
       - uses: actions/delete-package-versions@v5
