@@ -5,15 +5,15 @@ using ES.Kubernetes.Reflector.Watchers.Core.Events;
 using k8s;
 using k8s.Autorest;
 using k8s.Models;
-using MediatR;
 using Microsoft.Extensions.Options;
 
 namespace ES.Kubernetes.Reflector.Watchers.Core;
 
 public abstract class WatcherBackgroundService<TResource, TResourceList>(
     ILogger logger,
-    IMediator mediator,
-    IOptionsMonitor<ReflectorOptions> options)
+    IOptionsMonitor<ReflectorOptions> options,
+    IEnumerable<IWatcherEventHandler> watcherEventHandlers,
+    IEnumerable<IWatcherClosedHandler> watcherClosedHandlers)
     : BackgroundService
     where TResource : IKubernetesObject<V1ObjectMeta>
 {
@@ -48,11 +48,12 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
                     {
                         var watcherEvent = await eventChannel.Reader.ReadAsync(cancellationToken)
                             .ConfigureAwait(false);
-                        await mediator.Publish(new WatcherEvent
-                        {
-                            Item = watcherEvent.Item,
-                            EventType = watcherEvent.EventType
-                        }, cancellationToken).ConfigureAwait(false);
+                        foreach (var watcherEventHandler in watcherEventHandlers)
+                            await watcherEventHandler.Handle(new WatcherEvent
+                            {
+                                Item = watcherEvent.Item,
+                                EventType = watcherEvent.EventType
+                            }, cancellationToken);
                     }
                 }, cancellationToken);
 
@@ -95,11 +96,12 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
                 logger.LogInformation("Session closed. Duration: {duration}. Faulted: {faulted}.", sessionElapsed,
                     sessionFaulted);
 
-                await mediator.Publish(new WatcherClosed
-                {
-                    ResourceType = typeof(TResource),
-                    Faulted = sessionFaulted
-                }, stoppingToken).ConfigureAwait(false);
+                foreach (var handler in watcherClosedHandlers)
+                    await handler.Handle(new WatcherClosed
+                    {
+                        ResourceType = typeof(TResource),
+                        Faulted = sessionFaulted
+                    }, stoppingToken);
             }
         }
     }

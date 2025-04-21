@@ -7,15 +7,13 @@ using ES.Kubernetes.Reflector.Watchers.Core.Events;
 using k8s;
 using k8s.Autorest;
 using k8s.Models;
-using MediatR;
 using Microsoft.AspNetCore.JsonPatch;
 using Newtonsoft.Json;
 
 namespace ES.Kubernetes.Reflector.Mirroring.Core;
 
 public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kubernetes) :
-    INotificationHandler<WatcherEvent>,
-    INotificationHandler<WatcherClosed>
+    IWatcherEventHandler, IWatcherClosedHandler
     where TResource : class, IKubernetesObject<V1ObjectMeta>
 {
     private readonly ConcurrentDictionary<NamespacedName, HashSet<NamespacedName>> _autoReflectionCache = new();

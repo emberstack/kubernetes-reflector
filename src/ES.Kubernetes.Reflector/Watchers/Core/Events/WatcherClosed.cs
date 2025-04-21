@@ -1,8 +1,6 @@
-﻿using MediatR;
+﻿namespace ES.Kubernetes.Reflector.Watchers.Core.Events;
 
-namespace ES.Kubernetes.Reflector.Watchers.Core.Events;
-
-public class WatcherClosed : INotification
+public class WatcherClosed
 {
     public required Type ResourceType { get; set; }
     public bool Faulted { get; set; }

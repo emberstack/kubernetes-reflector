@@ -15,7 +15,6 @@
 		<PackageReference Include="ES.FX.Ignite.KubernetesClient" />
 		<PackageReference Include="ES.FX.Microsoft.AspNetCore.JsonPatch" />
 		<PackageReference Include="ES.FX.Newtonsoft.Json" />
-		<PackageReference Include="MediatR" />
 		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
 	</ItemGroup>
 

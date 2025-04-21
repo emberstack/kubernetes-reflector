@@ -10,7 +10,6 @@ using ES.Kubernetes.Reflector.Mirroring;
 using ES.Kubernetes.Reflector.Watchers;
 using ES.Kubernetes.Reflector.Watchers.Core.Events;
 using k8s.Models;
-using MediatR;
 
 return await ProgramEntry.CreateBuilder(args).UseSerilog().Build().RunAsync(async _ =>
 {
@@ -24,8 +23,6 @@ return await ProgramEntry.CreateBuilder(args).UseSerilog().Build().RunAsync(asyn
         config.Destructure.ByTransforming<V1ObjectReference>(v => v.NamespacedName()));
     builder.IgniteSeqOpenTelemetryExporter();
     builder.IgniteKubernetesClient();
-    builder.Services.AddMediatR(config =>
-        config.RegisterServicesFromAssembly(typeof(void).Assembly));
 
     builder.Services.Configure<ReflectorOptions>(builder.Configuration.GetSection(nameof(ES.Kubernetes.Reflector)));
 
@@ -36,11 +33,11 @@ return await ProgramEntry.CreateBuilder(args).UseSerilog().Build().RunAsync(asyn
     builder.Services.AddSingleton<SecretMirror>();
     builder.Services.AddSingleton<ConfigMapMirror>();
 
-    builder.Services.AddSingleton<INotificationHandler<WatcherEvent>>(sp => sp.GetRequiredService<SecretMirror>());
-    builder.Services.AddSingleton<INotificationHandler<WatcherClosed>>(sp => sp.GetRequiredService<SecretMirror>());
+    builder.Services.AddSingleton<IWatcherEventHandler>(sp => sp.GetRequiredService<SecretMirror>());
+    builder.Services.AddSingleton<IWatcherClosedHandler>(sp => sp.GetRequiredService<SecretMirror>());
 
-    builder.Services.AddSingleton<INotificationHandler<WatcherEvent>>(sp => sp.GetRequiredService<ConfigMapMirror>());
-    builder.Services.AddSingleton<INotificationHandler<WatcherClosed>>(sp => sp.GetRequiredService<ConfigMapMirror>());
+    builder.Services.AddSingleton<IWatcherEventHandler>(sp => sp.GetRequiredService<ConfigMapMirror>());
+    builder.Services.AddSingleton<IWatcherClosedHandler>(sp => sp.GetRequiredService<ConfigMapMirror>());
 
     var app = builder.Build();
     app.Ignite();
