@@ -8,7 +8,7 @@ on:
       pr-id:
         type: number
         required: true
-        description: ID of the PR whose image should be deleted
+        description: Number of the PR whose image should be deleted
 
 jobs:
   delete-package:
@@ -19,8 +19,14 @@ jobs:
       packages: write
 
     steps:
+      - id: get-version-id
+        run: |
+          VERSION_ID=$(gh api '/orgs/kflow-ai/packages/container/kubernetes-reflector/versions' | jq '.[] | select(.metadata.container.tags | any(index("${{inputs.pr-id || github.event.pull_request.number }}"))) | .id')
+          echo "VERSION_ID=$VERSION_ID" >> $GITHUB_OUTPUT
+
       - uses: actions/delete-package-versions@v5
+        if: steps.get-version-id.outputs.VERSION_ID != ''
         with:
           package-name: kubernetes-reflector
           package-type: container
-          package-version-ids: pr-${{inputs.pr-id || github.event.pull_request.id }}
+          package-version-ids: ${{ steps.get-version-id.outputs.VERSION_ID }}
