@@ -49,3 +49,5 @@ public class SecretMirror(ILogger<SecretMirror> logger, IKubernetes kubernetesCl
     protected override async Task<V1Secret> OnResourceGet(NamespacedName refId) =>
         await Kubernetes.CoreV1.ReadNamespacedSecretAsync(refId.Name, refId.Namespace);
 }
+
+public class SecretEventHandler(SecretMirror mirror) : ResourceEventHandler<V1Secret>(mirror) { }

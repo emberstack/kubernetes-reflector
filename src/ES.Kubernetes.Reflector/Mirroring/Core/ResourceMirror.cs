@@ -13,11 +13,10 @@ using Newtonsoft.Json;
 
 namespace ES.Kubernetes.Reflector.Mirroring.Core;
 
-public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kubernetes) :
-    INotificationHandler<WatcherEvent>,
-    INotificationHandler<WatcherClosed>
+public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kubernetes)
     where TResource : class, IKubernetesObject<V1ObjectMeta>
 {
+
     private readonly ConcurrentDictionary<NamespacedName, HashSet<NamespacedName>> _autoReflectionCache = new();
     private readonly ConcurrentDictionary<NamespacedName, bool> _autoSources = new();
     private readonly ConcurrentDictionary<NamespacedName, HashSet<NamespacedName>> _directReflectionCache = new();
@@ -72,31 +71,31 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                         await HandleUpsert(obj, cancellationToken);
                         break;
                     case WatchEventType.Deleted:
-                    {
-                        _propertiesCache.Remove(objNsName, out _);
-                        var properties = obj.GetMirroringProperties();
-
-                        if (!properties.IsReflection)
                         {
-                            if (properties is { Allowed: true, AutoEnabled: true } &&
-                                _autoReflectionCache.TryGetValue(objNsName, out var reflectionList))
-                                foreach (var reflectionNsName in reflectionList.ToArray())
-                                {
-                                    Logger.LogDebug("Deleting {objNsName} - Source {sourceNsName} has been deleted",
-                                        reflectionNsName, objNsName);
-                                    await OnResourceDelete(objNsName);
-                                }
+                            _propertiesCache.Remove(objNsName, out _);
+                            var properties = obj.GetMirroringProperties();
 
-                            _autoSources.Remove(objNsName, out _);
-                            _directReflectionCache.Remove(objNsName, out _);
-                            _autoReflectionCache.Remove(objNsName, out _);
+                            if (!properties.IsReflection)
+                            {
+                                if (properties is { Allowed: true, AutoEnabled: true } &&
+                                    _autoReflectionCache.TryGetValue(objNsName, out var reflectionList))
+                                    foreach (var reflectionNsName in reflectionList.ToArray())
+                                    {
+                                        Logger.LogDebug("Deleting {objNsName} - Source {sourceNsName} has been deleted",
+                                            reflectionNsName, objNsName);
+                                        await OnResourceDelete(reflectionNsName);
+                                    }
+
+                                _autoSources.Remove(objNsName, out _);
+                                _directReflectionCache.Remove(objNsName, out _);
+                                _autoReflectionCache.Remove(objNsName, out _);
+                            }
+                            else
+                            {
+                                foreach (var item in _directReflectionCache) item.Value.Remove(objNsName);
+                                foreach (var item in _autoReflectionCache) item.Value.Remove(objNsName);
+                            }
                         }
-                        else
-                        {
-                            foreach (var item in _directReflectionCache) item.Value.Remove(objNsName);
-                            foreach (var item in _autoReflectionCache) item.Value.Remove(objNsName);
-                        }
-                    }
                         break;
                     case WatchEventType.Error:
                     case WatchEventType.Bookmark:
@@ -106,35 +105,35 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
 
                 break;
             case V1Namespace ns when notification.EventType == WatchEventType.Added:
-            {
-                Logger.LogTrace("Handling {eventType} {resourceType} {resourceRef}", notification.EventType, ns.Kind,
-                    ns.ObjectReference().NamespacedName());
-
-                //Update all auto-sources
-                foreach (var sourceNsName in _autoSources.Keys)
                 {
-                    var properties = _propertiesCache[sourceNsName];
+                    Logger.LogTrace("Handling {eventType} {resourceType} {resourceRef}", notification.EventType, ns.Kind,
+                        ns.ObjectReference().NamespacedName());
 
-                    //If it can't be reflected to this namespace, skip
-                    if (!properties.CanBeAutoReflectedToNamespace(ns.Name())) continue;
+                    //Update all auto-sources
+                    foreach (var sourceNsName in _autoSources.Keys)
+                    {
+                        var properties = _propertiesCache[sourceNsName];
+
+                        //If it can't be reflected to this namespace, skip
+                        if (!properties.CanBeAutoReflectedToNamespace(ns.Name())) continue;
 
 
-                    //Get the list of auto-reflections
-                    var autoReflections = _autoReflectionCache.GetOrAdd(sourceNsName, []);
+                        //Get the list of auto-reflections
+                        var autoReflections = _autoReflectionCache.GetOrAdd(sourceNsName, []);
 
-                    var reflectionNsName = sourceNsName with { Namespace = ns.Name() };
+                        var reflectionNsName = sourceNsName with { Namespace = ns.Name() };
 
-                    //Reflect the auto-source to the new namespace
-                    await ResourceReflect(
-                        sourceNsName,
-                        reflectionNsName,
-                        null,
-                        null,
-                        true);
+                        //Reflect the auto-source to the new namespace
+                        await ResourceReflect(
+                            sourceNsName,
+                            reflectionNsName,
+                            null,
+                            null,
+                            true);
 
-                    autoReflections.Add(reflectionNsName);
+                        autoReflections.Add(reflectionNsName);
+                    }
                 }
-            }
                 break;
         }
     }
@@ -152,166 +151,152 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
         {
             //If the resource is not a reflection
             case { IsReflection: false }:
-            {
-                //Remove any direct reflections that are no longer valid
-                if (_directReflectionCache.TryGetValue(objNsName, out var reflectionList))
                 {
-                    var reflections = reflectionList
-                        .Where(s => !objProperties.CanBeReflectedToNamespace(s.Namespace))
-                        .ToHashSet();
-
-                    foreach (var reflectionNsName in reflections)
+                    //Remove any direct reflections that are no longer valid
+                    if (_directReflectionCache.TryGetValue(objNsName, out var reflectionList))
                     {
-                        Logger.LogInformation(
-                            "Source {sourceNsName} no longer permits the direct reflection to {reflectionNsName}.",
-                            objNsName, reflectionNsName);
-                        reflectionList.Remove(reflectionNsName);
+                        var reflections = reflectionList
+                            .Where(s => !objProperties.CanBeReflectedToNamespace(s.Namespace))
+                            .ToHashSet();
+
+                        foreach (var reflectionNsName in reflections)
+                        {
+                            Logger.LogInformation(
+                                "Source {sourceNsName} no longer permits the direct reflection to {reflectionNsName}.",
+                                objNsName, reflectionNsName);
+                            reflectionList.Remove(reflectionNsName);
+                        }
                     }
-                }
 
 
-                //Delete any cached auto-reflections that are no longer valid
-                if (_autoReflectionCache.TryGetValue(objNsName, out reflectionList))
-                {
-                    var reflections = reflectionList
-                        .Where(s => !objProperties.CanBeReflectedToNamespace(s.Namespace))
-                        .ToHashSet();
-                    foreach (var reflectionNsName in reflections)
+                    //Delete any cached auto-reflections that are no longer valid
+                    if (_autoReflectionCache.TryGetValue(objNsName, out reflectionList))
                     {
-                        reflectionList.Remove(reflectionNsName);
-
-                        Logger.LogInformation(
-                            "Source {sourceNsName} no longer permits the auto reflection to {reflectionNsName}. " +
-                            "Deleting {reflectionNsName}.",
-                            objNsName, reflectionNsName, reflectionNsName);
-                        await OnResourceDelete(reflectionNsName);
-                    }
-                }
-
-
-                var isAutoSource = objProperties is { Allowed: true, AutoEnabled: true };
-
-                //Update the status of an auto-source
-                _autoSources.AddOrUpdate(objNsName, isAutoSource, (_, _) => isAutoSource);
-
-                //If not allowed or auto is disabled, remove the cache for auto-reflections
-                if (!isAutoSource) _autoReflectionCache.Remove(objNsName, out _);
-
-                //If reflection is disabled, remove the reflections cache and stop reflecting
-                if (!objProperties.Allowed)
-                {
-                    _directReflectionCache.Remove(objNsName, out _);
-                    return;
-                }
-
-                //Update known permitted direct reflections
-                if (_directReflectionCache.TryGetValue(objNsName, out reflectionList))
-                    foreach (var reflectionNsName in reflectionList.ToArray())
-                    {
-                        //Try to get the properties for the reflection. Otherwise, remove it
-                        if (!_propertiesCache.TryGetValue(reflectionNsName, out var reflectionProperties))
+                        var reflections = reflectionList
+                            .Where(s => !objProperties.CanBeReflectedToNamespace(s.Namespace))
+                            .ToHashSet();
+                        foreach (var reflectionNsName in reflections)
                         {
                             reflectionList.Remove(reflectionNsName);
-                            continue;
-                        }
 
-                        if (reflectionProperties.ReflectedVersion == objProperties.ResourceVersion)
-                        {
-                            Logger.LogDebug(
-                                "Skipping {reflectionNsName} - Source {sourceNsName} matches reflected version",
-                                reflectionNsName, objNsName);
-                            continue;
+                            Logger.LogInformation(
+                                "Source {sourceNsName} no longer permits the auto reflection to {reflectionNsName}. " +
+                                "Deleting {reflectionNsName}.",
+                                objNsName, reflectionNsName, reflectionNsName);
+                            await OnResourceDelete(reflectionNsName);
                         }
-
-                        //Execute the reflection
-                        await ResourceReflect(objNsName,
-                            reflectionNsName,
-                            obj,
-                            null,
-                            false);
                     }
 
-                //Ensure updated auto-reflections
-                if (isAutoSource) await AutoReflectionForSource(objNsName, obj, cancellationToken);
+
+                    var isAutoSource = objProperties is { Allowed: true, AutoEnabled: true };
+
+                    //Update the status of an auto-source
+                    _autoSources.AddOrUpdate(objNsName, isAutoSource, (_, _) => isAutoSource);
+
+                    //If not allowed or auto is disabled, remove the cache for auto-reflections
+                    if (!isAutoSource) _autoReflectionCache.Remove(objNsName, out _);
+
+                    //If reflection is disabled, remove the reflections cache and stop reflecting
+                    if (!objProperties.Allowed)
+                    {
+                        _directReflectionCache.Remove(objNsName, out _);
+                        return;
+                    }
+
+                    //Update known permitted direct reflections
+                    if (_directReflectionCache.TryGetValue(objNsName, out reflectionList))
+                        foreach (var reflectionNsName in reflectionList.ToArray())
+                        {
+                            //Try to get the properties for the reflection. Otherwise, remove it
+                            if (!_propertiesCache.TryGetValue(reflectionNsName, out var reflectionProperties))
+                            {
+                                reflectionList.Remove(reflectionNsName);
+                                continue;
+                            }
+
+                            if (reflectionProperties.ReflectedVersion == objProperties.ResourceVersion)
+                            {
+                                Logger.LogDebug(
+                                    "Skipping {reflectionNsName} - Source {sourceNsName} matches reflected version",
+                                    reflectionNsName, objNsName);
+                                continue;
+                            }
+
+                            //Execute the reflection
+                            await ResourceReflect(objNsName,
+                                reflectionNsName,
+                                obj,
+                                null,
+                                false);
+                        }
+
+                    //Ensure updated auto-reflections
+                    if (isAutoSource) await AutoReflectionForSource(objNsName, obj, cancellationToken);
 
 
-                return;
-            }
+                    return;
+                }
             //If resource is a direct reflection
             case { IsReflection: true, IsAutoReflection: false }:
-            {
-                var sourceNsName = objProperties.Reflects;
-                MirroringProperties sourceProperties;
-                if (!_propertiesCache.TryGetValue(sourceNsName, out var sourceProps))
                 {
-                    var sourceObj = await TryResourceGet(sourceNsName);
-                    if (sourceObj is null)
+                    var sourceNsName = objProperties.Reflects;
+                    MirroringProperties sourceProperties;
+                    if (!_propertiesCache.TryGetValue(sourceNsName, out var sourceProps))
                     {
-                        Logger.LogWarning(
-                            "Could not update {reflectionNsName} - Source {sourceNsName} could not be found.",
+                        var sourceObj = await TryResourceGet(sourceNsName);
+                        if (sourceObj is null)
+                        {
+                            Logger.LogWarning(
+                                "Could not update {reflectionNsName} - Source {sourceNsName} could not be found.",
+                                objNsName, sourceNsName);
+                            return;
+                        }
+
+                        sourceProperties = sourceObj.GetMirroringProperties();
+                    }
+                    else
+                    {
+                        sourceProperties = sourceProps;
+                    }
+
+                    _propertiesCache.AddOrUpdate(sourceNsName,
+                        sourceProperties, (_, _) => sourceProperties);
+                    _directReflectionCache.TryAdd(sourceNsName, []);
+                    _directReflectionCache[sourceNsName].Add(objNsName);
+
+                    if (!sourceProperties.CanBeReflectedToNamespace(objNsName.Namespace))
+                    {
+                        Logger.LogWarning("Could not update {reflectionNsName} - Source {sourceNsName} does not permit it.",
+                            objNsName, sourceNsName);
+
+                        _directReflectionCache[sourceNsName]
+                            .Remove(objNsName);
+                        return;
+                    }
+
+                    if (sourceProperties.ResourceVersion == objProperties.ReflectedVersion)
+                    {
+                        Logger.LogDebug("Skipping {reflectionNsName} - Source {sourceNsName} matches reflected version",
                             objNsName, sourceNsName);
                         return;
                     }
 
-                    sourceProperties = sourceObj.GetMirroringProperties();
-                }
-                else
-                {
-                    sourceProperties = sourceProps;
-                }
+                    await ResourceReflect(
+                        sourceNsName,
+                        objNsName,
+                        null,
+                        obj,
+                        false);
 
-                _propertiesCache.AddOrUpdate(sourceNsName,
-                    sourceProperties, (_, _) => sourceProperties);
-                _directReflectionCache.TryAdd(sourceNsName, []);
-                _directReflectionCache[sourceNsName].Add(objNsName);
-
-                if (!sourceProperties.CanBeReflectedToNamespace(objNsName.Namespace))
-                {
-                    Logger.LogWarning("Could not update {reflectionNsName} - Source {sourceNsName} does not permit it.",
-                        objNsName, sourceNsName);
-
-                    _directReflectionCache[sourceNsName]
-                        .Remove(objNsName);
                     return;
                 }
-
-                if (sourceProperties.ResourceVersion == objProperties.ReflectedVersion)
-                {
-                    Logger.LogDebug("Skipping {reflectionNsName} - Source {sourceNsName} matches reflected version",
-                        objNsName, sourceNsName);
-                    return;
-                }
-
-                await ResourceReflect(
-                    sourceNsName,
-                    objNsName,
-                    null,
-                    obj,
-                    false);
-
-                return;
-            }
             //If this is an auto-reflection, ensure it still has a source. reflection will be done when we hit the source
             case { IsReflection: true, IsAutoReflection: true }:
-            {
-                var sourceNsName = objProperties.Reflects;
-
-                //If the source is known to not exist, drop the reflection
-                if (_notFoundCache.ContainsKey(sourceNsName))
                 {
-                    Logger.LogInformation("Source {sourceNsName} no longer exists. Deleting {reflectionNsName}.",
-                        sourceNsName, objNsName);
-                    await OnResourceDelete(objNsName);
-                    return;
-                }
+                    var sourceNsName = objProperties.Reflects;
 
-
-                //Find the source resource
-                MirroringProperties sourceProperties;
-                if (!_propertiesCache.TryGetValue(sourceNsName, out var props))
-                {
-                    var sourceResource = await TryResourceGet(sourceNsName);
-                    if (sourceResource is null)
+                    //If the source is known to not exist, drop the reflection
+                    if (_notFoundCache.ContainsKey(sourceNsName))
                     {
                         Logger.LogInformation("Source {sourceNsName} no longer exists. Deleting {reflectionNsName}.",
                             sourceNsName, objNsName);
@@ -319,26 +304,40 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                         return;
                     }
 
-                    sourceProperties = sourceResource.GetMirroringProperties();
-                }
-                else
-                {
-                    sourceProperties = props;
-                }
 
-                _propertiesCache.AddOrUpdate(sourceNsName, sourceProperties,
-                    (_, _) => sourceProperties);
-                if (!sourceProperties.CanBeAutoReflectedToNamespace(objNsName.Namespace))
-                {
-                    Logger.LogInformation(
-                        "Source {sourceNsName} no longer permits the auto reflection to {reflectionNsName}. Deleting {reflectionNsName}.",
-                        sourceNsName, objNsName,
-                        objNsName);
-                    await OnResourceDelete(objNsName);
-                }
+                    //Find the source resource
+                    MirroringProperties sourceProperties;
+                    if (!_propertiesCache.TryGetValue(sourceNsName, out var props))
+                    {
+                        var sourceResource = await TryResourceGet(sourceNsName);
+                        if (sourceResource is null)
+                        {
+                            Logger.LogInformation("Source {sourceNsName} no longer exists. Deleting {reflectionNsName}.",
+                                sourceNsName, objNsName);
+                            await OnResourceDelete(objNsName);
+                            return;
+                        }
 
-                break;
-            }
+                        sourceProperties = sourceResource.GetMirroringProperties();
+                    }
+                    else
+                    {
+                        sourceProperties = props;
+                    }
+
+                    _propertiesCache.AddOrUpdate(sourceNsName, sourceProperties,
+                        (_, _) => sourceProperties);
+                    if (!sourceProperties.CanBeAutoReflectedToNamespace(objNsName.Namespace))
+                    {
+                        Logger.LogInformation(
+                            "Source {sourceNsName} no longer permits the auto reflection to {reflectionNsName}. Deleting {reflectionNsName}.",
+                            sourceNsName, objNsName,
+                            objNsName);
+                        await OnResourceDelete(objNsName);
+                    }
+
+                    break;
+                }
         }
     }
 
