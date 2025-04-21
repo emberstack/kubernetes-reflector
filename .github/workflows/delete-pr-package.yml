@@ -1,0 +1,26 @@
+name: Delete PR Package
+
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      pr-id:
+        type: number
+        required: true
+        description: ID of the PR whose image should be deleted
+
+jobs:
+  delete-package:
+    name: Delete PR Package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/delete-package-versions@v5
+        with:
+          package-name: kubernetes-reflector
+          package-type: container
+          package-version-ids: pr-${{inputs.pr-id || github.event.pull_request.id }}
