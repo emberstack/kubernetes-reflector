@@ -1,4 +1,4 @@
-﻿using ES.FX.KubernetesClient.Models;
+﻿using ES.FX.Additions.KubernetesClient.Models;
 using ES.Kubernetes.Reflector.Mirroring.Core;
 using k8s;
 using k8s.Models;

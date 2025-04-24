@@ -1,5 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using ES.FX.KubernetesClient.Models;
+using ES.FX.Additions.KubernetesClient.Models;
 
 namespace ES.Kubernetes.Reflector.Mirroring.Core;
 

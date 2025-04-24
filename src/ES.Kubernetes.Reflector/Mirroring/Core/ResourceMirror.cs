@@ -1,8 +1,8 @@
 ﻿using System.Collections.Concurrent;
 using System.Net;
-using ES.FX.KubernetesClient.Models;
-using ES.FX.KubernetesClient.Models.Extensions;
-using ES.FX.Newtonsoft.Json.Serialization;
+using ES.FX.Additions.KubernetesClient.Models;
+using ES.FX.Additions.KubernetesClient.Models.Extensions;
+using ES.FX.Additions.Newtonsoft.Json.Serialization;
 using ES.Kubernetes.Reflector.Watchers.Core.Events;
 using k8s;
 using k8s.Autorest;

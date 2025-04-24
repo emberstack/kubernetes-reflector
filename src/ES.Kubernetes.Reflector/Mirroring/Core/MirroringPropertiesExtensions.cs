@@ -1,6 +1,6 @@
 ﻿using System.Text.RegularExpressions;
-using ES.FX.KubernetesClient.Models;
-using ES.FX.KubernetesClient.Models.Extensions;
+using ES.FX.Additions.KubernetesClient.Models;
+using ES.FX.Additions.KubernetesClient.Models.Extensions;
 using k8s;
 using k8s.Models;
 

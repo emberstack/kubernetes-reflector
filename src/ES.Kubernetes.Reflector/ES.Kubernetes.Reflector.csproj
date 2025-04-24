@@ -13,8 +13,9 @@
 		<PackageReference Include="ES.FX.Ignite.OpenTelemetry.Exporter.Seq" />
 		<PackageReference Include="ES.FX.Ignite.Serilog" />
 		<PackageReference Include="ES.FX.Ignite.KubernetesClient" />
-		<PackageReference Include="ES.FX.Microsoft.AspNetCore.JsonPatch" />
-		<PackageReference Include="ES.FX.Newtonsoft.Json" />
+		<PackageReference Include="ES.FX.Additions.Newtonsoft.Json" />
+		<PackageReference Include="ES.FX.Additions.KubernetesClient" />
+		<PackageReference Include="Microsoft.AspNetCore.JsonPatch" />
 		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
 	</ItemGroup>
 

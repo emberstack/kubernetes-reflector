@@ -1,10 +1,10 @@
+using ES.FX.Additions.KubernetesClient.Models.Extensions;
+using ES.FX.Additions.Serilog.Lifetime;
 using ES.FX.Hosting.Lifetime;
 using ES.FX.Ignite.Hosting;
 using ES.FX.Ignite.KubernetesClient.Hosting;
 using ES.FX.Ignite.OpenTelemetry.Exporter.Seq.Hosting;
 using ES.FX.Ignite.Serilog.Hosting;
-using ES.FX.KubernetesClient.Models.Extensions;
-using ES.FX.Serilog.Lifetime;
 using ES.Kubernetes.Reflector.Configuration;
 using ES.Kubernetes.Reflector.Mirroring;
 using ES.Kubernetes.Reflector.Watchers;
