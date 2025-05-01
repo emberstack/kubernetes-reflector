@@ -1,26 +1,44 @@
 {
-    "extends": ["config:recommended"],
-    "dependencyDashboard": true,
-    "labels": ["area-dependencies"],
-    "enabledManagers": ["nuget", "github-actions"],
-    "packageRules": [
-      {
-        "matchManagers": ["nuget"],
-        "matchPaths": ["src/**"],
-        "groupName": "all-dependencies",
-        "automerge": true,
-        "labels": ["area-dependencies"]
-      },
-      {
-        "matchManagers": ["github-actions"],
-        "matchPaths": [".github/workflows/**"],
-        "groupName": "all-dependencies",
-        "automerge": true,
-        "labels": ["area-dependencies"]
-      }
-    ],
-    "automergeType": "pr",
-    "prHourlyLimit": 15,
-    "prConcurrentLimit": 15
-  }
-  
+  "extends": [
+    "config:recommended"
+  ],
+  "dependencyDashboard": true,
+  "labels": [
+    "area-dependencies"
+  ],
+  "enabledManagers": [
+    "nuget",
+    "github-actions"
+  ],
+  "packageRules": [
+    {
+      "matchManagers": [
+        "nuget"
+      ],
+      "matchFileNames": [
+        "src/**"
+      ],
+      "groupName": "all-dependencies",
+      "automerge": true,
+      "labels": [
+        "area-dependencies"
+      ]
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchFileNames": [
+        ".github/workflows/**"
+      ],
+      "groupName": "all-dependencies",
+      "automerge": true,
+      "labels": [
+        "area-dependencies"
+      ]
+    }
+  ],
+  "automergeType": "pr",
+  "prHourlyLimit": 15,
+  "prConcurrentLimit": 15
+}
