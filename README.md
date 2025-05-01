@@ -1,7 +1,7 @@
 # Reflector
 Reflector is a Kubernetes addon designed to monitor changes to resources (secrets and configmaps) and reflect changes to mirror resources in the same or other namespaces.
 
-[![CI/CD](https://github.com/emberstack/kubernetes-reflector/actions/workflows/main.yaml/badge.svg)](https://github.com/emberstack/kubernetes-reflector/actions/workflows/main.yaml)
+[![Pipeline](https://github.com/emberstack/kubernetes-reflector/actions/workflows/main.yaml/badge.svg)](https://github.com/emberstack/kubernetes-reflector/actions/workflows/pipeline.yaml)
 [![Release](https://img.shields.io/github/release/emberstack/kubernetes-reflector.svg?style=flat-square)](https://github.com/emberstack/kubernetes-reflector/releases/latest)
 [![Docker Image](https://img.shields.io/docker/image-size/emberstack/kubernetes-reflector/latest?style=flat-square)](https://hub.docker.com/r/emberstack/kubernetes-reflector)
 [![Docker Pulls](https://img.shields.io/docker/pulls/emberstack/kubernetes-reflector?style=flat-square)](https://hub.docker.com/r/emberstack/kubernetes-reflector)
