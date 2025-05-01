@@ -3,6 +3,8 @@ name: Renovate
 on:
   schedule:
     - cron: '0 5 * * *' # daily at 5am UTC
+  pull_request:
+  merge_group:
   workflow_dispatch:
 
 jobs:
