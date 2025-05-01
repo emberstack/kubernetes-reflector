@@ -2,7 +2,7 @@
   "extends": [
     "config:recommended"
   ],
-  "dependencyDashboard": true,
+  "dependencyDashboard": false,
   "labels": [
     "area-dependencies"
   ],
