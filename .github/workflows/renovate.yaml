@@ -16,3 +16,4 @@ jobs:
         uses: renovatebot/github-action@v40.1.12
         with:
           token: ${{ secrets.ES_GITHUB_PAT }}
+          RENOVATE_REPOSITORIES: emberstack/kubernetes-reflector
