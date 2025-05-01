@@ -226,7 +226,7 @@ jobs:
         with:
           repository: ${{ github.repository }}
           name: v${{ env.gitVersion_SemVer }}
-          tag_name: version/v${{ env.gitVersion_SemVer }}
+          tag_name: v${{ env.gitVersion_SemVer }}
           body: The release process is automated.
           generate_release_notes: true
           token: ${{ secrets.ES_GITHUB_PAT }}
