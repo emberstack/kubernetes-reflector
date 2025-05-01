@@ -4,11 +4,11 @@ on:
   push:
     paths:
       - "src/**"
-      - ".github/workflows/**"
+      - ".github/workflows/main.yaml"
   pull_request:
     paths:
       - "src/**"
-      - ".github/workflows/**"
+      - ".github/workflows/main.yaml"
 
 env:
   version: 9.0.${{github.run_number}}
