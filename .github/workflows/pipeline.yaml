@@ -103,7 +103,8 @@ jobs:
       - name: evaluate - requires_release
         id: requires_release
         run: |
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          if [ "${{ github.ref }}" = "refs/heads/main" ] || \
+             [ "${{ github.event.inputs.force_publish }}" = "true" ]; then
             result=true
           else
             result=false
