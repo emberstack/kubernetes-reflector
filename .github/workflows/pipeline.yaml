@@ -57,14 +57,14 @@ jobs:
           dotnet-version: "9.x"
 
       - name: tools - gitversion - install
-        uses: gittools/actions/gitversion/setup@v3.0.0
+        uses: gittools/actions/gitversion/setup@v3.2.1
         with:
           versionSpec: "5.x"
           preferLatestVersion: true
 
       - name: gitversion - execute
         id: gitversion
-        uses: gittools/actions/gitversion/execute@v3.0.0
+        uses: gittools/actions/gitversion/execute@v3.2.1
         with:
           useConfigFile: true
           configFilePath: GitVersion.yaml
@@ -186,7 +186,7 @@ jobs:
         run: install -D src/helm/artifacthub-repo.yaml .artifacts/artifacthub/artifacthub-repo.yaml
 
       - name: docker - build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ${{ env.containerImageBuildContext }}
           file: ${{ env.containerImageBuildDockerfile }}
