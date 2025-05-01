@@ -1,0 +1,234 @@
+name: Pipeline
+
+on:
+  push:
+    branches:
+      - "**" # Matches all branches
+  pull_request:
+    branches:
+      - "**" # Matches all branches
+
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: "Forces a build even if no changes are detected"
+        required: true
+        default: "false"
+      force_publish:
+        description: "Forces a publish even if no changes are detected"
+        required: true
+        default: "false"
+
+concurrency:
+  group: pipeline-${{ github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  containerImage: "kubernetes-reflector"
+  containerImageBuildContext: "src/"
+  containerImageBuildDockerfile: "src/ES.Kubernetes.Reflector/Dockerfile"
+  dockerHubContainerImageRepository: "emberstack"
+  ghcrContainerImageRepository: "ghcr.io/emberstack"
+  helmChart: "reflector"
+  helmChartDir: "src/helm/reflector"
+
+jobs:
+  discovery:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      pathsFilter_src: ${{ steps.pathsFilter.outputs.src }}
+      gitVersion_SemVer: ${{ steps.gitversion.outputs.GitVersion_SemVer }}
+      gitVersion_AssemblySemFileVer: ${{ steps.gitversion.outputs.GitVersion_AssemblySemFileVer }}
+      requiresBuild: ${{ steps.requires_build.outputs.result }}
+      requiresBuildPush: ${{ steps.requires_build_push.outputs.result }}
+      requiresRelease: ${{ steps.requires_release.outputs.result }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: tools - dotnet - install
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.x"
+
+      - name: tools - gitversion - install
+        uses: gittools/actions/gitversion/setup@v3.0.0
+        with:
+          versionSpec: "5.x"
+          preferLatestVersion: true
+
+      - name: gitversion - execute
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v3.0.0
+        with:
+          useConfigFile: true
+          configFilePath: GitVersion.yaml
+
+      - name: tools - detect changes
+        id: pathsFilter
+        uses: dorny/paths-filter@v3
+        with:
+          base: ${{ github.ref }}
+          filters: |
+            src:
+              - 'src/**'
+
+      - name: evaluate - requires_build
+        id: requires_build
+        run: |
+          if [ "${{ steps.pathsFilter.outputs.src }}" = "true" ] || \
+             [ "${{ github.event.inputs.force_build }}" = "true" ] || \
+             [ "${{ github.event.inputs.force_publish }}" = "true" ]; then
+            result=true
+          else
+            result=false
+          fi
+          echo "result=$result" >> $GITHUB_OUTPUT
+
+      - name: evaluate - requires_build_push
+        id: requires_build_push
+        run: |
+          if [ "${{ steps.requires_build.outputs.result }}" = "true" ]; then
+            result=true
+          else
+            result=false
+          fi
+          echo "result=$result" >> $GITHUB_OUTPUT
+
+      - name: evaluate - requires_release
+        id: requires_release
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            result=true
+          else
+            result=false
+          fi
+          echo "result=$result" >> $GITHUB_OUTPUT
+
+
+
+  build:
+    name: build
+    if: ${{ needs.discovery.outputs.requiresBuild == 'true' }}
+    needs: [discovery]
+    runs-on: ubuntu-latest
+    env:
+      gitVersion_SemVer: ${{ needs.discovery.outputs.gitVersion_SemVer }}
+      gitVersion_AssemblySemFileVer: ${{ needs.discovery.outputs.gitVersion_AssemblySemFileVer }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: tools - kubectl - install
+        uses: azure/setup-kubectl@v4
+
+      - name: tools - oras - install
+        uses: oras-project/setup-oras@v1
+
+      - name: tools - oras - login - ghcr.io
+        if: ${{ needs.discovery.outputs.requiresBuildPush == 'true' }}
+        run: echo "${{ secrets.ES_GITHUB_PAT }}" | oras login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: tools - helm - install
+        uses: azure/setup-helm@v4
+
+      - name: tools - helm - login - ghcr.io
+        if: ${{ needs.discovery.outputs.requiresBuildPush == 'true' }}
+        run: echo "${{ secrets.ES_GITHUB_PAT }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: tools - docker - login ghcr.io
+        if: ${{ needs.discovery.outputs.requiresBuildPush == 'true' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.ES_GITHUB_PAT }}
+
+      - name: tools - docker - login docker.io
+        if: ${{ needs.discovery.outputs.requiresBuildPush == 'true' }}
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.ES_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.ES_DOCKERHUB_PAT }}
+
+      - name: tools - docker - register QEMU
+        run: |
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+
+      - name: tools - docker - setup buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container # REQUIRED for multi-platform builds
+
+      - name: artifacts - prepare directories
+        run: |
+          mkdir -p .artifacts/helm
+          mkdir -p .artifacts/kubectl
+          mkdir -p .artifacts/artifacthub
+
+      - name: helm - import README
+        run: cp README.md ${{ env.helmChartDir }}/README.md
+
+      - name: helm - package chart
+        run: helm package --destination .artifacts/helm --version ${{ env.gitVersion_SemVer }} --app-version ${{ env.gitVersion_SemVer }} ${{ env.helmChartDir }}
+
+      - name: helm - template chart
+        run: helm template --namespace kube-system ${{ env.helmChart }} .artifacts/helm/${{ env.helmChart }}-${{ env.gitVersion_SemVer }}.tgz > .artifacts/kubectl/${{ env.helmChart }}.yaml
+
+      - name: helm - artifacthub - repo
+        run: install -D src/helm/artifacthub-repo.yaml .artifacts/artifacthub/artifacthub-repo.yaml
+
+      - name: docker - build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.containerImageBuildContext }}
+          file: ${{ env.containerImageBuildDockerfile }}
+          push: ${{ needs.discovery.outputs.requiresBuildPush == 'true' }}
+          provenance: false
+          platforms: linux/amd64,linux/arm/v7,linux/arm64
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.url=https://github.com/${{ github.repository }}
+            org.opencontainers.image.vendor=${{ github.repository_owner }}
+            org.opencontainers.image.version=${{ env.gitVersion_SemVer }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          tags: |
+            ${{ env.dockerHubContainerImageRepository }}/${{ env.containerImage }}:${{ env.gitVersion_SemVer }}
+            ${{ env.ghcrContainerImageRepository }}/${{ env.containerImage }}:${{ env.gitVersion_SemVer }}
+
+      - name: helm - push - ghcr.io
+        run: helm push .artifacts/helm/${{ env.helmChart }}-${{ env.gitVersion_SemVer }}.tgz oci://ghcr.io/${{ github.repository_owner }}/helm-charts
+
+      - name: docker - tag and push - latest
+        if: ${{ needs.discovery.outputs.requiresRelease == 'true' }}
+        run: |
+          docker buildx imagetools create \
+            --tag ${{ env.dockerHubContainerImageRepository }}/${{ env.containerImage }}:latest \
+            --tag ${{ env.ghcrContainerImageRepository }}/${{ env.containerImage }}:latest \
+            ${{ env.ghcrContainerImageRepository }}/${{ env.containerImage }}:${{ env.gitVersion_SemVer }}
+
+      - name: oras - push - artifact hub metadata
+        if: ${{ needs.discovery.outputs.requiresRelease == 'true' }}
+        run: |
+          oras push ghcr.io/${{ github.repository_owner }}/helm-charts/${{ env.helmChart }}:artifacthub.io \
+            --config /dev/null:application/vnd.cncf.artifacthub.config.v1+yaml \
+            .artifacts/artifacthub/artifacthub-repo.yaml:application/vnd.cncf.artifacthub.repository-metadata.layer.v1.yaml
+
+      - name: github - release - create
+        if: ${{ needs.discovery.outputs.requiresRelease == 'true' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: ${{ github.repository }}
+          name: v${{ env.gitVersion_SemVer }}
+          tag_name: version/v${{ env.gitVersion_SemVer }}
+          body: The release process is automated.
+          generate_release_notes: true
+          token: ${{ secrets.ES_GITHUB_PAT }}
+          files: |
+            .artifacts/kubectl/${{ env.helmChart }}.yaml

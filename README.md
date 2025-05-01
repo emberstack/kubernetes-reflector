@@ -1,7 +1,7 @@
 # Reflector
 Reflector is a Kubernetes addon designed to monitor changes to resources (secrets and configmaps) and reflect changes to mirror resources in the same or other namespaces.
 
-[![Pipeline](https://github.com/emberstack/kubernetes-reflector/actions/workflows/pipeline.yaml/badge.svg)](https://github.com/emberstack/kubernetes-reflector/actions/workflows/pipeline.yaml)
+[![CI/CD](https://github.com/emberstack/kubernetes-reflector/actions/workflows/main.yaml/badge.svg)](https://github.com/emberstack/kubernetes-reflector/actions/workflows/main.yaml)
 [![Release](https://img.shields.io/github/release/emberstack/kubernetes-reflector.svg?style=flat-square)](https://github.com/emberstack/kubernetes-reflector/releases/latest)
 [![Docker Image](https://img.shields.io/docker/image-size/emberstack/kubernetes-reflector/latest?style=flat-square)](https://hub.docker.com/r/emberstack/kubernetes-reflector)
 [![Docker Pulls](https://img.shields.io/docker/pulls/emberstack/kubernetes-reflector?style=flat-square)](https://hub.docker.com/r/emberstack/kubernetes-reflector)
@@ -19,15 +19,13 @@ Reflector can be deployed either manually or using Helm (recommended).
 
 ### Prerequisites
 - Kubernetes 1.22+
-- Helm 3 (if deployed using Helm)
+- Helm 3.8+ (if deployed using Helm)
 
 #### Deployment using Helm
 
 Use Helm to install the latest released chart:
 ```shellsession
-$ helm repo add emberstack https://emberstack.github.io/helm-charts
-$ helm repo update
-$ helm upgrade --install reflector emberstack/reflector
+$ helm upgrade --install reflector oci://ghcr.io/emberstack/helm/reflector
 ```
 
 You can customize the values of the helm deployment by using the following Values:
