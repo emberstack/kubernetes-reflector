@@ -1,0 +1,30 @@
+version: 2
+registries:
+  public-nuget:
+    type: nuget-feed
+    url: https://api.nuget.org/v3/index.json
+updates:
+  - package-ecosystem: nuget
+    directory: "/src"
+    registries:
+      - public-nuget
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 15
+    labels:
+      - "area-dependencies"
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 5
+    labels:
+      - "area-dependencies"
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
