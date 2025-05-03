@@ -14,6 +14,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ES.Kubernetes.Reflector", "
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".src", ".src", "{868DDC6B-AB77-4639-A95B-E182CC65AF60}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{755CA48A-4728-4A3F-8EAB-03E99B2F6087}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ES.Kubernetes.Reflector.Tests", "tests\ES.Kubernetes.Reflector.Tests\ES.Kubernetes.Reflector.Tests.csproj", "{4C67A712-2206-40F3-A08F-C2F9EF22B424}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,12 +28,17 @@ Global
 		{D9295E0C-D3E8-1BE3-F512-1E2579A6882C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D9295E0C-D3E8-1BE3-F512-1E2579A6882C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D9295E0C-D3E8-1BE3-F512-1E2579A6882C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4C67A712-2206-40F3-A08F-C2F9EF22B424}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4C67A712-2206-40F3-A08F-C2F9EF22B424}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4C67A712-2206-40F3-A08F-C2F9EF22B424}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4C67A712-2206-40F3-A08F-C2F9EF22B424}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{D9295E0C-D3E8-1BE3-F512-1E2579A6882C} = {868DDC6B-AB77-4639-A95B-E182CC65AF60}
+		{4C67A712-2206-40F3-A08F-C2F9EF22B424} = {755CA48A-4728-4A3F-8EAB-03E99B2F6087}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {3D60B4E7-B886-4E0A-BD09-2AF8EC1BA851}

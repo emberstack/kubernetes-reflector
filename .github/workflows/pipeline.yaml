@@ -108,7 +108,7 @@ jobs:
       - name: evaluate - build_push
         id: evaluate_build_push
         run: |
-          if [ "${{ steps.evaluate_build.outputs.result }}" = "true" ]; then
+          if [ "${{ steps.pathsFilter.outputs.src }}" = "true" ]; then
             result=true
           else
             result=false
@@ -228,6 +228,8 @@ jobs:
         with:
           context: ${{ env.container_image_build_context }}
           file: ${{ env.container_image_build_dockerfile }}
+          build-args: |
+            BUILD_CONFIGURATION=${{ env.build_configuration }}
           push: ${{ env.build_push == 'true' }}
           provenance: false
           platforms: ${{ env.container_image_build_platforms }}
