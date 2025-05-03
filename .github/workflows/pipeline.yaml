@@ -330,7 +330,6 @@ jobs:
       - name: helm - push
         run: helm push .artifacts/helm/${{ env.helm_chart }}-${{ env.gitVersion_SemVer }}.tgz ${{ env.helm_chart_repository_protocol }}${{ env.helm_chart_repository }}
 
-
       - name: github - release - create
         uses: softprops/action-gh-release@v2
         with:
@@ -341,4 +340,4 @@ jobs:
           generate_release_notes: true
           token: ${{ secrets.ES_GITHUB_PAT }}
           files: |
-            .artifacts/kubectl/${{ env.helmChart }}.yaml
+            .artifacts/kubectl/${{ env.helm_chart }}.yaml
