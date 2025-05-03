@@ -279,19 +279,18 @@ jobs:
           name: artifacts-kubectl-${{env.gitVersion_SemVer}}
           path: .artifacts/kubectl
 
+      - name: tools - helm - install
+        uses: azure/setup-helm@v4
+
+      - name: tools - helm - login - ghcr.io
+        if: ${{ env.build_push == 'true' }}
+        run: echo "${{ secrets.ES_GITHUB_PAT }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+
       - name: tools - oras - install
         uses: oras-project/setup-oras@v1
 
       - name: tools - oras - login - ghcr.io
         run: echo "${{ secrets.ES_GITHUB_PAT }}" | oras login ghcr.io -u ${{ github.actor }} --password-stdin
-
-
-      - name: oras - push - helm - artifact hub metadata
-        if: ${{ env.helm_chart_repository_protocol == 'oci://' }}
-        run: |
-          oras push ${{ env.helm_chart_repository }}/${{ env.helm_chart }}:artifacthub.io \
-            --config /dev/null:application/vnd.cncf.artifacthub.config.v1+yaml \
-            .artifacts/helm/artifacthub-repo.yaml:application/vnd.cncf.artifacthub.repository-metadata.layer.v1.yaml
 
       - name: tools - docker - login ghcr.io
         uses: docker/login-action@v3
@@ -318,6 +317,17 @@ jobs:
             --tag ${{ env.container_image_repository_dockerhub }}/${{ env.container_image }}:${{ env.gitVersion_SemVer }} \
             --tag ${{ env.container_image_repository_ghcr }}/${{ env.container_image }}:${{ env.gitVersion_SemVer }} \
             ${{ env.container_image_repository_ghcr }}/${{ env.container_image }}:${{ env.gitVersion_SemVer }}
+
+      - name: oras - push - helm - artifact hub metadata
+        if: ${{ env.helm_chart_repository_protocol == 'oci://' }}
+        run: |
+          oras push ${{ env.helm_chart_repository }}/${{ env.helm_chart }}:artifacthub.io \
+            --config /dev/null:application/vnd.cncf.artifacthub.config.v1+yaml \
+            .artifacts/helm/artifacthub-repo.yaml:application/vnd.cncf.artifacthub.repository-metadata.layer.v1.yaml
+
+      - name: helm - push
+        run: helm push .artifacts/helm/${{ env.helm_chart }}-${{ env.gitVersion_SemVer }}.tgz ${{ env.helm_chart_repository_protocol }}${{ env.helm_chart_repository }}
+
 
       - name: github - release - create
         uses: softprops/action-gh-release@v2
