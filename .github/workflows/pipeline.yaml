@@ -283,7 +283,6 @@ jobs:
         uses: azure/setup-helm@v4
 
       - name: tools - helm - login - ghcr.io
-        if: ${{ env.build_push == 'true' }}
         run: echo "${{ secrets.ES_GITHUB_PAT }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: tools - oras - install
