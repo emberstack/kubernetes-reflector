@@ -27,6 +27,12 @@ Use Helm to install the latest released chart:
 ```shellsession
 $ helm upgrade --install reflector oci://ghcr.io/emberstack/helm-charts/reflector
 ```
+or
+```shellsession
+$ helm repo add emberstack https://emberstack.github.io/helm-charts
+$ helm repo update
+$ helm upgrade --install reflector emberstack/reflector
+```
 
 You can customize the values of the helm deployment by using the following Values:
 
@@ -56,7 +62,7 @@ You can customize the values of the helm deployment by using the following Value
 | `affinity`                               | Node affinity for pod assignment                 | `{}`                                                                                             |
 | `priorityClassName`                      | `priorityClassName` for pods                     | `""`                                                                                             |
                                          
-> Find us on [Artifact Hub](https://artifacthub.io/packages/helm/helm-kubernetes-reflector/reflector)
+> Find us on [Artifact Hub](https://artifacthub.io/packages/search?org=emberstack)
 
 
 #### Manual deployment
