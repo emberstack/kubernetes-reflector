@@ -5,7 +5,7 @@ registries:
     url: https://api.nuget.org/v3/index.json
 updates:
   - package-ecosystem: nuget
-    directory: "/src"
+    directory: "/"
     registries:
       - public-nuget
     schedule:
