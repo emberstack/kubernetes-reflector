@@ -95,47 +95,28 @@ jobs:
 
       - name: evaluate - build
         id: evaluate_build
-        run: |
-          if [ "${{ steps.pathsFilter.outputs.build }}" = "true" ] || \
-             [ "${{ github.event.inputs.force_build }}" = "true" ] || \
-             [ "${{ github.event.inputs.force_release }}" = "true" ]; then
-            result=true
-          else
-            result=false
-          fi
-          echo "result=$result" >> $GITHUB_OUTPUT
+        env:
+          RESULT: ${{ steps.pathsFilter.outputs.build == 'true' || github.event.inputs.force_build == 'true' || github.event.inputs.force_release == 'true' }}
+        run: echo "result=$RESULT" >> $GITHUB_OUTPUT
 
       - name: evaluate - build_push
         id: evaluate_build_push
-        run: |
-          if [ "${{ steps.pathsFilter.outputs.src }}" = "true" ] || \
-             [ "${{ github.event.inputs.force_build }}" = "true" ]; then
-            result=true
-          else
-            result=false
-          fi
-          echo "result=$result" >> $GITHUB_OUTPUT
+        env:
+          RESULT: ${{ github.event_name != 'pull_request' && (steps.pathsFilter.outputs.src == 'true' || github.event.inputs.force_build == 'true') }}
+        run: echo "result=$RESULT" >> $GITHUB_OUTPUT
 
       - name: evaluate - build_configuration
         id: evaluate_build_configuration
-        run: |
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            result=Release
-          else
-            result=Debug
-          fi
-          echo "result=$result" >> $GITHUB_OUTPUT
+        env:
+          RESULT: ${{ github.ref == 'refs/heads/main' && 'Release' || 'Debug' }}
+        run: echo "result=$RESULT" >> $GITHUB_OUTPUT
 
       - name: evaluate - release
         id: evaluate_release
-        run: |
-          if [ "${{ github.ref }}" = "refs/heads/main" ] || \
-             [ "${{ github.event.inputs.force_release }}" = "true" ]; then
-            result=true
-          else
-            result=false
-          fi
-          echo "result=$result" >> $GITHUB_OUTPUT
+        env:
+          RESULT: ${{ github.ref == 'refs/heads/main' || github.event.inputs.force_release == 'true' }}
+        run: echo "result=$RESULT" >> $GITHUB_OUTPUT
+      
 
   build:
     name: build
