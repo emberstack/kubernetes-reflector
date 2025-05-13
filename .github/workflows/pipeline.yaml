@@ -102,7 +102,7 @@ jobs:
       - name: evaluate - build_push
         id: evaluate_build_push
         env:
-          RESULT: ${{ github.event_name != 'pull_request' && (steps.pathsFilter.outputs.src == 'true' || github.event.inputs.force_build == 'true') }}
+          RESULT: ${{ github.actor != 'dependabot[bot]' && github.event_name != 'pull_request' && (steps.pathsFilter.outputs.src == 'true' || github.event.inputs.force_build == 'true') }}
         run: echo "result=$RESULT" >> $GITHUB_OUTPUT
 
       - name: evaluate - build_configuration
