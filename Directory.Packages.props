@@ -12,12 +12,12 @@
 		<PackageVersion Include="ES.FX.Additions.Newtonsoft.Json" Version="9.1.23" />
 		<PackageVersion Include="ES.FX.Additions.KubernetesClient" Version="9.1.23" />
 		<PackageVersion Include="JetBrains.Annotations" Version="2024.3.0" />
-		<PackageVersion Include="Microsoft.AspNetCore.JsonPatch" Version="9.0.5" />
-		<PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.5" />
+		<PackageVersion Include="Microsoft.AspNetCore.JsonPatch" Version="9.0.6" />
+		<PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.6" />
 		<PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
 		<PackageVersion Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.2" />
 		<PackageVersion Include="Moq" Version="4.20.72" />
-		<PackageVersion Include="Polly.Core" Version="8.5.2" />
+		<PackageVersion Include="Polly.Core" Version="8.6.0" />
 		<PackageVersion Include="Testcontainers.K3s" Version="4.5.0" />
 		<PackageVersion Include="xunit.runner.visualstudio" Version="3.1.1" />
 		<PackageVersion Include="xunit.v3" Version="2.0.3" />
