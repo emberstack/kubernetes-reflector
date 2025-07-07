@@ -62,14 +62,14 @@ jobs:
           dotnet-version: "9.x"
 
       - name: tools - gitversion - install
-        uses: gittools/actions/gitversion/setup@v4.0.0
+        uses: gittools/actions/gitversion/setup@v4.0.1
         with:
           versionSpec: "6.x"
           preferLatestVersion: true
 
       - name: gitversion - execute
         id: gitversion
-        uses: gittools/actions/gitversion/execute@v4.0.0
+        uses: gittools/actions/gitversion/execute@v4.0.1
         with:
           configFilePath: GitVersion.yaml
 
