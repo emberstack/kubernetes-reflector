@@ -5,19 +5,19 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
-    <PackageVersion Include="ES.FX.Ignite" Version="9.1.36" />
-    <PackageVersion Include="ES.FX.Ignite.KubernetesClient" Version="9.1.36" />
-    <PackageVersion Include="ES.FX.Ignite.OpenTelemetry.Exporter.Seq" Version="9.1.36" />
-    <PackageVersion Include="ES.FX.Ignite.Serilog" Version="9.1.36" />
-    <PackageVersion Include="ES.FX.Additions.Newtonsoft.Json" Version="9.1.36" />
-    <PackageVersion Include="ES.FX.Additions.KubernetesClient" Version="9.1.36" />
+    <PackageVersion Include="ES.FX.Ignite" Version="9.1.37" />
+    <PackageVersion Include="ES.FX.Ignite.KubernetesClient" Version="9.1.37" />
+    <PackageVersion Include="ES.FX.Ignite.OpenTelemetry.Exporter.Seq" Version="9.1.37" />
+    <PackageVersion Include="ES.FX.Ignite.Serilog" Version="9.1.37" />
+    <PackageVersion Include="ES.FX.Additions.Newtonsoft.Json" Version="9.1.37" />
+    <PackageVersion Include="ES.FX.Additions.KubernetesClient" Version="9.1.37" />
     <PackageVersion Include="JetBrains.Annotations" Version="2024.3.0" />
     <PackageVersion Include="Microsoft.AspNetCore.JsonPatch" Version="9.0.7" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.7" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.2" />
     <PackageVersion Include="Moq" Version="4.20.72" />
-    <PackageVersion Include="Polly.Core" Version="8.6.1" />
+    <PackageVersion Include="Polly.Core" Version="8.6.2" />
     <PackageVersion Include="Testcontainers.K3s" Version="4.6.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.1" />
     <PackageVersion Include="xunit.v3" Version="2.0.3" />
