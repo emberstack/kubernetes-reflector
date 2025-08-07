@@ -62,14 +62,14 @@ jobs:
           dotnet-version: "9.x"
 
       - name: tools - gitversion - install
-        uses: gittools/actions/gitversion/setup@v4.0.1
+        uses: gittools/actions/gitversion/setup@v4.1.0
         with:
           versionSpec: "6.x"
           preferLatestVersion: true
 
       - name: gitversion - execute
         id: gitversion
-        uses: gittools/actions/gitversion/execute@v4.0.1
+        uses: gittools/actions/gitversion/execute@v4.1.0
         with:
           configFilePath: GitVersion.yaml
 
@@ -248,13 +248,13 @@ jobs:
     steps:
 
       - name: artifacts - helm - download
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: artifacts-helm-${{env.gitVersion_SemVer}}
           path: .artifacts/helm
 
       - name: artifacts - kubectl - download
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: artifacts-kubectl-${{env.gitVersion_SemVer}}
           path: .artifacts/kubectl
