@@ -11,7 +11,7 @@
     <PackageVersion Include="ES.FX.Ignite.Serilog" Version="9.1.38" />
     <PackageVersion Include="ES.FX.Additions.Newtonsoft.Json" Version="9.1.38" />
     <PackageVersion Include="ES.FX.Additions.KubernetesClient" Version="9.1.38" />
-    <PackageVersion Include="JetBrains.Annotations" Version="2025.2.1" />
+    <PackageVersion Include="JetBrains.Annotations" Version="2025.2.2" />
     <PackageVersion Include="Microsoft.AspNetCore.JsonPatch" Version="9.0.7" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.8" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
