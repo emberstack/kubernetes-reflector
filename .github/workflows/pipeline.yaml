@@ -57,7 +57,7 @@ jobs:
           fetch-depth: 0
 
       - name: tools - dotnet - install
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "9.x"
 
@@ -138,7 +138,7 @@ jobs:
           mkdir -p .artifacts/kubectl
 
       - name: tools - dotnet - install
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "9.x"
 
