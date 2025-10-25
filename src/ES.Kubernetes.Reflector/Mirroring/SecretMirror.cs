@@ -24,6 +24,10 @@ public class SecretMirror(ILogger<SecretMirror> logger, IKubernetes kubernetesCl
     protected override Task OnResourceConfigurePatch(V1Secret source, JsonPatchDocument<V1Secret> patchDoc)
     {
         patchDoc.Replace(e => e.Data, source.Data);
+        
+        // Ensure any labels on the source secret are reflected as well
+        patchDoc.Replace(e => e.Metadata.Labels, source.Metadata?.Labels ?? new Dictionary<string, string>());
+
         return Task.CompletedTask;
     }
 
@@ -38,7 +42,16 @@ public class SecretMirror(ILogger<SecretMirror> logger, IKubernetes kubernetesCl
             ApiVersion = sourceResource.ApiVersion,
             Kind = sourceResource.Kind,
             Type = sourceResource.Type,
-            Data = sourceResource.Data
+            Data = sourceResource.Data,
+
+            // Preserve labels from the source so tools that rely on labels can discover mirrored secrets
+            Metadata = new k8s.Models.V1ObjectMeta
+            {
+                Labels = sourceResource.Metadata?.Labels is null
+                    ? null
+                    : new Dictionary<string, string>(sourceResource.Metadata.Labels)
+            }
+            
         });
 
     protected override async Task OnResourceDelete(NamespacedName resourceId)
