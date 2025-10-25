@@ -512,7 +512,17 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
             foreach (var patchAnnotation in patchAnnotations)
                 annotations[patchAnnotation.Key] = patchAnnotation.Value;
             patchDoc.Replace(e => e.Metadata.Annotations, annotations);
-
+            
+            // Merge labels: preserve any existing labels on the reflection but ensure labels from the source
+            // are present (source labels take precedence).
+            var labels = reflectionObj.Metadata.Labels is null
+                ? new Dictionary<string, string>()
+                : new Dictionary<string, string>(reflectionObj.Metadata.Labels);
+            if (source.Metadata?.Labels is not null)
+                foreach (var kv in source.Metadata.Labels)
+                    labels[kv.Key] = kv.Value;
+            patchDoc.Replace(e => e.Metadata.Labels, labels);
+            
             await OnResourceConfigurePatch(source, patchDoc);
 
             var patch = JsonConvert.SerializeObject(patchDoc, Formatting.Indented);
