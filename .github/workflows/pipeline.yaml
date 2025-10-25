@@ -26,7 +26,7 @@ concurrency:
 env:
   helm_chart: "reflector"
   helm_chart_dir: "src/helm/reflector"
-  helm_chart_repository: "ghcr.io/emberstack/helm-charts"
+  helm_chart_repository: "ghcr.io/chidambaram27/helm-charts"
   helm_chart_repository_protocol: "oci://"
 
   container_image: "kubernetes-reflector"
@@ -34,7 +34,7 @@ env:
   container_image_build_platforms: "linux/amd64,linux/arm/v7,linux/arm64"
   container_image_build_dockerfile: "src/ES.Kubernetes.Reflector/Dockerfile"
   container_image_repository_dockerhub: "emberstack"
-  container_image_repository_ghcr: "ghcr.io/emberstack"
+  container_image_repository_ghcr: "ghcr.io/chidambaram27"
 
 jobs:
   discovery:
