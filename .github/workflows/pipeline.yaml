@@ -33,7 +33,7 @@ env:
   container_image_build_context: "."
   container_image_build_platforms: "linux/amd64,linux/arm/v7,linux/arm64"
   container_image_build_dockerfile: "src/ES.Kubernetes.Reflector/Dockerfile"
-  container_image_repository_dockerhub: "emberstack"
+  container_image_repository_dockerhub: "chidambaram27"
   container_image_repository_ghcr: "ghcr.io/chidambaram27"
 
 jobs:
