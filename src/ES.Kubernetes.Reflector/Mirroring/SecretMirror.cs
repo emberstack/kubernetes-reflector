@@ -51,6 +51,7 @@ public class SecretMirror(ILogger<SecretMirror> logger, IKubernetes kubernetesCl
                     ? null
                     : new Dictionary<string, string>(sourceResource.Metadata.Labels)
             }
+            
         });
 
     protected override async Task OnResourceDelete(NamespacedName resourceId)
