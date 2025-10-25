@@ -42,7 +42,7 @@ public class SecretMirror(ILogger<SecretMirror> logger, IKubernetes kubernetesCl
             ApiVersion = sourceResource.ApiVersion,
             Kind = sourceResource.Kind,
             Type = sourceResource.Type,
-            Data = sourceResource.Data
+            Data = sourceResource.Data,
 
             // Preserve labels from the source so tools that rely on labels can discover mirrored secrets
             Metadata = new k8s.Models.V1ObjectMeta
