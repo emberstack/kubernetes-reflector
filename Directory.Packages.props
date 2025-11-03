@@ -20,6 +20,6 @@
     <PackageVersion Include="Polly.Core" Version="8.6.4" />
     <PackageVersion Include="Testcontainers.K3s" Version="4.8.1" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
-    <PackageVersion Include="xunit.v3" Version="3.1.0" />
+    <PackageVersion Include="xunit.v3" Version="3.2.0" />
   </ItemGroup>
 </Project>
