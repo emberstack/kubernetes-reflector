@@ -3,7 +3,6 @@ using System.Threading.Channels;
 using ES.Kubernetes.Reflector.Configuration;
 using ES.Kubernetes.Reflector.Watchers.Core.Events;
 using k8s;
-using k8s.Autorest;
 using k8s.Models;
 using Microsoft.Extensions.Options;
 
@@ -57,8 +56,7 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
                     }
                 }, cancellationToken);
 
-                using var watcher = OnGetWatcher(cancellationToken);
-                var watchList = watcher.WatchAsync<TResource, TResourceList>(cancellationToken: cancellationToken);
+                var watchList = OnGetWatcher(cancellationToken);
 
                 try
                 {
@@ -106,7 +104,7 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
         }
     }
 
-    protected abstract Task<HttpOperationResponse<TResourceList>> OnGetWatcher(CancellationToken cancellationToken);
+    protected abstract IAsyncEnumerable<(WatchEventType, TResource)> OnGetWatcher(CancellationToken cancellationToken);
 
     protected virtual Task<bool> OnResourceIgnoreCheck(TResource item) => Task.FromResult(false);
 }

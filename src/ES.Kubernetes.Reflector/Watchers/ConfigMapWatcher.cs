@@ -2,7 +2,6 @@
 using ES.Kubernetes.Reflector.Watchers.Core;
 using ES.Kubernetes.Reflector.Watchers.Core.Events;
 using k8s;
-using k8s.Autorest;
 using k8s.Models;
 using Microsoft.Extensions.Options;
 
@@ -17,8 +16,8 @@ public class ConfigMapWatcher(
     : WatcherBackgroundService<V1ConfigMap, V1ConfigMapList>(
         logger, options, watcherEventHandlers, watcherClosedHandlers)
 {
-    protected override Task<HttpOperationResponse<V1ConfigMapList>> OnGetWatcher(CancellationToken cancellationToken) =>
-        kubernetes.CoreV1.ListConfigMapForAllNamespacesWithHttpMessagesAsync(watch: true,
+    protected override IAsyncEnumerable<(WatchEventType, V1ConfigMap)> OnGetWatcher(CancellationToken cancellationToken) =>
+        kubernetes.CoreV1.WatchListConfigMapForAllNamespacesAsync(
             timeoutSeconds: WatcherTimeout,
             cancellationToken: cancellationToken);
 }

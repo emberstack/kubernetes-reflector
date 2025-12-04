@@ -1,15 +1,9 @@
 ﻿using System.Net;
-using System.Threading;
 using ES.FX.Ignite.Configuration;
 using ES.Kubernetes.Reflector.Tests.Integration.Base;
 using ES.Kubernetes.Reflector.Tests.Integration.Fixtures;
 using JetBrains.Annotations;
-using k8s;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Polly.Retry;
-using Polly;
-using k8s.Autorest;
 
 [assembly: AssemblyFixture(typeof(ReflectorIntegrationFixture))]
 
@@ -29,7 +23,7 @@ public class HealthCheckIntegrationTests(ReflectorIntegrationFixture integration
 
         var response = await httpClient.GetAsync(settings.AspNetCore.HealthChecks.LivenessEndpointPath,
             TestContext.Current.CancellationToken);
-        Assert.Equal(HttpStatusCode.OK,response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]

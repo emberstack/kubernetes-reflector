@@ -30,8 +30,8 @@ public sealed class ReflectorFixture : WebApplicationFactory<Program>, IAsyncLif
         builder.UseEnvironment("tests");
         builder.ConfigureServices(services =>
         {
-            var kubernetesClientConfiguration = services.SingleOrDefault(
-                d => d.ServiceType == typeof(KubernetesClientConfiguration));
+            var kubernetesClientConfiguration =
+                services.SingleOrDefault(d => d.ServiceType == typeof(KubernetesClientConfiguration));
             if (kubernetesClientConfiguration is not null) services.Remove(kubernetesClientConfiguration);
 
             services.AddSingleton(s =>
