@@ -8,12 +8,6 @@
       },
       "applicationUrl": "http://0.0.0.0:8080",
       "dotnetRunMessages": false
-    },
-    "Docker": {
-      "commandName": "Docker",
-      "launchBrowser": true,
-      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
-      "publishAllPorts": true
     }
   }
 }

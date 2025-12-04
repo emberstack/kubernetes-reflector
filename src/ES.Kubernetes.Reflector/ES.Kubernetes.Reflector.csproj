@@ -16,7 +16,6 @@
 		<PackageReference Include="ES.FX.Additions.Newtonsoft.Json" />
 		<PackageReference Include="ES.FX.Additions.KubernetesClient" />
 		<PackageReference Include="Microsoft.AspNetCore.JsonPatch" />
-		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
 	</ItemGroup>
 
 </Project>
