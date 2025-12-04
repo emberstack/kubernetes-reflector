@@ -7,6 +7,8 @@ updates:
     open-pull-requests-limit: 15
     labels:
       - "area-dependencies"
+    ignore:
+      - dependency-name: "Microsoft.VisualStudio.Azure.Containers.Tools.Targets"
     groups:
       all-dependencies:
         patterns:
