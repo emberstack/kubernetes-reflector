@@ -6,7 +6,7 @@ namespace ES.Kubernetes.Reflector.Tests.Fixtures;
 
 public sealed class KubernetesFixture : IAsyncLifetime
 {
-    public K3sContainer Container { get; } = new K3sBuilder()
+    public K3sContainer Container { get; } = new K3sBuilder("rancher/k3s:v1.34.3-k3s1")
         .WithName($"{nameof(KubernetesFixture)}-{Guid.CreateVersion7()}")
         .Build();
 

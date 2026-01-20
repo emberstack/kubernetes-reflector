@@ -59,7 +59,7 @@ jobs:
       - name: tools - dotnet - install
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "9.x"
+          dotnet-version: "10.x"
 
       - name: tools - gitversion - install
         uses: gittools/actions/gitversion/setup@v4.2.0
@@ -140,7 +140,7 @@ jobs:
       - name: tools - dotnet - install
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "9.x"
+          dotnet-version: "10.x"
 
       - name: dotnet - restore
         run: dotnet restore
