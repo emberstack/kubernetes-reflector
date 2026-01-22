@@ -19,7 +19,7 @@ cron:
   enabled: false
   schedule: "*/15 * * * *"
   activeDeadlineSeconds: 600
-  securityContext:
+  podSecurityContext:
     runAsNonRoot: true
     runAsUser: 1000
 

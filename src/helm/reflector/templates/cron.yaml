@@ -53,7 +53,7 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
 
-          {{- with .Values.cron.securityContext }}
+          {{- with .Values.cron.podSecurityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
@@ -63,6 +63,10 @@ spec:
             - name: {{ .Chart.Name }}
               image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
               imagePullPolicy: {{ .Values.image.pullPolicy }}
+              {{- with .Values.cron.securityContext }}
+              securityContext:
+                {{- toYaml . | nindent 18 }}
+              {{- end }}
               env:
                 - name: ES_Serilog__MinimumLevel__Default
                   value: {{ .Values.configuration.logging.minimumLevel | quote }}
