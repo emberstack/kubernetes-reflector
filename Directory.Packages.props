@@ -5,12 +5,12 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
-    <PackageVersion Include="ES.FX.Ignite" Version="10.0.2" />
-    <PackageVersion Include="ES.FX.Ignite.KubernetesClient" Version="10.0.2" />
-    <PackageVersion Include="ES.FX.Ignite.OpenTelemetry.Exporter.Seq" Version="10.0.2" />
-    <PackageVersion Include="ES.FX.Ignite.Serilog" Version="10.0.2" />
-    <PackageVersion Include="ES.FX.Additions.Newtonsoft.Json" Version="10.0.2" />
-    <PackageVersion Include="ES.FX.Additions.KubernetesClient" Version="10.0.2" />
+    <PackageVersion Include="ES.FX.Ignite" Version="10.0.3" />
+    <PackageVersion Include="ES.FX.Ignite.KubernetesClient" Version="10.0.3" />
+    <PackageVersion Include="ES.FX.Ignite.OpenTelemetry.Exporter.Seq" Version="10.0.3" />
+    <PackageVersion Include="ES.FX.Ignite.Serilog" Version="10.0.3" />
+    <PackageVersion Include="ES.FX.Additions.Newtonsoft.Json" Version="10.0.3" />
+    <PackageVersion Include="ES.FX.Additions.KubernetesClient" Version="10.0.3" />
     <PackageVersion Include="JetBrains.Annotations" Version="2025.2.4" />
     <PackageVersion Include="Microsoft.AspNetCore.JsonPatch" Version="10.0.2" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.2" />
