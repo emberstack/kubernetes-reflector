@@ -226,13 +226,13 @@ jobs:
         run: helm push .artifacts/helm/${{ env.helm_chart }}-${{ env.gitVersion_SemVer }}.tgz ${{ env.helm_chart_repository_protocol }}${{ env.helm_chart_repository }}
 
       - name: artifacts - helm - upload
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: artifacts-helm-${{env.gitVersion_SemVer}}
           path: .artifacts/helm
 
       - name: artifacts - kubectl - upload
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: artifacts-kubectl-${{env.gitVersion_SemVer}}
           path: .artifacts/kubectl
@@ -248,13 +248,13 @@ jobs:
     steps:
 
       - name: artifacts - helm - download
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: artifacts-helm-${{env.gitVersion_SemVer}}
           path: .artifacts/helm
 
       - name: artifacts - kubectl - download
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: artifacts-kubectl-${{env.gitVersion_SemVer}}
           path: .artifacts/kubectl
