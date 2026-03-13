@@ -75,7 +75,7 @@ jobs:
 
       - name: tools - detect changes
         id: pathsFilter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           base: ${{ github.ref }}
           filters: |
