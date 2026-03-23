@@ -152,7 +152,7 @@ jobs:
         run: dotnet test --no-build --configuration ${{ env.build_configuration }} --verbosity normal
 
       - name: tests - report
-        uses: dorny/test-reporter@v2
+        uses: dorny/test-reporter@v3
         if: ${{ github.event.pull_request.head.repo.fork == false }}
         with:
           name: Test Results
@@ -161,7 +161,7 @@ jobs:
           fail-on-empty: "false"
 
       - name: tools - helm - install
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5
 
       - name: tools - helm - login - ghcr.io
         if: ${{ env.build_push == 'true' }}
@@ -260,7 +260,7 @@ jobs:
           path: .artifacts/kubectl
 
       - name: tools - helm - install
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5
 
       - name: tools - helm - login - ghcr.io
         run: echo "${{ secrets.ES_GITHUB_PAT }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
