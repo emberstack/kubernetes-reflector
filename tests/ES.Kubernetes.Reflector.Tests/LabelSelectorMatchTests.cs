@@ -157,6 +157,18 @@ public class LabelSelectorMatchTests
         Assert.False(MirroringPropertiesExtensions.LabelSelectorMatch(selector, ns));
     }
 
+    [Theory]
+    [InlineData("env in (prod")]
+    [InlineData("env in prod)")]
+    [InlineData("env in ()")]
+    [InlineData("()")]
+    [InlineData("=")]
+    public void InvalidSelector_MalformedExpression_FailsClosed(string selector)
+    {
+        var ns = CreateNamespace("test", new Dictionary<string, string> { { "env", "production" } });
+        Assert.False(MirroringPropertiesExtensions.LabelSelectorMatch(selector, ns));
+    }
+
     [Fact]
     public void MirroringProperties_AllowedNamespacesSelector_MatchesByLabel()
     {
