@@ -7,8 +7,10 @@ public class MirroringProperties
 {
     public bool Allowed { get; set; }
     public string AllowedNamespaces { get; set; } = string.Empty;
+    public string AllowedNamespacesSelector { get; set; } = string.Empty;
     public bool AutoEnabled { get; set; }
     public string AutoNamespaces { get; set; } = string.Empty;
+    public string AutoNamespacesSelector { get; set; } = string.Empty;
     public NamespacedName? Reflects { get; set; }
 
     public string ResourceVersion { get; set; } = string.Empty;

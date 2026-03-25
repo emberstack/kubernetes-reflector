@@ -20,6 +20,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
     private readonly ConcurrentDictionary<NamespacedName, bool> _autoSources = new();
     private readonly ConcurrentDictionary<NamespacedName, HashSet<NamespacedName>> _directReflectionCache = new();
 
+    private readonly ConcurrentDictionary<string, V1Namespace> _namespaceCache = new();
     private readonly ConcurrentDictionary<NamespacedName, bool> _notFoundCache = new();
     private readonly ConcurrentDictionary<NamespacedName, MirroringProperties> _propertiesCache = new();
     protected readonly IKubernetes Kubernetes = kubernetes;
@@ -38,6 +39,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
         Logger.LogDebug("Cleared sources for {Type} resources", typeof(TResource).Name);
 
         _autoSources.Clear();
+        _namespaceCache.Clear();
         _notFoundCache.Clear();
         _propertiesCache.Clear();
         _autoReflectionCache.Clear();
@@ -108,13 +110,16 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 Logger.LogTrace("Handling {eventType} {resourceType} {resourceRef}", notification.EventType, ns.Kind,
                     ns.ObjectReference().NamespacedName());
 
+                //Cache the namespace for label selector lookups
+                _namespaceCache.AddOrUpdate(ns.Name(), ns, (_, _) => ns);
+
                 //Update all auto-sources
                 foreach (var sourceNsName in _autoSources.Keys)
                 {
                     var properties = _propertiesCache[sourceNsName];
 
                     //If it can't be reflected to this namespace, skip
-                    if (!properties.CanBeAutoReflectedToNamespace(ns.Name())) continue;
+                    if (!properties.CanBeAutoReflectedToNamespace(ns)) continue;
 
 
                     //Get the list of auto-reflections
@@ -155,7 +160,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 if (_directReflectionCache.TryGetValue(objNsName, out var reflectionList))
                 {
                     var reflections = reflectionList
-                        .Where(s => !objProperties.CanBeReflectedToNamespace(s.Namespace))
+                        .Where(s => !CanBeReflectedToNamespaceCached(objProperties, s.Namespace))
                         .ToHashSet();
 
                     foreach (var reflectionNsName in reflections)
@@ -172,7 +177,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 if (_autoReflectionCache.TryGetValue(objNsName, out reflectionList))
                 {
                     var reflections = reflectionList
-                        .Where(s => !objProperties.CanBeReflectedToNamespace(s.Namespace))
+                        .Where(s => !CanBeReflectedToNamespaceCached(objProperties, s.Namespace))
                         .ToHashSet();
                     foreach (var reflectionNsName in reflections)
                     {
@@ -263,7 +268,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 _directReflectionCache.TryAdd(sourceNsName, []);
                 _directReflectionCache[sourceNsName].Add(objNsName);
 
-                if (!sourceProperties.CanBeReflectedToNamespace(objNsName.Namespace))
+                if (!CanBeReflectedToNamespaceCached(sourceProperties, objNsName.Namespace))
                 {
                     Logger.LogWarning("Could not update {reflectionNsName} - Source {sourceNsName} does not permit it.",
                         objNsName, sourceNsName);
@@ -326,7 +331,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
 
                 _propertiesCache.AddOrUpdate(sourceNsName, sourceProperties,
                     (_, _) => sourceProperties);
-                if (!sourceProperties.CanBeAutoReflectedToNamespace(objNsName.Namespace))
+                if (!CanBeAutoReflectedToNamespaceCached(sourceProperties, objNsName.Namespace))
                 {
                     Logger.LogInformation(
                         "Source {sourceNsName} no longer permits the auto reflection to {reflectionNsName}. Deleting {reflectionNsName}.",
@@ -354,6 +359,10 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
         var namespaces = (await Kubernetes.CoreV1
             .ListNamespaceAsync(cancellationToken: cancellationToken)).Items;
 
+        //Cache namespaces for label selector lookups
+        foreach (var ns in namespaces)
+            _namespaceCache.AddOrUpdate(ns.Name(), ns, (_, _) => ns);
+
         foreach (var match in matches)
         {
             var matchProperties = match.GetMirroringProperties();
@@ -361,9 +370,12 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 _ => matchProperties, (_, _) => matchProperties);
         }
 
+        var namespaceLookup = namespaces.ToDictionary(n => n.Name());
+
         var toDelete = matches
             .Where(s => s.Namespace() != sourceNsName.Namespace)
-            .Where(m => !sourceProperties.CanBeAutoReflectedToNamespace(m.Namespace()))
+            .Where(m => !namespaceLookup.TryGetValue(m.Namespace(), out var ns) ||
+                        !sourceProperties.CanBeAutoReflectedToNamespace(ns))
             .Where(m => m.GetMirroringProperties().Reflects == sourceNsName)
             .Select(s => s.NamespacedName())
             .ToList();
@@ -377,7 +389,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
             .Where(s => s.Name() != sourceNsName.Namespace)
             .Where(s =>
                 matches.All(m => m.Namespace() != s.Name()) &&
-                sourceProperties.CanBeAutoReflectedToNamespace(s.Name()))
+                sourceProperties.CanBeAutoReflectedToNamespace(s))
             .Select(s => new NamespacedName(s.Name(), sourceNsName.Name)).ToList();
 
         var toUpdate = matches
@@ -557,4 +569,14 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
     protected abstract Task<TResource> OnResourceGet(NamespacedName refId);
 
     protected virtual Task<bool> OnResourceIgnoreCheck(TResource item) => Task.FromResult(false);
+
+    private bool CanBeReflectedToNamespaceCached(MirroringProperties properties, string ns) =>
+        _namespaceCache.TryGetValue(ns, out var nsObj)
+            ? properties.CanBeReflectedToNamespace(nsObj)
+            : properties.CanBeReflectedToNamespace(ns);
+
+    private bool CanBeAutoReflectedToNamespaceCached(MirroringProperties properties, string ns) =>
+        _namespaceCache.TryGetValue(ns, out var nsObj)
+            ? properties.CanBeAutoReflectedToNamespace(nsObj)
+            : properties.CanBeAutoReflectedToNamespace(ns);
 }
