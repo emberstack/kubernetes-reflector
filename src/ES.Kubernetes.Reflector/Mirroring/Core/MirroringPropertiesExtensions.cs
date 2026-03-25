@@ -127,7 +127,7 @@ public static class MirroringPropertiesExtensions
 
     /// <summary>
     ///     Matches a Kubernetes label selector string against namespace labels.
-    ///     Supports equality-based (=, ==, !=) and existence-based (key, !key) selectors.
+    ///     Supports equality-based (=, ==, !=), set-based (in, notin), and existence-based (key, !key) selectors.
     ///     Multiple selectors separated by commas are ANDed together.
     /// </summary>
     internal static bool LabelSelectorMatch(string selector, V1Namespace ns)
