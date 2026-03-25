@@ -105,7 +105,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 }
 
                 break;
-            case V1Namespace ns when notification.EventType == WatchEventType.Added:
+            case V1Namespace ns when notification.EventType is WatchEventType.Added or WatchEventType.Modified:
             {
                 Logger.LogTrace("Handling {eventType} {resourceType} {resourceRef}", notification.EventType, ns.Kind,
                     ns.ObjectReference().NamespacedName());
@@ -117,25 +117,45 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 foreach (var sourceNsName in _autoSources.Keys)
                 {
                     var properties = _propertiesCache[sourceNsName];
-
-                    //If it can't be reflected to this namespace, skip
-                    if (!properties.CanBeAutoReflectedToNamespace(ns)) continue;
-
-
-                    //Get the list of auto-reflections
                     var autoReflections = _autoReflectionCache.GetOrAdd(sourceNsName, []);
-
                     var reflectionNsName = sourceNsName with { Namespace = ns.Name() };
 
-                    //Reflect the auto-source to the new namespace
-                    await ResourceReflect(
-                        sourceNsName,
-                        reflectionNsName,
-                        null,
-                        null,
-                        true);
+                    if (properties.CanBeAutoReflectedToNamespace(ns))
+                    {
+                        //Create or update the auto-reflection in this namespace
+                        await ResourceReflect(
+                            sourceNsName,
+                            reflectionNsName,
+                            null,
+                            null,
+                            true);
 
-                    autoReflections.Add(reflectionNsName);
+                        autoReflections.Add(reflectionNsName);
+                    }
+                    else if (autoReflections.Remove(reflectionNsName))
+                    {
+                        //Namespace no longer matches — remove the auto-reflection
+                        Logger.LogDebug(
+                            "Deleting {reflectionNsName} - namespace {ns} no longer matches selector for source {sourceNsName}",
+                            reflectionNsName, ns.Name(), sourceNsName);
+                        await OnResourceDelete(reflectionNsName);
+                    }
+                }
+            }
+                break;
+            case V1Namespace ns when notification.EventType == WatchEventType.Deleted:
+            {
+                Logger.LogTrace("Handling {eventType} {resourceType} {resourceRef}", notification.EventType, ns.Kind,
+                    ns.ObjectReference().NamespacedName());
+
+                _namespaceCache.TryRemove(ns.Name(), out _);
+
+                //Remove any auto-reflections targeting this namespace
+                foreach (var sourceNsName in _autoSources.Keys)
+                {
+                    var autoReflections = _autoReflectionCache.GetOrAdd(sourceNsName, []);
+                    var reflectionNsName = sourceNsName with { Namespace = ns.Name() };
+                    autoReflections.Remove(reflectionNsName);
                 }
             }
                 break;
