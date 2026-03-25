@@ -137,6 +137,26 @@ public class LabelSelectorMatchTests
         Assert.False(MirroringPropertiesExtensions.LabelSelectorMatch("env notin (production,staging)", ns));
     }
 
+    [Theory]
+    [InlineData(",")]
+    [InlineData(",,")]
+    [InlineData(", ,")]
+    public void InvalidSelector_CommasOnly_FailsClosed(string selector)
+    {
+        var ns = CreateNamespace("test", new Dictionary<string, string> { { "env", "production" } });
+        Assert.False(MirroringPropertiesExtensions.LabelSelectorMatch(selector, ns));
+    }
+
+    [Theory]
+    [InlineData("!")]
+    [InlineData("!=value")]
+    [InlineData("=value")]
+    public void InvalidSelector_EmptyKey_FailsClosed(string selector)
+    {
+        var ns = CreateNamespace("test", new Dictionary<string, string> { { "env", "production" } });
+        Assert.False(MirroringPropertiesExtensions.LabelSelectorMatch(selector, ns));
+    }
+
     [Fact]
     public void MirroringProperties_AllowedNamespacesSelector_MatchesByLabel()
     {

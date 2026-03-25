@@ -137,6 +137,9 @@ public static class MirroringPropertiesExtensions
         var labels = ns.Metadata?.Labels ?? new Dictionary<string, string>();
         var requirements = SplitRequirements(selector);
 
+        // Fail closed: a non-empty selector that produces no valid requirements is invalid
+        if (requirements.Count == 0) return false;
+
         foreach (var raw in requirements)
         {
             var requirement = raw.Trim();
@@ -154,6 +157,7 @@ public static class MirroringPropertiesExtensions
             {
                 var parts = requirement.Split("!=", 2);
                 var key = parts[0].Trim();
+                if (string.IsNullOrEmpty(key)) return false;
                 var value = parts[1].Trim();
                 if (labels.TryGetValue(key, out var labelValue) && labelValue == value) return false;
                 continue;
@@ -165,6 +169,7 @@ public static class MirroringPropertiesExtensions
             if (eqIndex > 0)
             {
                 var key = requirement[..eqIndex].TrimEnd('=').Trim();
+                if (string.IsNullOrEmpty(key)) return false;
                 var value = requirement[(eqIndex + (requirement[eqIndex..].StartsWith("==") ? 2 : 1))..].Trim();
                 if (!labels.TryGetValue(key, out var labelValue) || labelValue != value) return false;
                 continue;
@@ -174,6 +179,7 @@ public static class MirroringPropertiesExtensions
             if (requirement.StartsWith('!'))
             {
                 var key = requirement[1..].Trim();
+                if (string.IsNullOrEmpty(key)) return false;
                 if (labels.ContainsKey(key)) return false;
                 continue;
             }
