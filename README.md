@@ -46,6 +46,7 @@ You can customize the values of the helm deployment by using the following Value
 | `image.pullPolicy`                       | Container image pull policy                      | `IfNotPresent`                                                                                   |
 | `configuration.logging.minimumLevel`     | Logging minimum level                            | `Information`                                                                                    |
 | `configuration.watcher.timeout`          | Maximum watcher lifetime in seconds              | ``                                                                                               |
+| `configuration.watcher.excludedNamespaces` | Comma-separated list of namespace glob patterns to exclude from watching. Supports `*` (any characters) and `?` (single character). Example: `"ephie-*,kube-system,*-temp"` | ``                                                                                               |
 | `configuration.kubernetes.skipTlsVerify` | Skip TLS verify when connecting the the cluster  | `false`                                                                                          |
 | `rbac.enabled`                           | Create and use RBAC resources                    | `true`                                                                                           |
 | `serviceAccount.create`                  | Create ServiceAccount                            | `true`                                                                                           |
