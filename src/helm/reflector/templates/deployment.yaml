@@ -47,6 +47,8 @@ spec:
           env:
             - name: ES_Serilog__MinimumLevel__Default
               value: {{ .Values.configuration.logging.minimumLevel | quote }}
+            - name: ES_Serilog__MinimumLevel__Override__ES.Kubernetes.Reflector
+              value: {{ .Values.configuration.logging.minimumLevel | quote }}
             - name: ES_Reflector__Watcher__Timeout
               value: {{ .Values.configuration.watcher.timeout | quote }}
             - name: ES_Ignite__KubernetesClient__SkipTlsVerify
