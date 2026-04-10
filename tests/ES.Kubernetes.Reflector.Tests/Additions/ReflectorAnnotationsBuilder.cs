@@ -18,6 +18,12 @@ public sealed class ReflectorAnnotationsBuilder
         return this;
     }
 
+    public ReflectorAnnotationsBuilder WithAllowedNamespacesSelector(string selector)
+    {
+        _annotations[Annotations.Reflection.AllowedNamespacesSelector] = selector;
+        return this;
+    }
+
     public ReflectorAnnotationsBuilder WithAutoEnabled(bool enabled)
     {
         _annotations[Annotations.Reflection.AutoEnabled] = enabled.ToString().ToLower();
@@ -27,6 +33,12 @@ public sealed class ReflectorAnnotationsBuilder
     public ReflectorAnnotationsBuilder WithAutoNamespaces(bool enabled, params string[] namespaces)
     {
         _annotations[Annotations.Reflection.AutoNamespaces] = enabled ? string.Join(",", namespaces) : string.Empty;
+        return this;
+    }
+
+    public ReflectorAnnotationsBuilder WithAutoNamespacesSelector(string selector)
+    {
+        _annotations[Annotations.Reflection.AutoNamespacesSelector] = selector;
         return this;
     }
 
