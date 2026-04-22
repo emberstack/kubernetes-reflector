@@ -32,7 +32,7 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
                 CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, absoluteTimeoutCts.Token);
             var cancellationToken = cancellationCts.Token;
 
-            var eventChannel = Channel.CreateBounded<WatcherEvent>(new BoundedChannelOptions(256)
+            var eventChannel = Channel.CreateBounded<WatcherEvent>(new BoundedChannelOptions(1024)
             {
                 FullMode = BoundedChannelFullMode.Wait
             });
