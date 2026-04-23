@@ -144,6 +144,27 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                         await OnResourceDelete(reflectionNsName);
                     }
                 }
+
+                //Rebalance any direct reflections targeting this namespace against current labels
+                foreach (var (sourceNsName, reflectionList) in _directReflectionCache)
+                {
+                    if (!_propertiesCache.TryGetValue(sourceNsName, out var sourceProperties)) continue;
+
+                    var staleReflections = reflectionList
+                        .Where(r => r.Namespace == ns.Name())
+                        .ToList();
+                    if (staleReflections.Count == 0) continue;
+
+                    if (CanBeReflectedToNamespaceCached(sourceProperties, ns.Name())) continue;
+
+                    foreach (var reflectionNsName in staleReflections)
+                    {
+                        Logger.LogInformation(
+                            "Source {sourceNsName} no longer permits the direct reflection to {reflectionNsName}.",
+                            sourceNsName, reflectionNsName);
+                        reflectionList.Remove(reflectionNsName);
+                    }
+                }
             }
                 break;
             case V1Namespace ns when notification.EventType == WatchEventType.Deleted:
@@ -160,6 +181,10 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                     var reflectionNsName = sourceNsName with { Namespace = ns.Name() };
                     autoReflections.Remove(reflectionNsName);
                 }
+
+                //Remove any direct reflections targeting this namespace
+                foreach (var reflectionList in _directReflectionCache.Values)
+                    reflectionList.RemoveWhere(r => r.Namespace == ns.Name());
             }
                 break;
         }
