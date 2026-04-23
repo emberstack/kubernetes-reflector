@@ -590,13 +590,38 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
 
     protected virtual Task<bool> OnResourceIgnoreCheck(TResource item) => Task.FromResult(false);
 
-    private bool CanBeReflectedToNamespaceCached(MirroringProperties properties, string ns) =>
-        _namespaceCache.TryGetValue(ns, out var nsObj)
-            ? properties.CanBeReflectedToNamespace(nsObj)
-            : properties.CanBeReflectedToNamespace(ns);
+    private bool CanBeReflectedToNamespaceCached(MirroringProperties properties, string ns)
+    {
+        if (_namespaceCache.TryGetValue(ns, out var nsObj))
+            return properties.CanBeReflectedToNamespace(nsObj);
 
-    private bool CanBeAutoReflectedToNamespaceCached(MirroringProperties properties, string ns) =>
-        _namespaceCache.TryGetValue(ns, out var nsObj)
-            ? properties.CanBeAutoReflectedToNamespace(nsObj)
-            : properties.CanBeAutoReflectedToNamespace(ns);
+        // Fail closed: a label selector cannot be evaluated without the namespace object.
+        // Falling back to the name-only overload would match empty-pattern sources and allow all namespaces.
+        if (!string.IsNullOrEmpty(properties.AllowedNamespacesSelector))
+        {
+            Logger.LogDebug(
+                "Namespace {ns} not in cache; denying reflection because a label selector is configured.", ns);
+            return false;
+        }
+
+        return properties.CanBeReflectedToNamespace(ns);
+    }
+
+    private bool CanBeAutoReflectedToNamespaceCached(MirroringProperties properties, string ns)
+    {
+        if (_namespaceCache.TryGetValue(ns, out var nsObj))
+            return properties.CanBeAutoReflectedToNamespace(nsObj);
+
+        // Fail closed: a label selector cannot be evaluated without the namespace object.
+        // Falling back to the name-only overload would match empty-pattern sources and allow all namespaces.
+        if (!string.IsNullOrEmpty(properties.AllowedNamespacesSelector) ||
+            !string.IsNullOrEmpty(properties.AutoNamespacesSelector))
+        {
+            Logger.LogDebug(
+                "Namespace {ns} not in cache; denying auto-reflection because a label selector is configured.", ns);
+            return false;
+        }
+
+        return properties.CanBeAutoReflectedToNamespace(ns);
+    }
 }
