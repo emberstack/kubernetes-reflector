@@ -16,6 +16,8 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
     IWatcherEventHandler, IWatcherClosedHandler
     where TResource : class, IKubernetesObject<V1ObjectMeta>
 {
+    private static readonly IDictionary<string, string> EmptyLabels = new Dictionary<string, string>();
+
     private readonly ConcurrentDictionary<NamespacedName, HashSet<NamespacedName>> _autoReflectionCache = new();
     private readonly ConcurrentDictionary<NamespacedName, bool> _autoSources = new();
     private readonly ConcurrentDictionary<NamespacedName, HashSet<NamespacedName>> _directReflectionCache = new();
@@ -112,6 +114,13 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
             {
                 Logger.LogTrace("Handling {eventType} {resourceType} {resourceRef}", notification.EventType, ns.Kind,
                     ns.ObjectReference().NamespacedName());
+
+                // Skip reconciliation when only non-label fields changed (status, annotations, resourceVersion).
+                // Reflection eligibility is purely a function of namespace name and labels.
+                if (notification.EventType == WatchEventType.Modified &&
+                    _namespaceCache.TryGetValue(ns.Name(), out var cachedNs) &&
+                    NamespaceLabelsEqual(cachedNs, ns))
+                    break;
 
                 //Cache the namespace for label selector lookups
                 _namespaceCache.AddOrUpdate(ns.Name(), ns, (_, _) => ns);
@@ -636,6 +645,9 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
         foreach (var error in errors)
             Logger.LogWarning("Invalid label selector on source {sourceNsName}: {error}", sourceNsName, error);
     }
+
+    internal static bool NamespaceLabelsEqual(V1Namespace a, V1Namespace b) =>
+        (a.Metadata?.Labels ?? EmptyLabels).SequenceEqual(b.Metadata?.Labels ?? EmptyLabels);
 
     private bool CanBeReflectedToNamespaceCached(MirroringProperties properties, string ns)
     {
