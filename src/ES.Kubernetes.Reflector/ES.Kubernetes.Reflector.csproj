@@ -9,6 +9,12 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+			<_Parameter1>ES.Kubernetes.Reflector.Tests</_Parameter1>
+		</AssemblyAttribute>
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="ES.FX.Ignite" />
 		<PackageReference Include="ES.FX.Ignite.OpenTelemetry.Exporter.Seq" />
 		<PackageReference Include="ES.FX.Ignite.Serilog" />

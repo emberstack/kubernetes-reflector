@@ -8,7 +8,7 @@ using Polly.Retry;
 
 namespace ES.Kubernetes.Reflector.Tests.Integration.Base;
 
-public class BaseIntegrationTest(ReflectorIntegrationFixture integrationFixture)
+public class BaseIntegrationTest(IKubernetesIntegrationFixture integrationFixture)
 {
     protected static readonly ResiliencePipeline<bool> ResourceExistsResiliencePipeline =
         new ResiliencePipelineBuilder<bool>()

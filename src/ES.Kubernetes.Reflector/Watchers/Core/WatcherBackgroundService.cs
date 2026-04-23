@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using ES.Kubernetes.Reflector.Configuration;
 using ES.Kubernetes.Reflector.Watchers.Core.Events;
@@ -37,7 +36,7 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
                 FullMode = BoundedChannelFullMode.Wait
             });
 
-            var excludedNamespacePatterns = ParseGlobPatterns(options.CurrentValue.Watcher?.ExcludedNamespaces);
+            var excludedNamespacePatterns = GlobMatcher.ParseGlobPatterns(options.CurrentValue.Watcher?.ExcludedNamespaces);
             long namespaceExcludedCount = 0;
             try
             {
@@ -70,7 +69,7 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
                 {
                     await foreach (var (type, item) in watchList)
                     {
-                        if (IsNamespaceExcluded(item.Metadata?.NamespaceProperty, excludedNamespacePatterns))
+                        if (GlobMatcher.IsNamespaceExcluded(item.Metadata?.NamespaceProperty, excludedNamespacePatterns))
                         {
                             namespaceExcludedCount++;
                             continue;
@@ -127,24 +126,4 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
 
     protected virtual Task<bool> OnResourceIgnoreCheck(TResource item) => Task.FromResult(false);
 
-    /// <summary>
-    ///     Parses a comma-separated list of glob patterns into compiled Regex objects.
-    ///     Supports * (any characters) and ? (single character).
-    /// </summary>
-    private static Regex[] ParseGlobPatterns(string? patterns)
-    {
-        if (string.IsNullOrWhiteSpace(patterns)) return [];
-        return patterns.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(p => !string.IsNullOrWhiteSpace(p))
-            .Select(p => new Regex(
-                "^" + Regex.Escape(p).Replace("\\*", ".*").Replace("\\?", ".") + "$",
-                RegexOptions.Compiled))
-            .ToArray();
-    }
-
-    private static bool IsNamespaceExcluded(string? ns, Regex[] patterns)
-    {
-        if (patterns.Length == 0 || string.IsNullOrEmpty(ns)) return false;
-        return patterns.Any(p => p.IsMatch(ns));
-    }
 }
