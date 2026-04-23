@@ -234,4 +234,67 @@ public class LabelSelectorMatchTests
         };
         Assert.True(props.CanBeAutoReflectedToNamespace(ns));
     }
+
+    [Theory]
+    [InlineData("-env=prod")]
+    [InlineData("env-=prod")]
+    [InlineData(".env=prod")]
+    [InlineData("env name=prod")]
+    public void InvalidSelector_InvalidLabelKey_FailsClosed(string selector)
+    {
+        var ns = CreateNamespace("test", new Dictionary<string, string> { { "env", "prod" } });
+        Assert.False(MirroringPropertiesExtensions.LabelSelectorMatch(selector, ns));
+    }
+
+    [Fact]
+    public void InvalidSelector_LabelKeyTooLong_FailsClosed()
+    {
+        var longName = new string('a', 64);
+        var ns = CreateNamespace("test");
+        Assert.False(MirroringPropertiesExtensions.LabelSelectorMatch($"{longName}=value", ns));
+    }
+
+    [Fact]
+    public void ValidSelector_PrefixedLabelKey_Matches()
+    {
+        var ns = CreateNamespace("test",
+            new Dictionary<string, string> { { "app.kubernetes.io/name", "reflector" } });
+        Assert.True(MirroringPropertiesExtensions.LabelSelectorMatch(
+            "app.kubernetes.io/name=reflector", ns));
+    }
+
+    [Fact]
+    public void GetLabelSelectorErrors_ValidSelectors_ReturnsEmpty()
+    {
+        var props = new MirroringProperties
+        {
+            AllowedNamespacesSelector = "env=prod",
+            AutoNamespacesSelector = "tier in (frontend,backend)"
+        };
+        Assert.Empty(props.GetLabelSelectorErrors());
+    }
+
+    [Fact]
+    public void GetLabelSelectorErrors_InvalidSelector_ReturnsErrors()
+    {
+        var props = new MirroringProperties
+        {
+            AllowedNamespacesSelector = "=prod",
+            AutoNamespacesSelector = "valid=value"
+        };
+        var errors = props.GetLabelSelectorErrors();
+        Assert.NotEmpty(errors);
+        Assert.Contains(errors, e => e.Contains("reflection-allowed-namespaces-selector"));
+    }
+
+    [Fact]
+    public void GetLabelSelectorErrors_EmptySelectors_ReturnsEmpty()
+    {
+        var props = new MirroringProperties
+        {
+            AllowedNamespacesSelector = string.Empty,
+            AutoNamespacesSelector = string.Empty
+        };
+        Assert.Empty(props.GetLabelSelectorErrors());
+    }
 }

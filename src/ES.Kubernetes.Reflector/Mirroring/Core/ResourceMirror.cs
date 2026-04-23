@@ -23,6 +23,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
     private readonly ConcurrentDictionary<string, V1Namespace> _namespaceCache = new();
     private readonly ConcurrentDictionary<NamespacedName, bool> _notFoundCache = new();
     private readonly ConcurrentDictionary<NamespacedName, MirroringProperties> _propertiesCache = new();
+    private readonly ConcurrentDictionary<NamespacedName, string> _lastWarnedSelectorErrors = new();
     protected readonly IKubernetes Kubernetes = kubernetes;
     protected readonly ILogger Logger = logger;
 
@@ -43,6 +44,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
         _notFoundCache.Clear();
         _propertiesCache.Clear();
         _autoReflectionCache.Clear();
+        _lastWarnedSelectorErrors.Clear();
 
         return Task.CompletedTask;
     }
@@ -74,6 +76,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                     case WatchEventType.Deleted:
                     {
                         _propertiesCache.Remove(objNsName, out _);
+                        _lastWarnedSelectorErrors.TryRemove(objNsName, out _);
                         var properties = obj.GetMirroringProperties();
 
                         if (!properties.IsReflection)
@@ -170,6 +173,8 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
 
         _propertiesCache.AddOrUpdate(objNsName, objProperties,
             (_, _) => objProperties);
+
+        WarnOnInvalidLabelSelectors(objNsName, objProperties);
 
         switch (objProperties)
         {
@@ -589,6 +594,23 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
     protected abstract Task<TResource> OnResourceGet(NamespacedName refId);
 
     protected virtual Task<bool> OnResourceIgnoreCheck(TResource item) => Task.FromResult(false);
+
+    private void WarnOnInvalidLabelSelectors(NamespacedName sourceNsName, MirroringProperties properties)
+    {
+        var errors = properties.GetLabelSelectorErrors();
+        if (errors.Count == 0)
+        {
+            _lastWarnedSelectorErrors.TryRemove(sourceNsName, out _);
+            return;
+        }
+
+        var signature = string.Join("|", errors);
+        if (_lastWarnedSelectorErrors.TryGetValue(sourceNsName, out var previous) && previous == signature) return;
+
+        _lastWarnedSelectorErrors[sourceNsName] = signature;
+        foreach (var error in errors)
+            Logger.LogWarning("Invalid label selector on source {sourceNsName}: {error}", sourceNsName, error);
+    }
 
     private bool CanBeReflectedToNamespaceCached(MirroringProperties properties, string ns)
     {

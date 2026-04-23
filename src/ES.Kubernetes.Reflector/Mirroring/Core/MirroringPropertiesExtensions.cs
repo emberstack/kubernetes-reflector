@@ -8,6 +8,26 @@ namespace ES.Kubernetes.Reflector.Mirroring.Core;
 
 public static class MirroringPropertiesExtensions
 {
+    // Kubernetes label name: 1-63 chars, alphanumeric plus _ . -, must start/end alphanumeric.
+    private static readonly Regex LabelNameRegex = new(
+        @"^[A-Za-z0-9]([A-Za-z0-9._-]{0,61}[A-Za-z0-9])?$",
+        RegexOptions.Compiled);
+
+    // Kubernetes label key prefix: DNS subdomain (lowercase alphanumeric and -, period-separated labels).
+    private static readonly Regex LabelPrefixRegex = new(
+        @"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$",
+        RegexOptions.Compiled);
+
+    // Kubernetes label value: up to 63 chars, same character rules as the name (empty values are allowed).
+    private static readonly Regex LabelValueRegex = new(
+        @"^([A-Za-z0-9]([A-Za-z0-9._-]{0,61}[A-Za-z0-9])?)?$",
+        RegexOptions.Compiled);
+
+    // Matches "<key> in (<values>)" or "<key> notin (<values>)" at the requirement level.
+    private static readonly Regex SetBasedRequirementRegex = new(
+        @"^(?<key>\S+)\s+(?<op>in|notin)\s*\((?<values>[^)]*)\)$",
+        RegexOptions.Compiled);
+
     public static MirroringProperties GetMirroringProperties(this IKubernetesObject<V1ObjectMeta> resource) =>
         resource.EnsureMetadata().GetMirroringProperties();
 
@@ -98,6 +118,23 @@ public static class MirroringPropertiesExtensions
         MatchNamespace(properties.AutoNamespaces, properties.AutoNamespacesSelector, ns);
 
     /// <summary>
+    ///     Parses the label selector annotations on this properties instance and returns a list of parse errors,
+    ///     one per malformed selector. Returns an empty list if all selectors are valid (or unset). Callers can
+    ///     surface these errors so operators get feedback about misconfigured annotations.
+    /// </summary>
+    public static IReadOnlyList<string> GetLabelSelectorErrors(this MirroringProperties properties)
+    {
+        var errors = new List<string>();
+        CollectLabelSelectorErrors(
+            Annotations.Reflection.AllowedNamespacesSelector,
+            properties.AllowedNamespacesSelector, errors);
+        CollectLabelSelectorErrors(
+            Annotations.Reflection.AutoNamespacesSelector,
+            properties.AutoNamespacesSelector, errors);
+        return errors;
+    }
+
+    /// <summary>
     ///     Returns true if the namespace matches either the name pattern list or the label selector (OR logic).
     ///     If both are empty, returns true (allow all).
     /// </summary>
@@ -128,67 +165,122 @@ public static class MirroringPropertiesExtensions
     /// <summary>
     ///     Matches a Kubernetes label selector string against namespace labels.
     ///     Supports equality-based (=, ==, !=), set-based (in, notin), and existence-based (key, !key) selectors.
-    ///     Multiple selectors separated by commas are ANDed together.
+    ///     Multiple selectors separated by commas are ANDed together. Invalid selectors fail closed (return false).
     /// </summary>
     internal static bool LabelSelectorMatch(string selector, V1Namespace ns)
     {
         if (string.IsNullOrWhiteSpace(selector)) return true;
 
+        if (!TryParseLabelSelector(selector, out var parsed, out _))
+            return false;
+
         var labels = ns.Metadata?.Labels ?? new Dictionary<string, string>();
-        var requirements = SplitRequirements(selector);
+        return MatchesLabels(parsed, labels);
+    }
 
-        // Fail closed: a non-empty selector that produces no valid requirements is invalid
-        if (requirements.Count == 0) return false;
+    /// <summary>
+    ///     Parses a Kubernetes label selector string into a <see cref="V1LabelSelector" />. Returns false if the
+    ///     selector is malformed; <paramref name="errors" /> lists the reasons. An empty or whitespace selector
+    ///     parses successfully into an empty selector (matches everything).
+    /// </summary>
+    internal static bool TryParseLabelSelector(string raw, out V1LabelSelector selector,
+        out IReadOnlyList<string> errors)
+    {
+        selector = new V1LabelSelector();
+        var errorList = new List<string>();
+        errors = errorList;
 
-        foreach (var raw in requirements)
+        if (string.IsNullOrWhiteSpace(raw)) return true;
+
+        var requirements = SplitRequirements(raw);
+        if (requirements.Count == 0)
         {
-            var requirement = raw.Trim();
-            if (string.IsNullOrEmpty(requirement)) continue;
+            errorList.Add("selector is not empty but contains no requirements");
+            return false;
+        }
 
-            // Handle set-based: key in (v1,v2) / key notin (v1,v2)
-            if (TryParseSetBased(requirement, labels, out var setResult))
+        var matchLabels = new Dictionary<string, string>();
+        var matchExpressions = new List<V1LabelSelectorRequirement>();
+
+        foreach (var requirement in requirements)
+        {
+            if (TryParseSetBased(requirement, out var setRequirement, out var setError))
             {
-                if (!setResult) return false;
+                if (setError != null) errorList.Add(setError);
+                else matchExpressions.Add(setRequirement!);
                 continue;
             }
 
-            // Handle != (must check before =)
-            if (requirement.Contains("!="))
+            if (TryParseInequality(requirement, errorList, out var neqRequirement))
             {
-                var parts = requirement.Split("!=", 2);
-                var key = parts[0].Trim();
-                if (string.IsNullOrEmpty(key)) return false;
-                var value = parts[1].Trim();
-                if (labels.TryGetValue(key, out var labelValue) && labelValue == value) return false;
+                if (neqRequirement != null) matchExpressions.Add(neqRequirement);
                 continue;
             }
 
-            // Handle == or =
-            var eqIndex = requirement.IndexOf("==", StringComparison.Ordinal);
-            if (eqIndex < 0) eqIndex = requirement.IndexOf('=');
-            if (eqIndex > 0)
+            if (TryParseEquality(requirement, errorList, matchLabels)) continue;
+
+            if (TryParseExistence(requirement, errorList, out var existRequirement))
             {
-                var key = requirement[..eqIndex].TrimEnd('=').Trim();
-                if (string.IsNullOrEmpty(key)) return false;
-                var value = requirement[(eqIndex + (requirement[eqIndex..].StartsWith("==") ? 2 : 1))..].Trim();
-                if (!labels.TryGetValue(key, out var labelValue) || labelValue != value) return false;
+                if (existRequirement != null) matchExpressions.Add(existRequirement);
                 continue;
             }
 
-            // Handle !key (not exists)
-            if (requirement.StartsWith('!'))
-            {
-                var key = requirement[1..].Trim();
-                if (string.IsNullOrEmpty(key)) return false;
-                if (labels.ContainsKey(key)) return false;
-                continue;
-            }
+            errorList.Add($"requirement '{requirement}' could not be parsed");
+        }
 
-            // Handle key (exists)
-            if (!labels.ContainsKey(requirement)) return false;
+        if (errorList.Count > 0) return false;
+
+        if (matchLabels.Count > 0) selector.MatchLabels = matchLabels;
+        if (matchExpressions.Count > 0) selector.MatchExpressions = matchExpressions;
+        return true;
+    }
+
+    /// <summary>
+    ///     Evaluates a <see cref="V1LabelSelector" /> against a label dictionary using the standard Kubernetes
+    ///     semantics (MatchLabels are ANDed; MatchExpressions are ANDed).
+    /// </summary>
+    internal static bool MatchesLabels(V1LabelSelector selector, IDictionary<string, string> labels)
+    {
+        if (selector.MatchLabels != null)
+            foreach (var kv in selector.MatchLabels)
+                if (!labels.TryGetValue(kv.Key, out var labelValue) || labelValue != kv.Value)
+                    return false;
+
+        if (selector.MatchExpressions == null) return true;
+
+        foreach (var expression in selector.MatchExpressions)
+        {
+            var hasLabel = labels.TryGetValue(expression.Key, out var labelValue);
+            switch (expression.OperatorProperty)
+            {
+                case "In":
+                    if (!hasLabel || expression.Values == null ||
+                        !expression.Values.Contains(labelValue!)) return false;
+                    break;
+                case "NotIn":
+                    if (hasLabel && expression.Values != null &&
+                        expression.Values.Contains(labelValue!)) return false;
+                    break;
+                case "Exists":
+                    if (!hasLabel) return false;
+                    break;
+                case "DoesNotExist":
+                    if (hasLabel) return false;
+                    break;
+                default:
+                    return false;
+            }
         }
 
         return true;
+    }
+
+    private static void CollectLabelSelectorErrors(string annotation, string value, List<string> destination)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return;
+        if (TryParseLabelSelector(value, out _, out var parseErrors)) return;
+        foreach (var error in parseErrors)
+            destination.Add($"{annotation} '{value}': {error}");
     }
 
     private static List<string> SplitRequirements(string selector)
@@ -197,47 +289,175 @@ public static class MirroringPropertiesExtensions
         var depth = 0;
         var start = 0;
         for (var i = 0; i < selector.Length; i++)
-        {
             switch (selector[i])
             {
-                case '(': depth++; break;
-                case ')': depth--; break;
+                case '(':
+                    depth++;
+                    break;
+                case ')':
+                    depth--;
+                    break;
                 case ',' when depth == 0:
                     var part = selector[start..i].Trim();
                     if (part.Length > 0) results.Add(part);
                     start = i + 1;
                     break;
             }
-        }
+
         var last = selector[start..].Trim();
         if (last.Length > 0) results.Add(last);
         return results;
     }
 
-    private static bool TryParseSetBased(string requirement, IDictionary<string, string> labels, out bool result)
+    private static bool TryParseSetBased(string requirement, out V1LabelSelectorRequirement? result,
+        out string? error)
     {
-        result = false;
+        result = null;
+        error = null;
 
-        // Match "key in (v1,v2)" or "key notin (v1,v2)"
-        var match = Regex.Match(requirement, @"^([a-zA-Z0-9_./-]+)\s+(in|notin)\s+\(([^)]*)\)$");
+        var match = SetBasedRequirementRegex.Match(requirement);
         if (!match.Success) return false;
 
-        var key = match.Groups[1].Value;
-        var op = match.Groups[2].Value;
-        var values = match.Groups[3].Value
+        var key = match.Groups["key"].Value;
+        var op = match.Groups["op"].Value;
+        var values = match.Groups["values"].Value
             .Split(',', StringSplitOptions.RemoveEmptyEntries)
             .Select(v => v.Trim())
-            .ToHashSet();
+            .ToList();
 
-        labels.TryGetValue(key, out var labelValue);
-
-        result = op switch
+        if (!IsValidLabelKey(key))
         {
-            "in" => labelValue != null && values.Contains(labelValue),
-            "notin" => labelValue == null || !values.Contains(labelValue),
-            _ => false
-        };
+            error = $"invalid label key '{key}' in set-based requirement";
+            return true;
+        }
 
+        if (values.Count == 0)
+        {
+            error = $"set-based requirement for key '{key}' has no values";
+            return true;
+        }
+
+        foreach (var value in values)
+            if (!IsValidLabelValue(value))
+            {
+                error = $"invalid label value '{value}' for key '{key}'";
+                return true;
+            }
+
+        result = new V1LabelSelectorRequirement
+        {
+            Key = key,
+            OperatorProperty = op == "in" ? "In" : "NotIn",
+            Values = values
+        };
         return true;
+    }
+
+    private static bool TryParseInequality(string requirement, List<string> errors,
+        out V1LabelSelectorRequirement? result)
+    {
+        result = null;
+        if (!requirement.Contains("!=")) return false;
+
+        var parts = requirement.Split("!=", 2);
+        var key = parts[0].Trim();
+        var value = parts[1].Trim();
+
+        if (!IsValidLabelKey(key))
+        {
+            errors.Add($"invalid label key '{key}' in inequality requirement");
+            return true;
+        }
+
+        if (!IsValidLabelValue(value))
+        {
+            errors.Add($"invalid label value '{value}' for key '{key}'");
+            return true;
+        }
+
+        result = new V1LabelSelectorRequirement
+        {
+            Key = key,
+            OperatorProperty = "NotIn",
+            Values = new List<string> { value }
+        };
+        return true;
+    }
+
+    private static bool TryParseEquality(string requirement, List<string> errors,
+        Dictionary<string, string> matchLabels)
+    {
+        var doubleEq = requirement.IndexOf("==", StringComparison.Ordinal);
+        var singleEq = requirement.IndexOf('=');
+        if (doubleEq < 0 && singleEq < 0) return false;
+
+        var eqIndex = doubleEq >= 0 ? doubleEq : singleEq;
+        var opLength = doubleEq >= 0 ? 2 : 1;
+        var key = requirement[..eqIndex].Trim();
+        var value = requirement[(eqIndex + opLength)..].Trim();
+
+        if (!IsValidLabelKey(key))
+        {
+            errors.Add($"invalid label key '{key}' in equality requirement");
+            return true;
+        }
+
+        if (!IsValidLabelValue(value))
+        {
+            errors.Add($"invalid label value '{value}' for key '{key}'");
+            return true;
+        }
+
+        matchLabels[key] = value;
+        return true;
+    }
+
+    private static bool TryParseExistence(string requirement, List<string> errors,
+        out V1LabelSelectorRequirement? result)
+    {
+        result = null;
+        var negated = requirement.StartsWith('!');
+        var key = negated ? requirement[1..].Trim() : requirement;
+
+        if (!IsValidLabelKey(key))
+        {
+            errors.Add($"invalid label key '{key}' in existence requirement");
+            return true;
+        }
+
+        result = new V1LabelSelectorRequirement
+        {
+            Key = key,
+            OperatorProperty = negated ? "DoesNotExist" : "Exists"
+        };
+        return true;
+    }
+
+    private static bool IsValidLabelKey(string key)
+    {
+        if (string.IsNullOrEmpty(key)) return false;
+
+        var slashIndex = key.IndexOf('/');
+        string name;
+        if (slashIndex >= 0)
+        {
+            var prefix = key[..slashIndex];
+            if (prefix.Length == 0 || prefix.Length > 253) return false;
+            if (!LabelPrefixRegex.IsMatch(prefix)) return false;
+            name = key[(slashIndex + 1)..];
+        }
+        else
+        {
+            name = key;
+        }
+
+        if (name.Length == 0 || name.Length > 63) return false;
+        return LabelNameRegex.IsMatch(name);
+    }
+
+    private static bool IsValidLabelValue(string value)
+    {
+        if (value.Length > 63) return false;
+        return LabelValueRegex.IsMatch(value);
     }
 }
