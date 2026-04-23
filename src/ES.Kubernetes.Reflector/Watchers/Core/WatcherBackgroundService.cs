@@ -36,8 +36,12 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
                 FullMode = BoundedChannelFullMode.Wait
             });
 
-            var excludedNamespacePatterns = GlobMatcher.ParseGlobPatterns(options.CurrentValue.Watcher?.ExcludedNamespaces);
+            // Kubernetes namespace names must be valid DNS-1123 labels, which are lowercase-only,
+            // so normalizing the configured exclusion patterns to lowercase ensures comparisons
+            // against Metadata.NamespaceProperty are consistent without changing semantics.
+            var excludedNamespacePatterns = GlobMatcher.ParseGlobPatterns(options.CurrentValue.Watcher?.ExcludedNamespaces?.ToLower());
             long namespaceExcludedCount = 0;
+
             try
             {
                 if (excludedNamespacePatterns.Length > 0)
@@ -69,6 +73,9 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
                 {
                     await foreach (var (type, item) in watchList)
                     {
+                        // For cluster-scoped resources like V1Namespace, Metadata.NamespaceProperty is null,
+                        // so this exclusion check intentionally becomes a no-op and namespace events
+                        // continue flowing to support auto-reflection on new namespace creation.
                         if (GlobMatcher.IsNamespaceExcluded(item.Metadata?.NamespaceProperty, excludedNamespacePatterns))
                         {
                             namespaceExcludedCount++;

@@ -11,10 +11,9 @@ internal static class GlobMatcher
         return
         [
             .. patterns.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Where(p => !string.IsNullOrWhiteSpace(p))
-                .Select(p => new Regex(
-                    "^" + Regex.Escape(p).Replace("\\*", ".*").Replace("\\?", ".") + "$",
-                    RegexOptions.Compiled))
+            .Select(p => new Regex(
+                "^" + Regex.Escape(p).Replace("\\*", ".*").Replace("\\?", ".") + "$",
+                RegexOptions.Compiled))
         ];
     }
 
