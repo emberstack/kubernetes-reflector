@@ -39,7 +39,7 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
             // Kubernetes namespace names must be valid DNS-1123 labels, which are lowercase-only,
             // so normalizing the configured exclusion patterns to lowercase ensures comparisons
             // against Metadata.NamespaceProperty are consistent without changing semantics.
-            var excludedNamespacePatterns = GlobMatcher.ParseGlobPatterns(options.CurrentValue.Watcher?.ExcludedNamespaces?.ToLower());
+            var excludedNamespacePatterns = GlobMatcher.ParseGlobPatterns(options.CurrentValue.Watcher?.ExcludedNamespaces?.ToLowerInvariant());
             long namespaceExcludedCount = 0;
 
             try
