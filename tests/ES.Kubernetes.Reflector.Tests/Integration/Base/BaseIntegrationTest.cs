@@ -24,10 +24,22 @@ public class BaseIntegrationTest(ReflectorIntegrationFixture integrationFixture)
             .AddTimeout(TimeSpan.FromSeconds(30))
             .Build();
 
+    protected static readonly ResiliencePipeline<bool> ResourceAbsentResiliencePipeline =
+        new ResiliencePipelineBuilder<bool>()
+            .AddRetry(new RetryStrategyOptions<bool>
+            {
+                ShouldHandle = new PredicateBuilder<bool>().HandleResult(true),
+                MaxRetryAttempts = 10,
+                Delay = TimeSpan.FromSeconds(1)
+            })
+            .AddTimeout(TimeSpan.FromSeconds(30))
+            .Build();
+
     protected async Task<IKubernetes> GetKubernetesClient() =>
         await integrationFixture.Kubernetes.GetKubernetesClient();
 
-    protected async Task<V1Namespace?> CreateNamespaceAsync(string name)
+    protected async Task<V1Namespace?> CreateNamespaceAsync(string name,
+        IDictionary<string, string>? labels = null)
     {
         var client = await GetKubernetesClient();
         var ns = new V1Namespace
@@ -36,7 +48,8 @@ public class BaseIntegrationTest(ReflectorIntegrationFixture integrationFixture)
             Kind = V1Namespace.KubeKind,
             Metadata = new V1ObjectMeta
             {
-                Name = name
+                Name = name,
+                Labels = labels
             }
         };
 

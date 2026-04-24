@@ -9,6 +9,10 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<InternalsVisibleTo Include="ES.Kubernetes.Reflector.Tests" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="ES.FX.Ignite" />
 		<PackageReference Include="ES.FX.Ignite.OpenTelemetry.Exporter.Seq" />
 		<PackageReference Include="ES.FX.Ignite.Serilog" />

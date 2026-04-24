@@ -16,12 +16,16 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
     IWatcherEventHandler, IWatcherClosedHandler
     where TResource : class, IKubernetesObject<V1ObjectMeta>
 {
+    private static readonly IDictionary<string, string> EmptyLabels = new Dictionary<string, string>();
+
     private readonly ConcurrentDictionary<NamespacedName, HashSet<NamespacedName>> _autoReflectionCache = new();
     private readonly ConcurrentDictionary<NamespacedName, bool> _autoSources = new();
     private readonly ConcurrentDictionary<NamespacedName, HashSet<NamespacedName>> _directReflectionCache = new();
 
+    private readonly ConcurrentDictionary<string, V1Namespace> _namespaceCache = new();
     private readonly ConcurrentDictionary<NamespacedName, bool> _notFoundCache = new();
     private readonly ConcurrentDictionary<NamespacedName, MirroringProperties> _propertiesCache = new();
+    private readonly ConcurrentDictionary<NamespacedName, string> _lastWarnedSelectorErrors = new();
     protected readonly IKubernetes Kubernetes = kubernetes;
     protected readonly ILogger Logger = logger;
 
@@ -38,9 +42,11 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
         Logger.LogDebug("Cleared sources for {Type} resources", typeof(TResource).Name);
 
         _autoSources.Clear();
+        _namespaceCache.Clear();
         _notFoundCache.Clear();
         _propertiesCache.Clear();
         _autoReflectionCache.Clear();
+        _lastWarnedSelectorErrors.Clear();
 
         return Task.CompletedTask;
     }
@@ -72,6 +78,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                     case WatchEventType.Deleted:
                     {
                         _propertiesCache.Remove(objNsName, out _);
+                        _lastWarnedSelectorErrors.TryRemove(objNsName, out _);
                         var properties = obj.GetMirroringProperties();
 
                         if (!properties.IsReflection)
@@ -103,35 +110,90 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 }
 
                 break;
-            case V1Namespace ns when notification.EventType == WatchEventType.Added:
+            case V1Namespace ns when notification.EventType is WatchEventType.Added or WatchEventType.Modified:
             {
                 Logger.LogTrace("Handling {eventType} {resourceType} {resourceRef}", notification.EventType, ns.Kind,
                     ns.ObjectReference().NamespacedName());
+
+                // Skip reconciliation when only non-label fields changed (status, annotations, resourceVersion).
+                // Reflection eligibility is purely a function of namespace name and labels.
+                if (notification.EventType == WatchEventType.Modified &&
+                    _namespaceCache.TryGetValue(ns.Name(), out var cachedNs) &&
+                    NamespaceLabelsEqual(cachedNs, ns))
+                    break;
+
+                //Cache the namespace for label selector lookups
+                _namespaceCache.AddOrUpdate(ns.Name(), ns, (_, _) => ns);
 
                 //Update all auto-sources
                 foreach (var sourceNsName in _autoSources.Keys)
                 {
                     var properties = _propertiesCache[sourceNsName];
-
-                    //If it can't be reflected to this namespace, skip
-                    if (!properties.CanBeAutoReflectedToNamespace(ns.Name())) continue;
-
-
-                    //Get the list of auto-reflections
                     var autoReflections = _autoReflectionCache.GetOrAdd(sourceNsName, []);
-
                     var reflectionNsName = sourceNsName with { Namespace = ns.Name() };
 
-                    //Reflect the auto-source to the new namespace
-                    await ResourceReflect(
-                        sourceNsName,
-                        reflectionNsName,
-                        null,
-                        null,
-                        true);
+                    if (properties.CanBeAutoReflectedToNamespace(ns))
+                    {
+                        //Create or update the auto-reflection in this namespace
+                        await ResourceReflect(
+                            sourceNsName,
+                            reflectionNsName,
+                            null,
+                            null,
+                            true);
 
-                    autoReflections.Add(reflectionNsName);
+                        autoReflections.Add(reflectionNsName);
+                    }
+                    else if (autoReflections.Remove(reflectionNsName))
+                    {
+                        //Namespace no longer matches — remove the auto-reflection
+                        Logger.LogDebug(
+                            "Deleting {reflectionNsName} - namespace {ns} no longer matches selector for source {sourceNsName}",
+                            reflectionNsName, ns.Name(), sourceNsName);
+                        await OnResourceDelete(reflectionNsName);
+                    }
                 }
+
+                //Rebalance any direct reflections targeting this namespace against current labels
+                foreach (var (sourceNsName, reflectionList) in _directReflectionCache)
+                {
+                    if (!_propertiesCache.TryGetValue(sourceNsName, out var sourceProperties)) continue;
+
+                    var staleReflections = reflectionList
+                        .Where(r => r.Namespace == ns.Name())
+                        .ToList();
+                    if (staleReflections.Count == 0) continue;
+
+                    if (CanBeReflectedToNamespaceCached(sourceProperties, ns.Name())) continue;
+
+                    foreach (var reflectionNsName in staleReflections)
+                    {
+                        Logger.LogInformation(
+                            "Source {sourceNsName} no longer permits the direct reflection to {reflectionNsName}.",
+                            sourceNsName, reflectionNsName);
+                        reflectionList.Remove(reflectionNsName);
+                    }
+                }
+            }
+                break;
+            case V1Namespace ns when notification.EventType == WatchEventType.Deleted:
+            {
+                Logger.LogTrace("Handling {eventType} {resourceType} {resourceRef}", notification.EventType, ns.Kind,
+                    ns.ObjectReference().NamespacedName());
+
+                _namespaceCache.TryRemove(ns.Name(), out _);
+
+                //Remove any auto-reflections targeting this namespace
+                foreach (var sourceNsName in _autoSources.Keys)
+                {
+                    var autoReflections = _autoReflectionCache.GetOrAdd(sourceNsName, []);
+                    var reflectionNsName = sourceNsName with { Namespace = ns.Name() };
+                    autoReflections.Remove(reflectionNsName);
+                }
+
+                //Remove any direct reflections targeting this namespace
+                foreach (var reflectionList in _directReflectionCache.Values)
+                    reflectionList.RemoveWhere(r => r.Namespace == ns.Name());
             }
                 break;
         }
@@ -146,6 +208,8 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
         _propertiesCache.AddOrUpdate(objNsName, objProperties,
             (_, _) => objProperties);
 
+        WarnOnInvalidLabelSelectors(objNsName, objProperties);
+
         switch (objProperties)
         {
             //If the resource is not a reflection
@@ -155,7 +219,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 if (_directReflectionCache.TryGetValue(objNsName, out var reflectionList))
                 {
                     var reflections = reflectionList
-                        .Where(s => !objProperties.CanBeReflectedToNamespace(s.Namespace))
+                        .Where(s => !CanBeReflectedToNamespaceCached(objProperties, s.Namespace))
                         .ToHashSet();
 
                     foreach (var reflectionNsName in reflections)
@@ -172,7 +236,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 if (_autoReflectionCache.TryGetValue(objNsName, out reflectionList))
                 {
                     var reflections = reflectionList
-                        .Where(s => !objProperties.CanBeReflectedToNamespace(s.Namespace))
+                        .Where(s => !CanBeReflectedToNamespaceCached(objProperties, s.Namespace))
                         .ToHashSet();
                     foreach (var reflectionNsName in reflections)
                     {
@@ -263,7 +327,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 _directReflectionCache.TryAdd(sourceNsName, []);
                 _directReflectionCache[sourceNsName].Add(objNsName);
 
-                if (!sourceProperties.CanBeReflectedToNamespace(objNsName.Namespace))
+                if (!CanBeReflectedToNamespaceCached(sourceProperties, objNsName.Namespace))
                 {
                     Logger.LogWarning("Could not update {reflectionNsName} - Source {sourceNsName} does not permit it.",
                         objNsName, sourceNsName);
@@ -326,7 +390,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
 
                 _propertiesCache.AddOrUpdate(sourceNsName, sourceProperties,
                     (_, _) => sourceProperties);
-                if (!sourceProperties.CanBeAutoReflectedToNamespace(objNsName.Namespace))
+                if (!CanBeAutoReflectedToNamespaceCached(sourceProperties, objNsName.Namespace))
                 {
                     Logger.LogInformation(
                         "Source {sourceNsName} no longer permits the auto reflection to {reflectionNsName}. Deleting {reflectionNsName}.",
@@ -354,6 +418,10 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
         var namespaces = (await Kubernetes.CoreV1
             .ListNamespaceAsync(cancellationToken: cancellationToken)).Items;
 
+        //Cache namespaces for label selector lookups
+        foreach (var ns in namespaces)
+            _namespaceCache.AddOrUpdate(ns.Name(), ns, (_, _) => ns);
+
         foreach (var match in matches)
         {
             var matchProperties = match.GetMirroringProperties();
@@ -361,9 +429,12 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 _ => matchProperties, (_, _) => matchProperties);
         }
 
+        var namespaceLookup = namespaces.ToDictionary(n => n.Name());
+
         var toDelete = matches
             .Where(s => s.Namespace() != sourceNsName.Namespace)
-            .Where(m => !sourceProperties.CanBeAutoReflectedToNamespace(m.Namespace()))
+            .Where(m => !namespaceLookup.TryGetValue(m.Namespace(), out var ns) ||
+                        !sourceProperties.CanBeAutoReflectedToNamespace(ns))
             .Where(m => m.GetMirroringProperties().Reflects == sourceNsName)
             .Select(s => s.NamespacedName())
             .ToList();
@@ -377,7 +448,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
             .Where(s => s.Name() != sourceNsName.Namespace)
             .Where(s =>
                 matches.All(m => m.Namespace() != s.Name()) &&
-                sourceProperties.CanBeAutoReflectedToNamespace(s.Name()))
+                sourceProperties.CanBeAutoReflectedToNamespace(s))
             .Select(s => new NamespacedName(s.Name(), sourceNsName.Name)).ToList();
 
         var toUpdate = matches
@@ -557,4 +628,59 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
     protected abstract Task<TResource> OnResourceGet(NamespacedName refId);
 
     protected virtual Task<bool> OnResourceIgnoreCheck(TResource item) => Task.FromResult(false);
+
+    private void WarnOnInvalidLabelSelectors(NamespacedName sourceNsName, MirroringProperties properties)
+    {
+        var errors = properties.GetLabelSelectorErrors();
+        if (errors.Count == 0)
+        {
+            _lastWarnedSelectorErrors.TryRemove(sourceNsName, out _);
+            return;
+        }
+
+        var signature = string.Join("|", errors);
+        if (_lastWarnedSelectorErrors.TryGetValue(sourceNsName, out var previous) && previous == signature) return;
+
+        _lastWarnedSelectorErrors[sourceNsName] = signature;
+        foreach (var error in errors)
+            Logger.LogWarning("Invalid label selector on source {sourceNsName}: {error}", sourceNsName, error);
+    }
+
+    internal static bool NamespaceLabelsEqual(V1Namespace a, V1Namespace b) =>
+        (a.Metadata?.Labels ?? EmptyLabels).SequenceEqual(b.Metadata?.Labels ?? EmptyLabels);
+
+    private bool CanBeReflectedToNamespaceCached(MirroringProperties properties, string ns)
+    {
+        if (_namespaceCache.TryGetValue(ns, out var nsObj))
+            return properties.CanBeReflectedToNamespace(nsObj);
+
+        // Fail closed: a label selector cannot be evaluated without the namespace object.
+        // Falling back to the name-only overload would match empty-pattern sources and allow all namespaces.
+        if (!string.IsNullOrEmpty(properties.AllowedNamespacesSelector))
+        {
+            Logger.LogDebug(
+                "Namespace {ns} not in cache; denying reflection because a label selector is configured.", ns);
+            return false;
+        }
+
+        return properties.CanBeReflectedToNamespace(ns);
+    }
+
+    private bool CanBeAutoReflectedToNamespaceCached(MirroringProperties properties, string ns)
+    {
+        if (_namespaceCache.TryGetValue(ns, out var nsObj))
+            return properties.CanBeAutoReflectedToNamespace(nsObj);
+
+        // Fail closed: a label selector cannot be evaluated without the namespace object.
+        // Falling back to the name-only overload would match empty-pattern sources and allow all namespaces.
+        if (!string.IsNullOrEmpty(properties.AllowedNamespacesSelector) ||
+            !string.IsNullOrEmpty(properties.AutoNamespacesSelector))
+        {
+            Logger.LogDebug(
+                "Namespace {ns} not in cache; denying auto-reflection because a label selector is configured.", ns);
+            return false;
+        }
+
+        return properties.CanBeAutoReflectedToNamespace(ns);
+    }
 }
