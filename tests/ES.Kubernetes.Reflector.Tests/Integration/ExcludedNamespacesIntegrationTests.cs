@@ -24,9 +24,11 @@ public class ExcludedNamespacesIntegrationTests(
 
         var excludedNamespace = $"excluded-{Guid.CreateVersion7()}";
         var allowedNamespace = $"allowed-{Guid.CreateVersion7()}";
+        var targetNamespace = $"target-{Guid.CreateVersion7()}";
 
         await CreateNamespaceAsync(excludedNamespace);
         await CreateNamespaceAsync(allowedNamespace);
+        await CreateNamespaceAsync(targetNamespace);
 
         // Resource in excluded namespace — should not be mirrored anywhere
         var excludedSourceResource = await CreateResource(client, namespaceName: excludedNamespace,
@@ -34,23 +36,51 @@ public class ExcludedNamespacesIntegrationTests(
                 .WithReflectionAllowed(true)
                 .WithAutoEnabled(true).Build());
 
-        // Resource in allowed namespace — should mirror normally
+        // Resource in allowed namespace — should cross-namespace auto-reflect into targetNamespace
         var allowedSourceResource = await CreateResource(client, namespaceName: allowedNamespace,
             annotations: new ReflectorAnnotationsBuilder()
                 .WithReflectionAllowed(true)
-                .WithAllowedNamespaces($"^{allowedNamespace}$")
+                .WithAllowedNamespaces("^target-.*")
                 .WithAutoEnabled(true).Build());
 
         await DelayForReflection();
 
-        // The excluded-namespace resource should not have triggered auto-reflection into the allowed namespace
+        // The excluded-namespace resource should not have triggered auto-reflection into any other namespace
         Assert.False(await ResourceExists(client,
-            excludedSourceResource.Name(), allowedNamespace,
+            excludedSourceResource.Name(), targetNamespace,
             TestContext.Current.CancellationToken));
 
-        // The allowed-namespace resource should reflect within its own namespace
+        // The allowed-namespace resource should cross-namespace reflect into targetNamespace
         Assert.True(await WaitForResource(client,
-            allowedSourceResource.Name(), allowedNamespace,
+            allowedSourceResource.Name(), targetNamespace,
+            TestContext.Current.CancellationToken));
+    }
+
+
+    [Fact]
+    public async Task AutoReflect_IntoExcludedTargetNamespace_StillReflects()
+    {
+        // The exclusion filter drops watch events FROM excluded namespaces (source-side filtering
+        // via item.Metadata.NamespaceProperty). Namespace objects are cluster-scoped so their
+        // events are never filtered, meaning excluded namespaces stay in the namespace cache and
+        // remain valid auto-reflection targets. This test pins down that behavior.
+        var client = await GetKubernetesClient();
+
+        var sourceNamespace = $"allowed-{Guid.CreateVersion7()}";
+        var excludedTargetNamespace = $"excluded-{Guid.CreateVersion7()}";
+
+        await CreateNamespaceAsync(sourceNamespace);
+        await CreateNamespaceAsync(excludedTargetNamespace);
+
+        var sourceResource = await CreateResource(client, namespaceName: sourceNamespace,
+            annotations: new ReflectorAnnotationsBuilder()
+                .WithReflectionAllowed(true)
+                .WithAutoEnabled(true).Build());
+
+        await DelayForReflection();
+
+        Assert.True(await WaitForResource(client,
+            sourceResource.Name(), excludedTargetNamespace,
             TestContext.Current.CancellationToken));
     }
 
