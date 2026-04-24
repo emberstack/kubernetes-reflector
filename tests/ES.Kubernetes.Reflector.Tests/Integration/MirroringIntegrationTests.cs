@@ -82,6 +82,133 @@ public class MirroringIntegrationTests(
 
 
     [Fact]
+    public async Task AutoReflect_To_NamespacesMatchingLabelSelector()
+    {
+        var client = await GetKubernetesClient();
+
+        var matchingNamespace = $"match-{Guid.CreateVersion7()}";
+        var nonMatchingNamespace = $"nomatch-{Guid.CreateVersion7()}";
+
+        await CreateNamespaceAsync(matchingNamespace,
+            new Dictionary<string, string> { ["reflector-test-env"] = "prod" });
+        await CreateNamespaceAsync(nonMatchingNamespace,
+            new Dictionary<string, string> { ["reflector-test-env"] = "dev" });
+
+        var sourceResource = await CreateResource(client,
+            annotations: new ReflectorAnnotationsBuilder()
+                .WithReflectionAllowed(true)
+                .WithAllowedNamespacesSelector("reflector-test-env=prod")
+                .WithAutoEnabled(true).Build());
+
+        await DelayForReflection();
+
+        Assert.True(await WaitForResource(client, sourceResource.Name(), matchingNamespace,
+            TestContext.Current.CancellationToken));
+
+        Assert.False(await ResourceExists(client, sourceResource.Name(), nonMatchingNamespace,
+            TestContext.Current.CancellationToken));
+    }
+
+
+    [Fact]
+    public async Task AutoReflect_UpdatesReflections_WhenNamespaceLabelsChange()
+    {
+        var client = await GetKubernetesClient();
+
+        var targetNamespace = $"labelshift-{Guid.CreateVersion7()}";
+        await CreateNamespaceAsync(targetNamespace,
+            new Dictionary<string, string> { ["reflector-test-env"] = "dev" });
+
+        var sourceResource = await CreateResource(client,
+            annotations: new ReflectorAnnotationsBuilder()
+                .WithReflectionAllowed(true)
+                .WithAllowedNamespacesSelector("reflector-test-env=prod")
+                .WithAutoEnabled(true).Build());
+
+        await DelayForReflection();
+
+        Assert.False(await ResourceExists(client, sourceResource.Name(), targetNamespace,
+            TestContext.Current.CancellationToken));
+
+        await PatchNamespaceLabelsAsync(client, targetNamespace,
+            new Dictionary<string, string?> { ["reflector-test-env"] = "prod" });
+
+        Assert.True(await WaitForResource(client, sourceResource.Name(), targetNamespace,
+            TestContext.Current.CancellationToken));
+
+        await PatchNamespaceLabelsAsync(client, targetNamespace,
+            new Dictionary<string, string?> { ["reflector-test-env"] = "dev" });
+
+        Assert.True(await WaitForResourceAbsent(client, sourceResource.Name(), targetNamespace,
+            TestContext.Current.CancellationToken));
+    }
+
+
+    [Fact]
+    public async Task DirectReflect_StopsUpdating_WhenNamespaceLabelsNoLongerMatchSelector()
+    {
+        var client = await GetKubernetesClient();
+
+        var sourceNamespace = $"src-{Guid.CreateVersion7()}";
+        var targetNamespace = $"labelshift-direct-{Guid.CreateVersion7()}";
+        var dataKey = "payload";
+        var initialValue = Guid.NewGuid().ToString();
+        var updatedValue = Guid.NewGuid().ToString();
+
+        await CreateNamespaceAsync(targetNamespace,
+            new Dictionary<string, string> { ["reflector-test-env"] = "prod" });
+
+        var sourceResource = await CreateResource(client,
+            namespaceName: sourceNamespace,
+            annotations: new ReflectorAnnotationsBuilder()
+                .WithReflectionAllowed(true)
+                .WithAllowedNamespacesSelector("reflector-test-env=prod").Build(),
+            data: new Dictionary<string, string> { [dataKey] = initialValue });
+
+        var directReflection = new V1Secret
+        {
+            ApiVersion = V1Secret.KubeApiVersion,
+            Kind = V1Secret.KubeKind,
+            Metadata = new V1ObjectMeta
+            {
+                Name = sourceResource.Name(),
+                NamespaceProperty = targetNamespace,
+                Annotations = new Dictionary<string, string>
+                {
+                    [$"{ES.Kubernetes.Reflector.Mirroring.Core.Annotations.Prefix}/reflects"]
+                        = $"{sourceNamespace}/{sourceResource.Name()}"
+                }
+            },
+            StringData = new Dictionary<string, string> { [dataKey] = "placeholder" },
+            Type = "Opaque"
+        };
+        await client.CoreV1.CreateNamespacedSecretAsync(directReflection, targetNamespace,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.True(await WaitForSecretDataValue(client, sourceResource.Name(), targetNamespace,
+            dataKey, initialValue, TestContext.Current.CancellationToken));
+
+        await PatchNamespaceLabelsAsync(client, targetNamespace,
+            new Dictionary<string, string?> { ["reflector-test-env"] = "staging" });
+
+        await DelayForReflection();
+
+        var patch = new V1Patch(
+            new { stringData = new Dictionary<string, string> { [dataKey] = updatedValue } },
+            V1Patch.PatchType.MergePatch);
+        await client.CoreV1.PatchNamespacedSecretAsync(patch, sourceResource.Name(), sourceNamespace,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        await Task.Delay(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        var mirror = await client.CoreV1.ReadNamespacedSecretAsync(sourceResource.Name(), targetNamespace,
+            cancellationToken: TestContext.Current.CancellationToken);
+        var actual = System.Text.Encoding.UTF8.GetString(mirror.Data[dataKey]);
+        Assert.Equal(initialValue, actual);
+    }
+
+
+    [Fact]
     public async Task AutoReflect_Remove_ReflectionsWhenResourceDeleted()
     {
         var client = await GetKubernetesClient();
@@ -165,6 +292,36 @@ public class MirroringIntegrationTests(
                 name, namespaceName, cancellationToken: token);
             return resource is not null;
         }, cancellationToken);
+    }
+
+
+    private async Task<bool> WaitForResourceAbsent(IKubernetes client, string name, string namespaceName,
+        CancellationToken cancellationToken = default)
+    {
+        return await ResourceAbsentResiliencePipeline.ExecuteAsync(async token =>
+            await ResourceExists(client, name, namespaceName, token), cancellationToken) == false;
+    }
+
+
+    private async Task<bool> WaitForSecretDataValue(IKubernetes client, string name, string namespaceName,
+        string dataKey, string expected, CancellationToken cancellationToken = default)
+    {
+        return await ResourceExistsResiliencePipeline.ExecuteAsync(async token =>
+        {
+            var secret = await client.CoreV1.ReadNamespacedSecretAsync(name, namespaceName, cancellationToken: token);
+            if (secret.Data is null || !secret.Data.TryGetValue(dataKey, out var bytes)) return false;
+            return System.Text.Encoding.UTF8.GetString(bytes) == expected;
+        }, cancellationToken);
+    }
+
+
+    private static async Task PatchNamespaceLabelsAsync(IKubernetes client, string namespaceName,
+        IDictionary<string, string?> labels)
+    {
+        var patch = new V1Patch(
+            new { metadata = new { labels } },
+            V1Patch.PatchType.MergePatch);
+        await client.CoreV1.PatchNamespaceAsync(patch, namespaceName);
     }
 
 

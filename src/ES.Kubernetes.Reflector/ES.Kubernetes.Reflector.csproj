@@ -9,9 +9,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
-			<_Parameter1>ES.Kubernetes.Reflector.Tests</_Parameter1>
-		</AssemblyAttribute>
+		<InternalsVisibleTo Include="ES.Kubernetes.Reflector.Tests" />
 	</ItemGroup>
 
 	<ItemGroup>
