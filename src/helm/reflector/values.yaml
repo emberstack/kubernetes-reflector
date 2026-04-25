@@ -28,6 +28,10 @@ configuration:
     minimumLevel: Information
   watcher:
     timeout: ""
+    # Comma-separated list of namespace glob patterns to exclude from reflection processing.
+    # Supports wildcards: * (any characters), ? (single character).
+    # Example: "kube-system,*-suffix,prefix-*"
+    excludedNamespaces: ""
   kubernetes:
     skipTlsVerify: false
 

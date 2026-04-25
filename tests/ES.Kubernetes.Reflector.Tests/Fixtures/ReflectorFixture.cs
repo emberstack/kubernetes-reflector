@@ -6,7 +6,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace ES.Kubernetes.Reflector.Tests.Fixtures;
 
-public sealed class ReflectorFixture : WebApplicationFactory<Program>, IAsyncLifetime
+public class ReflectorFixture : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private static readonly Lock Lock = new();
 
@@ -43,5 +43,8 @@ public sealed class ReflectorFixture : WebApplicationFactory<Program>, IAsyncLif
                 return config;
             });
         });
+        ConfigureAdditionalWebHost(builder);
     }
+
+    protected virtual void ConfigureAdditionalWebHost(IWebHostBuilder builder) { }
 }

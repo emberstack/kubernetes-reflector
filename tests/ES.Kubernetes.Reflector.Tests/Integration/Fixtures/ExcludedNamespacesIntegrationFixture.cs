@@ -1,11 +1,11 @@
-﻿using ES.Kubernetes.Reflector.Tests.Fixtures;
+using ES.Kubernetes.Reflector.Tests.Fixtures;
 
 namespace ES.Kubernetes.Reflector.Tests.Integration.Fixtures;
 
-public class ReflectorIntegrationFixture : IAsyncLifetime, IKubernetesIntegrationFixture
+public class ExcludedNamespacesIntegrationFixture : IAsyncLifetime, IKubernetesIntegrationFixture
 {
     public KubernetesFixture Kubernetes { get; init; } = new();
-    public ReflectorFixture Reflector { get; init; } = new();
+    public ExcludedNamespacesReflectorFixture Reflector { get; init; } = new();
 
     public async ValueTask InitializeAsync()
     {
