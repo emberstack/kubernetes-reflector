@@ -5,6 +5,10 @@ kind: Deployment
 metadata:
   name: {{ include "reflector.fullname" . }}
   namespace: {{ include "reflector.namespace" . }}
+  {{- with .Values.deploymentAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   labels:
     {{- include "reflector.labels" . | nindent 4 }}
 
