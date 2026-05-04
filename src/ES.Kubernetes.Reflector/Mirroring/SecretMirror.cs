@@ -9,10 +9,12 @@ namespace ES.Kubernetes.Reflector.Mirroring;
 public class SecretMirror(ILogger<SecretMirror> logger, IKubernetes kubernetesClient)
     : ResourceMirror<V1Secret>(logger, kubernetesClient)
 {
-    protected override async Task<V1Secret[]> OnResourceWithNameList(string itemRefName) =>
+    protected override async Task<V1Secret[]> OnResourceWithNameList(string itemRefName,
+        CancellationToken cancellationToken) =>
     [
         .. (await Kubernetes.CoreV1.ListSecretForAllNamespacesAsync(
-            fieldSelector: $"metadata.name={itemRefName}"))
+            fieldSelector: $"metadata.name={itemRefName}",
+            cancellationToken: cancellationToken))
         .Items
     ];
 
@@ -46,6 +48,8 @@ public class SecretMirror(ILogger<SecretMirror> logger, IKubernetes kubernetesCl
         await Kubernetes.CoreV1.DeleteNamespacedSecretAsync(resourceId.Name, resourceId.Namespace);
     }
 
-    protected override async Task<V1Secret> OnResourceGet(NamespacedName refId) =>
-        await Kubernetes.CoreV1.ReadNamespacedSecretAsync(refId.Name, refId.Namespace);
+    protected override async Task<V1Secret> OnResourceGet(NamespacedName refId,
+        CancellationToken cancellationToken) =>
+        await Kubernetes.CoreV1.ReadNamespacedSecretAsync(refId.Name, refId.Namespace,
+            cancellationToken: cancellationToken);
 }

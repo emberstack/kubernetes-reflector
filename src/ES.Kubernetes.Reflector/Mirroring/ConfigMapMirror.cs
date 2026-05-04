@@ -9,10 +9,12 @@ namespace ES.Kubernetes.Reflector.Mirroring;
 public class ConfigMapMirror(ILogger<ConfigMapMirror> logger, IKubernetes kubernetes)
     : ResourceMirror<V1ConfigMap>(logger, kubernetes)
 {
-    protected override async Task<V1ConfigMap[]> OnResourceWithNameList(string itemRefName) =>
+    protected override async Task<V1ConfigMap[]> OnResourceWithNameList(string itemRefName,
+        CancellationToken cancellationToken) =>
     [
         .. (await Kubernetes.CoreV1.ListConfigMapForAllNamespacesAsync(
-            fieldSelector: $"metadata.name={itemRefName}"))
+            fieldSelector: $"metadata.name={itemRefName}",
+            cancellationToken: cancellationToken))
         .Items
     ];
 
@@ -47,6 +49,8 @@ public class ConfigMapMirror(ILogger<ConfigMapMirror> logger, IKubernetes kubern
         await Kubernetes.CoreV1.DeleteNamespacedConfigMapAsync(resourceId.Name, resourceId.Namespace);
     }
 
-    protected override async Task<V1ConfigMap> OnResourceGet(NamespacedName refId) =>
-        await Kubernetes.CoreV1.ReadNamespacedConfigMapAsync(refId.Name, refId.Namespace);
+    protected override async Task<V1ConfigMap> OnResourceGet(NamespacedName refId,
+        CancellationToken cancellationToken) =>
+        await Kubernetes.CoreV1.ReadNamespacedConfigMapAsync(refId.Name, refId.Namespace,
+            cancellationToken: cancellationToken);
 }
