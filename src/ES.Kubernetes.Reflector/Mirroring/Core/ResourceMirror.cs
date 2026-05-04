@@ -46,17 +46,14 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
             return Task.CompletedTask;
         }
 
-        // Preserve _autoSources, _propertiesCache, and _namespaceCache across resource watcher
-        // restarts. The NamespaceWatcher runs independently and can deliver namespace-added events
-        // while this resource watcher is reconnecting. Without these caches the namespace handler
-        // iterates an empty _autoSources and silently skips mirror creation — a race that causes
-        // new namespaces to never receive their auto-reflected resources until the next full
-        // watcher cycle. Stale entries are harmless: the replay overwrites them, and ResourceReflect
-        // always re-fetches the source from the API when sourceObj is null.
-        Logger.LogDebug("Clearing relationship caches for {Type} resources (preserving auto-sources and properties)",
-            typeof(TResource).Name);
+        // Clear all resource caches but preserve _namespaceCache — it is owned by the
+        // NamespaceWatcher and must survive resource watcher restarts so label-selector
+        // checks remain functional during the replay that rebuilds resource state.
+        Logger.LogDebug("Cleared sources for {Type} resources", typeof(TResource).Name);
 
+        _autoSources.Clear();
         _notFoundCache.Clear();
+        _propertiesCache.Clear();
         _autoReflectionCache.Clear();
         _directReflectionCache.Clear();
         _lastWarnedSelectorErrors.Clear();
