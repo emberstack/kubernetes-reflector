@@ -39,13 +39,26 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
         if (notification.ResourceType != typeof(TResource) &&
             notification.ResourceType != typeof(V1Namespace)) return Task.CompletedTask;
 
-        Logger.LogDebug("Cleared sources for {Type} resources", typeof(TResource).Name);
+        if (notification.ResourceType == typeof(V1Namespace))
+        {
+            Logger.LogDebug("Cleared namespace cache for {Type} resources", typeof(TResource).Name);
+            _namespaceCache.Clear();
+            return Task.CompletedTask;
+        }
 
-        _autoSources.Clear();
-        _namespaceCache.Clear();
+        // Preserve _autoSources, _propertiesCache, and _namespaceCache across resource watcher
+        // restarts. The NamespaceWatcher runs independently and can deliver namespace-added events
+        // while this resource watcher is reconnecting. Without these caches the namespace handler
+        // iterates an empty _autoSources and silently skips mirror creation — a race that causes
+        // new namespaces to never receive their auto-reflected resources until the next full
+        // watcher cycle. Stale entries are harmless: the replay overwrites them, and ResourceReflect
+        // always re-fetches the source from the API when sourceObj is null.
+        Logger.LogDebug("Clearing relationship caches for {Type} resources (preserving auto-sources and properties)",
+            typeof(TResource).Name);
+
         _notFoundCache.Clear();
-        _propertiesCache.Clear();
         _autoReflectionCache.Clear();
+        _directReflectionCache.Clear();
         _lastWarnedSelectorErrors.Clear();
 
         return Task.CompletedTask;
@@ -128,7 +141,8 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 //Update all auto-sources
                 foreach (var sourceNsName in _autoSources.Keys)
                 {
-                    var properties = _propertiesCache[sourceNsName];
+                    if (!_propertiesCache.TryGetValue(sourceNsName, out var properties)) continue;
+
                     var autoReflections = _autoReflectionCache.GetOrAdd(sourceNsName, []);
                     var reflectionNsName = sourceNsName with { Namespace = ns.Name() };
 
@@ -140,7 +154,8 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                             reflectionNsName,
                             null,
                             null,
-                            true);
+                            true,
+                            cancellationToken);
 
                         autoReflections.Add(reflectionNsName);
                     }
@@ -290,7 +305,8 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                             reflectionNsName,
                             obj,
                             null,
-                            false);
+                            false,
+                            cancellationToken);
                     }
 
                 //Ensure updated auto-reflections
@@ -306,7 +322,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 MirroringProperties sourceProperties;
                 if (!_propertiesCache.TryGetValue(sourceNsName, out var sourceProps))
                 {
-                    var sourceObj = await TryResourceGet(sourceNsName);
+                    var sourceObj = await TryResourceGet(sourceNsName, cancellationToken);
                     if (sourceObj is null)
                     {
                         Logger.LogWarning(
@@ -349,7 +365,8 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                     objNsName,
                     null,
                     obj,
-                    false);
+                    false,
+                    cancellationToken);
 
                 return;
             }
@@ -372,7 +389,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 MirroringProperties sourceProperties;
                 if (!_propertiesCache.TryGetValue(sourceNsName, out var props))
                 {
-                    var sourceResource = await TryResourceGet(sourceNsName);
+                    var sourceResource = await TryResourceGet(sourceNsName, cancellationToken);
                     if (sourceResource is null)
                     {
                         Logger.LogInformation("Source {sourceNsName} no longer exists. Deleting {reflectionNsName}.",
@@ -414,7 +431,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
         var autoReflectionList = _autoReflectionCache
             .GetOrAdd(sourceNsName, _ => []);
 
-        var matches = await OnResourceWithNameList(sourceNsName.Name);
+        var matches = await OnResourceWithNameList(sourceNsName.Name, cancellationToken);
         var namespaces = (await Kubernetes.CoreV1
             .ListNamespaceAsync(cancellationToken: cancellationToken)).Items;
 
@@ -441,7 +458,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
 
         foreach (var reference in toDelete) await OnResourceDelete(reference);
 
-        sourceObj ??= await TryResourceGet(sourceNsName);
+        sourceObj ??= await TryResourceGet(sourceNsName, cancellationToken);
         if (sourceObj is null) return;
 
         var toCreate = namespaces
@@ -481,7 +498,8 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 reflectionNsName,
                 sourceObj,
                 null,
-                true);
+                true,
+                cancellationToken);
         foreach (var reflectionRef in toUpdate)
         {
             var reflectionObj = matches.Single(s => s.NamespacedName() == reflectionRef);
@@ -490,7 +508,8 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 reflectionRef,
                 sourceObj,
                 reflectionObj,
-                true);
+                true,
+                cancellationToken);
         }
 
         Logger.LogInformation(
@@ -502,7 +521,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
 
     private async Task ResourceReflect(NamespacedName sourceNsName, NamespacedName reflectionNsName,
         TResource? sourceObj,
-        TResource? reflectionObj, bool autoReflection)
+        TResource? reflectionObj, bool autoReflection, CancellationToken cancellationToken)
     {
         if (sourceNsName == reflectionNsName) return;
 
@@ -511,7 +530,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
         TResource source;
         if (sourceObj is null)
         {
-            var lookup = await TryResourceGet(sourceNsName);
+            var lookup = await TryResourceGet(sourceNsName, cancellationToken);
             if (lookup is not null)
             {
                 source = lookup;
@@ -566,7 +585,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 catch (HttpOperationException ex) when (ex.Response.StatusCode == HttpStatusCode.Conflict)
                 {
                     //If resource already exists, set target and fallback to patch
-                    reflectionObj = await OnResourceGet(reflectionNsName);
+                    reflectionObj = await OnResourceGet(reflectionNsName, cancellationToken);
                 }
             }
 
@@ -606,14 +625,16 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
     protected abstract Task OnResourceDelete(NamespacedName resourceId);
 
 
-    protected abstract Task<TResource[]> OnResourceWithNameList(string itemRefName);
+    protected abstract Task<TResource[]> OnResourceWithNameList(string itemRefName,
+        CancellationToken cancellationToken);
 
-    private async Task<TResource?> TryResourceGet(NamespacedName resourceNsName)
+    private async Task<TResource?> TryResourceGet(NamespacedName resourceNsName,
+        CancellationToken cancellationToken)
     {
         try
         {
             Logger.LogDebug("Retrieving {id}", resourceNsName);
-            var resource = await OnResourceGet(resourceNsName);
+            var resource = await OnResourceGet(resourceNsName, cancellationToken);
             _notFoundCache.TryRemove(resourceNsName, out _);
             return resource;
         }
@@ -625,7 +646,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
         }
     }
 
-    protected abstract Task<TResource> OnResourceGet(NamespacedName refId);
+    protected abstract Task<TResource> OnResourceGet(NamespacedName refId, CancellationToken cancellationToken);
 
     protected virtual Task<bool> OnResourceIgnoreCheck(TResource item) => Task.FromResult(false);
 
