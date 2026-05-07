@@ -337,16 +337,15 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
 
                 _propertiesCache.AddOrUpdate(sourceNsName,
                     sourceProperties, (_, _) => sourceProperties);
-                _directReflectionCache.TryAdd(sourceNsName, []);
-                _directReflectionCache[sourceNsName].Add(objNsName);
+                var directReflections = _directReflectionCache.GetOrAdd(sourceNsName, []);
+                directReflections.Add(objNsName);
 
                 if (!CanBeReflectedToNamespaceCached(sourceProperties, objNsName.Namespace))
                 {
                     Logger.LogWarning("Could not update {reflectionNsName} - Source {sourceNsName} does not permit it.",
                         objNsName, sourceNsName);
 
-                    _directReflectionCache[sourceNsName]
-                        .Remove(objNsName);
+                    directReflections.Remove(objNsName);
                     return;
                 }
 
@@ -423,7 +422,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
         CancellationToken cancellationToken)
     {
         Logger.LogDebug("Processing auto-reflection source {sourceNsName}", sourceNsName);
-        var sourceProperties = _propertiesCache[sourceNsName];
+        if (!_propertiesCache.TryGetValue(sourceNsName, out var sourceProperties)) return;
 
         var autoReflectionList = _autoReflectionCache
             .GetOrAdd(sourceNsName, _ => []);
