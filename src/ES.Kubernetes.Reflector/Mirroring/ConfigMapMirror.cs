@@ -9,6 +9,21 @@ namespace ES.Kubernetes.Reflector.Mirroring;
 public class ConfigMapMirror(ILogger<ConfigMapMirror> logger, IKubernetes kubernetes)
     : ResourceMirror<V1ConfigMap>(logger, kubernetes)
 {
+    protected override async Task DiscoverGlobalAutoMirrorSourcesFromClusterAsync(
+        CancellationToken cancellationToken)
+    {
+        string? continueParameter = null;
+        do
+        {
+            var list = await Kubernetes.CoreV1.ListConfigMapForAllNamespacesAsync(
+                continueParameter: continueParameter,
+                cancellationToken: cancellationToken);
+            foreach (var cm in list.Items)
+                RefreshRememberedGlobalAutoMirrorFromResource(cm);
+            continueParameter = list.Metadata?.ContinueProperty;
+        } while (!string.IsNullOrEmpty(continueParameter));
+    }
+
     protected override async Task<V1ConfigMap[]> OnResourceWithNameList(string itemRefName,
         CancellationToken cancellationToken) =>
     [

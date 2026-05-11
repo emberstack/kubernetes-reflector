@@ -297,4 +297,43 @@ public class LabelSelectorMatchTests
         };
         Assert.Empty(props.GetLabelSelectorErrors());
     }
+
+    [Fact]
+    public void ReflectsAutoToAllNamespaces_TrueWhenUnrestricted()
+    {
+        var props = new MirroringProperties
+        {
+            Allowed = true,
+            AutoEnabled = true,
+            AllowedNamespaces = string.Empty,
+            AllowedNamespacesSelector = string.Empty,
+            AutoNamespaces = string.Empty,
+            AutoNamespacesSelector = string.Empty
+        };
+        Assert.True(props.ReflectsAutoToAllNamespaces());
+    }
+
+    [Fact]
+    public void ReflectsAutoToAllNamespaces_FalseWhenAutoScopedByName()
+    {
+        var props = new MirroringProperties
+        {
+            Allowed = true,
+            AutoEnabled = true,
+            AutoNamespaces = "^staging$"
+        };
+        Assert.False(props.ReflectsAutoToAllNamespaces());
+    }
+
+    [Fact]
+    public void ReflectsAutoToAllNamespaces_FalseWhenAllowedScopedBySelector()
+    {
+        var props = new MirroringProperties
+        {
+            Allowed = true,
+            AutoEnabled = true,
+            AllowedNamespacesSelector = "env=prod"
+        };
+        Assert.False(props.ReflectsAutoToAllNamespaces());
+    }
 }

@@ -1,5 +1,7 @@
 ﻿using System.Collections.Concurrent;
+using System.Linq;
 using System.Net;
+using System.Threading;
 using ES.FX.Additions.KubernetesClient.Models;
 using ES.FX.Additions.KubernetesClient.Models.Extensions;
 using ES.FX.Additions.Newtonsoft.Json.Serialization;
@@ -26,6 +28,11 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
     private readonly ConcurrentDictionary<NamespacedName, bool> _notFoundCache = new();
     private readonly ConcurrentDictionary<NamespacedName, MirroringProperties> _propertiesCache = new();
     private readonly ConcurrentDictionary<NamespacedName, string> _lastWarnedSelectorErrors = new();
+    private readonly ConcurrentDictionary<NamespacedName, byte> _rememberedGlobalAutoMirrorSources = new();
+    private readonly SemaphoreSlim _clusterDiscoveryLock = new(1, 1);
+    private readonly SemaphoreSlim _eagerAutoMirrorPrimeLock = new(1, 1);
+    private int _clusterDiscoveryCompleted;
+
     protected readonly IKubernetes Kubernetes = kubernetes;
     protected readonly ILogger Logger = logger;
 
@@ -49,9 +56,16 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
         // Clear all resource caches but preserve _namespaceCache — it is owned by the
         // NamespaceWatcher and must survive resource watcher restarts so label-selector
         // checks remain functional during the replay that rebuilds resource state.
-        Logger.LogDebug("Cleared sources for {Type} resources", typeof(TResource).Name);
-
-        _autoSources.Clear();
+        //
+        // Preserve _rememberedGlobalAutoMirrorSources for the same reason: after a reconnect the
+        // watch replay may lag behind namespace events; sources that previously reflected auto into
+        // all namespaces are primed from the API using this set (see EnsureEagerAutoMirrorSourcesPrimed).
+        // Cold-start cluster discovery does not need to run again for the lifetime of the process.
+        //
+        // Preserve _autoSources across reconnect so namespace reconciliation still knows which sources
+        // to GET while replay lags (scoped auto-mirror sources are not in the global remembered set).
+        Logger.LogDebug(
+            "Cleared resource caches for {Type} resources (auto-source keys preserved)", typeof(TResource).Name);
         _notFoundCache.Clear();
         _propertiesCache.Clear();
         _autoReflectionCache.Clear();
@@ -103,6 +117,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                                 }
 
                             _autoSources.Remove(objNsName, out _);
+                            _rememberedGlobalAutoMirrorSources.TryRemove(objNsName, out _);
                             _directReflectionCache.Remove(objNsName, out _);
                             _autoReflectionCache.Remove(objNsName, out _);
                         }
@@ -135,10 +150,18 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 //Cache the namespace for label selector lookups
                 _namespaceCache.AddOrUpdate(ns.Name(), ns, (_, _) => ns);
 
-                //Update all auto-sources
-                foreach (var sourceNsName in _autoSources.Keys)
+                await EnsureEagerAutoMirrorSourcesPrimed(cancellationToken);
+
+                //Update all auto-sources (including remembered global-auto sources while replay lags)
+                foreach (var sourceNsName in AutoMirrorSourceCandidates().ToArray())
                 {
-                    if (!_propertiesCache.TryGetValue(sourceNsName, out var properties)) continue;
+                    if (!_propertiesCache.TryGetValue(sourceNsName, out var properties))
+                    {
+                        var obj = await TryResourceGet(sourceNsName, cancellationToken);
+                        if (obj is null) continue;
+                        await HandleUpsert(obj, cancellationToken);
+                        if (!_propertiesCache.TryGetValue(sourceNsName, out properties)) continue;
+                    }
 
                     var autoReflections = _autoReflectionCache.GetOrAdd(sourceNsName, []);
                     var reflectionNsName = sourceNsName with { Namespace = ns.Name() };
@@ -196,7 +219,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 _namespaceCache.TryRemove(ns.Name(), out _);
 
                 //Remove any auto-reflections targeting this namespace
-                foreach (var sourceNsName in _autoSources.Keys)
+                foreach (var sourceNsName in AutoMirrorSourceCandidates().ToArray())
                 {
                     var autoReflections = _autoReflectionCache.GetOrAdd(sourceNsName, []);
                     var reflectionNsName = sourceNsName with { Namespace = ns.Name() };
@@ -267,6 +290,8 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
 
                 //Update the status of an auto-source
                 _autoSources.AddOrUpdate(objNsName, isAutoSource, (_, _) => isAutoSource);
+
+                UpdateRememberedGlobalAutoMirror(objNsName, objProperties);
 
                 //If not allowed or auto is disabled, remove the cache for auto-reflections
                 if (!isAutoSource) _autoReflectionCache.Remove(objNsName, out _);
@@ -623,6 +648,101 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
 
     protected abstract Task<TResource[]> OnResourceWithNameList(string itemRefName,
         CancellationToken cancellationToken);
+
+    private IEnumerable<NamespacedName> AutoMirrorSourceCandidates() =>
+        _autoSources.Keys.Union(_rememberedGlobalAutoMirrorSources.Keys);
+
+    private void UpdateRememberedGlobalAutoMirror(NamespacedName sourceNsName, MirroringProperties properties)
+    {
+        if (properties.ReflectsAutoToAllNamespaces())
+            _rememberedGlobalAutoMirrorSources.TryAdd(sourceNsName, 0);
+        else
+            _rememberedGlobalAutoMirrorSources.TryRemove(sourceNsName, out _);
+    }
+
+    /// <summary>
+    ///     Updates the remembered global-auto source set from a live API object (cluster discovery or watch).
+    /// </summary>
+    protected void RefreshRememberedGlobalAutoMirrorFromResource(TResource obj)
+    {
+        UpdateRememberedGlobalAutoMirror(obj.NamespacedName(), obj.GetMirroringProperties());
+    }
+
+    /// <summary>
+    ///     One-time LIST of the cluster so global auto-mirror sources are known before the informer
+    ///     replay catches up (fresh pod or race). Default: no-op for tests or specialized mirrors.
+    /// </summary>
+    protected virtual Task DiscoverGlobalAutoMirrorSourcesFromClusterAsync(CancellationToken cancellationToken) =>
+        Task.CompletedTask;
+
+    private async Task EnsureClusterGlobalSourcesDiscoveredOnceAsync(CancellationToken cancellationToken)
+    {
+        if (Volatile.Read(ref _clusterDiscoveryCompleted) != 0)
+            return;
+
+        await _clusterDiscoveryLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (Volatile.Read(ref _clusterDiscoveryCompleted) != 0)
+                return;
+
+            await DiscoverGlobalAutoMirrorSourcesFromClusterAsync(cancellationToken);
+            Volatile.Write(ref _clusterDiscoveryCompleted, 1);
+            Logger.LogDebug(
+                "Completed one-time cluster scan for global auto-mirror {ResourceKind} sources ({Count} candidates)",
+                typeof(TResource).Name,
+                _rememberedGlobalAutoMirrorSources.Count);
+        }
+        finally
+        {
+            _clusterDiscoveryLock.Release();
+        }
+    }
+
+    /// <summary>
+    ///     Ensures global auto-mirror sources are discoverable (cold start) and loaded into the cache
+    ///     before namespace-driven reconciliation when the watch has not replayed yet.
+    /// </summary>
+    private async Task EnsureEagerAutoMirrorSourcesPrimed(CancellationToken cancellationToken)
+    {
+        await EnsureClusterGlobalSourcesDiscoveredOnceAsync(cancellationToken);
+
+        if (_rememberedGlobalAutoMirrorSources.IsEmpty)
+            return;
+
+        var anyMissing = false;
+        foreach (var nsName in _rememberedGlobalAutoMirrorSources.Keys)
+            if (!_propertiesCache.ContainsKey(nsName))
+            {
+                anyMissing = true;
+                break;
+            }
+
+        if (!anyMissing)
+            return;
+
+        await _eagerAutoMirrorPrimeLock.WaitAsync(cancellationToken);
+        try
+        {
+            foreach (var nsName in _rememberedGlobalAutoMirrorSources.Keys)
+            {
+                if (_propertiesCache.ContainsKey(nsName))
+                    continue;
+                var obj = await TryResourceGet(nsName, cancellationToken);
+                if (obj is null)
+                {
+                    Logger.LogDebug("Eager auto-mirror source {Source} not available yet", nsName);
+                    continue;
+                }
+
+                await HandleUpsert(obj, cancellationToken);
+            }
+        }
+        finally
+        {
+            _eagerAutoMirrorPrimeLock.Release();
+        }
+    }
 
     private async Task<TResource?> TryResourceGet(NamespacedName resourceNsName,
         CancellationToken cancellationToken)
