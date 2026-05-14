@@ -102,6 +102,18 @@ public static class MirroringPropertiesExtensions
         properties.Allowed && MatchNamespace(properties.AllowedNamespaces, properties.AllowedNamespacesSelector, ns);
 
     /// <summary>
+    ///     True when this source is configured to auto-reflect into every namespace: reflection is
+    ///     allowed and enabled with no namespace name patterns or label selectors constraining either
+    ///     the allowed set or the auto-reflection set.
+    /// </summary>
+    public static bool ReflectsAutoToAllNamespaces(this MirroringProperties properties) =>
+        properties is { Allowed: true, AutoEnabled: true } &&
+        string.IsNullOrEmpty(properties.AllowedNamespaces) &&
+        string.IsNullOrEmpty(properties.AllowedNamespacesSelector) &&
+        string.IsNullOrEmpty(properties.AutoNamespaces) &&
+        string.IsNullOrEmpty(properties.AutoNamespacesSelector);
+
+    /// <summary>
     ///     Checks if the source properties allow auto-reflection to the given namespace (by name only).
     ///     Use the overload accepting V1Namespace for label selector support.
     /// </summary>
