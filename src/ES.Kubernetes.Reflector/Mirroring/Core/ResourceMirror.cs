@@ -90,7 +90,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
 
 
                 //Remove from the not found, since it exists
-                _notFoundCache.Remove(obj.NamespacedName(), out _);
+                _notFoundCache.TryRemove(obj.NamespacedName(), out _);
 
                 switch (notification.EventType)
                 {
@@ -100,7 +100,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                         break;
                     case WatchEventType.Deleted:
                     {
-                        _propertiesCache.Remove(objNsName, out _);
+                        _propertiesCache.TryRemove(objNsName, out _);
                         _lastWarnedSelectorErrors.TryRemove(objNsName, out _);
                         var properties = obj.GetMirroringProperties();
 
@@ -115,10 +115,10 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                                     await OnResourceDelete(reflectionNsName);
                                 }
 
-                            _autoSources.Remove(objNsName, out _);
+                            _autoSources.TryRemove(objNsName, out _);
                             _rememberedAutoMirrorSources.TryRemove(objNsName, out _);
-                            _directReflectionCache.Remove(objNsName, out _);
-                            _autoReflectionCache.Remove(objNsName, out _);
+                            _directReflectionCache.TryRemove(objNsName, out _);
+                            _autoReflectionCache.TryRemove(objNsName, out _);
                         }
                         else
                         {
@@ -293,12 +293,12 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 UpdateRememberedAutoMirror(objNsName, objProperties);
 
                 //If not allowed or auto is disabled, remove the cache for auto-reflections
-                if (!isAutoSource) _autoReflectionCache.Remove(objNsName, out _);
+                if (!isAutoSource) _autoReflectionCache.TryRemove(objNsName, out _);
 
                 //If reflection is disabled, remove the reflections cache and stop reflecting
                 if (!objProperties.Allowed)
                 {
-                    _directReflectionCache.Remove(objNsName, out _);
+                    _directReflectionCache.TryRemove(objNsName, out _);
                     return;
                 }
 
