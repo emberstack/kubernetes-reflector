@@ -308,45 +308,19 @@ public class LabelSelectorMatchTests
             AllowedNamespaces = "^staging$"
         };
         Assert.True(props.IsAutoMirrorSource());
-        Assert.False(props.ReflectsAutoToAllNamespaces());
     }
 
     [Fact]
-    public void ReflectsAutoToAllNamespaces_TrueWhenUnrestricted()
+    public void IsAutoMirrorSource_FalseWhenAutoDisabled()
     {
-        var props = new MirroringProperties
-        {
-            Allowed = true,
-            AutoEnabled = true,
-            AllowedNamespaces = string.Empty,
-            AllowedNamespacesSelector = string.Empty,
-            AutoNamespaces = string.Empty,
-            AutoNamespacesSelector = string.Empty
-        };
-        Assert.True(props.ReflectsAutoToAllNamespaces());
+        var props = new MirroringProperties { Allowed = true, AutoEnabled = false };
+        Assert.False(props.IsAutoMirrorSource());
     }
 
     [Fact]
-    public void ReflectsAutoToAllNamespaces_FalseWhenAutoScopedByName()
+    public void IsAutoMirrorSource_FalseWhenNotAllowed()
     {
-        var props = new MirroringProperties
-        {
-            Allowed = true,
-            AutoEnabled = true,
-            AutoNamespaces = "^staging$"
-        };
-        Assert.False(props.ReflectsAutoToAllNamespaces());
-    }
-
-    [Fact]
-    public void ReflectsAutoToAllNamespaces_FalseWhenAllowedScopedBySelector()
-    {
-        var props = new MirroringProperties
-        {
-            Allowed = true,
-            AutoEnabled = true,
-            AllowedNamespacesSelector = "env=prod"
-        };
-        Assert.False(props.ReflectsAutoToAllNamespaces());
+        var props = new MirroringProperties { Allowed = false, AutoEnabled = true };
+        Assert.False(props.IsAutoMirrorSource());
     }
 }
