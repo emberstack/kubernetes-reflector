@@ -299,6 +299,19 @@ public class LabelSelectorMatchTests
     }
 
     [Fact]
+    public void IsAutoMirrorSource_TrueWhenAllowedAndAutoEnabled()
+    {
+        var props = new MirroringProperties
+        {
+            Allowed = true,
+            AutoEnabled = true,
+            AllowedNamespaces = "^staging$"
+        };
+        Assert.True(props.IsAutoMirrorSource());
+        Assert.False(props.ReflectsAutoToAllNamespaces());
+    }
+
+    [Fact]
     public void ReflectsAutoToAllNamespaces_TrueWhenUnrestricted()
     {
         var props = new MirroringProperties

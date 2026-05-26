@@ -9,7 +9,7 @@ namespace ES.Kubernetes.Reflector.Mirroring;
 public class SecretMirror(ILogger<SecretMirror> logger, IKubernetes kubernetesClient)
     : ResourceMirror<V1Secret>(logger, kubernetesClient)
 {
-    protected override async Task DiscoverGlobalAutoMirrorSourcesFromClusterAsync(
+    protected override async Task DiscoverAutoMirrorSourcesFromClusterAsync(
         CancellationToken cancellationToken)
     {
         string? continueParameter = null;
@@ -19,7 +19,7 @@ public class SecretMirror(ILogger<SecretMirror> logger, IKubernetes kubernetesCl
                 continueParameter: continueParameter,
                 cancellationToken: cancellationToken);
             foreach (var secret in list.Items)
-                RefreshRememberedGlobalAutoMirrorFromResource(secret);
+                RefreshRememberedAutoMirrorFromResource(secret);
             continueParameter = list.Metadata?.ContinueProperty;
         } while (!string.IsNullOrEmpty(continueParameter));
     }

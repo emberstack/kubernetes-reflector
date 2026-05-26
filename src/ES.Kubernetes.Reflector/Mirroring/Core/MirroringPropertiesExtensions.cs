@@ -102,6 +102,12 @@ public static class MirroringPropertiesExtensions
         properties.Allowed && MatchNamespace(properties.AllowedNamespaces, properties.AllowedNamespacesSelector, ns);
 
     /// <summary>
+    ///     True when this object is an auto-mirror source (reflection allowed and auto-reflection enabled).
+    /// </summary>
+    public static bool IsAutoMirrorSource(this MirroringProperties properties) =>
+        properties is { Allowed: true, AutoEnabled: true };
+
+    /// <summary>
     ///     True when this source is configured to auto-reflect into every namespace: reflection is
     ///     allowed and enabled with no namespace name patterns or label selectors constraining either
     ///     the allowed set or the auto-reflection set.
