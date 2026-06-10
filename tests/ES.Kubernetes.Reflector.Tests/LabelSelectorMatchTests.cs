@@ -297,4 +297,30 @@ public class LabelSelectorMatchTests
         };
         Assert.Empty(props.GetLabelSelectorErrors());
     }
+
+    [Fact]
+    public void IsAutoMirrorSource_TrueWhenAllowedAndAutoEnabled()
+    {
+        var props = new MirroringProperties
+        {
+            Allowed = true,
+            AutoEnabled = true,
+            AllowedNamespaces = "^staging$"
+        };
+        Assert.True(props.IsAutoMirrorSource());
+    }
+
+    [Fact]
+    public void IsAutoMirrorSource_FalseWhenAutoDisabled()
+    {
+        var props = new MirroringProperties { Allowed = true, AutoEnabled = false };
+        Assert.False(props.IsAutoMirrorSource());
+    }
+
+    [Fact]
+    public void IsAutoMirrorSource_FalseWhenNotAllowed()
+    {
+        var props = new MirroringProperties { Allowed = false, AutoEnabled = true };
+        Assert.False(props.IsAutoMirrorSource());
+    }
 }
