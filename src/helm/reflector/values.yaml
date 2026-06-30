@@ -54,6 +54,13 @@ podLabels: {}
 # additional env vars to add to the pod
 extraEnv: []
 
+# When true, pods share the host user namespace (user namespaces are DISABLED).
+# When false, pods use separate user namespaces (user namespaces are ENABLED) for stronger isolation,
+# if supported by the cluster. Set this to false if your cluster supports user namespaces and you want
+# additional isolation; leave as true if user namespaces are not available.
+# See: https://kubernetes.io/docs/concepts/workloads/pods/user-namespaces/
+hostUsers: true
+
 podSecurityContext:
   fsGroup: 2000
 
