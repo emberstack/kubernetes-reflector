@@ -1,0 +1,18 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "reflector.fullname" . }}
+  namespace: {{ include "reflector.namespace" . }}
+  labels:
+    {{- include "reflector.labels" . | nindent 4 }}
+
+spec:
+  selector:
+    matchLabels:
+      {{- include "reflector.selectorLabels" . | nindent 6 }}
+  {{- with .Values.podDisruptionBudget.spec }}
+    {{- toYaml . | nindent 2 }}
+  {{- end }}
+{{- end }}
