@@ -140,6 +140,16 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 {
                     if (!_propertiesCache.TryGetValue(sourceNsName, out var properties)) continue;
 
+                    // Never treat the source's own namespace as an auto-reflection
+                    // target. ResourceReflect already no-ops a self-reflection, but
+                    // without this guard the source's own namespace is still recorded
+                    // in the auto-reflection cache below; a later source update that no
+                    // longer permits that namespace then deletes the cached
+                    // "reflection" — which is the source itself, cascading to the real
+                    // mirrors. AutoReflectionForSource excludes the source namespace
+                    // for the same reason. See #672.
+                    if (sourceNsName.Namespace == ns.Name()) continue;
+
                     var autoReflections = _autoReflectionCache.GetOrAdd(sourceNsName, []);
                     var reflectionNsName = sourceNsName with { Namespace = ns.Name() };
 

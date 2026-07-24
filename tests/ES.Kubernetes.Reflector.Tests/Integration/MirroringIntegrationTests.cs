@@ -55,6 +55,71 @@ public class MirroringIntegrationTests(
 
 
     [Fact]
+    public async Task AutoReflect_DoesNotDeleteSource_WhenSourceNamespaceMatchesOwnPattern()
+    {
+        // Regression test for #672. When the source's own namespace matches its
+        // allowed/auto pattern, a namespace event for that namespace records the
+        // source's own namespace in the auto-reflection cache (the reflection
+        // itself is a no-op, but the cache entry is still added). When the source
+        // is later updated to no longer permit that namespace, the cached
+        // "auto-reflection" is deleted — which is the source resource itself,
+        // cascading to the real mirrors.
+        var client = await GetKubernetesClient();
+
+        var sourceNamespace = $"self-src-{Guid.CreateVersion7()}";
+        var targetNamespace = $"self-dst-{Guid.CreateVersion7()}";
+
+        await CreateNamespaceAsync(sourceNamespace);
+        await CreateNamespaceAsync(targetNamespace);
+
+        // The allowed/auto pattern initially matches BOTH namespaces, including
+        // the source's own.
+        var sourceResource = await CreateResource(client,
+            namespaceName: sourceNamespace,
+            annotations: new ReflectorAnnotationsBuilder()
+                .WithReflectionAllowed(true)
+                .WithAllowedNamespaces($"^{sourceNamespace}$", $"^{targetNamespace}$")
+                .WithAutoEnabled(true).Build());
+
+        // Auto-reflection reaches the genuine target namespace.
+        Assert.True(await WaitForResource(client, sourceResource.Name(), targetNamespace,
+            TestContext.Current.CancellationToken));
+
+        // Fire a namespace event for the source's OWN namespace. Pre-fix, this
+        // records the source's own namespace as an auto-reflection target.
+        await PatchNamespaceLabelsAsync(client, sourceNamespace,
+            new Dictionary<string, string?> { ["reflector-test-touch"] = Guid.NewGuid().ToString() });
+        await DelayForReflection();
+
+        // Update the source so its own namespace is no longer permitted (only the
+        // target remains). Pre-fix, this deletes the stale auto-reflection cached
+        // for the source's own namespace — i.e. the source itself.
+        var patch = new V1Patch(
+            new
+            {
+                metadata = new
+                {
+                    annotations = new Dictionary<string, string>
+                    {
+                        [ES.Kubernetes.Reflector.Mirroring.Core.Annotations.Reflection.AllowedNamespaces] =
+                            $"^{targetNamespace}$"
+                    }
+                }
+            },
+            V1Patch.PatchType.MergePatch);
+        await client.CoreV1.PatchNamespacedSecretAsync(patch, sourceResource.Name(), sourceNamespace,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        // Give the reflector time to (incorrectly) process the deletion.
+        await Task.Delay(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        // The source must still exist.
+        Assert.True(await ResourceExists(client, sourceResource.Name(), sourceNamespace,
+            TestContext.Current.CancellationToken));
+    }
+
+
+    [Fact]
     public async Task AutoReflect_To_NewNamespaces()
     {
         var client = await GetKubernetesClient();
