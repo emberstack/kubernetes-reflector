@@ -121,6 +121,12 @@ topologySpreadConstraints: []
 
 priorityClassName: ""
 
+podDisruptionBudget:
+  enabled: false
+  # Options passed directly to the PodDisruptionBudget spec.
+  spec:
+    minAvailable: 1
+
 volumes: []
 
 volumeMounts: []
