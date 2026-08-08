@@ -38,6 +38,29 @@ configuration:
 rbac:
   enabled: true
 
+networkPolicy:
+  enabled: false
+  # Ingress is disabled by default (all ingress traffic dropped)
+  ingress: []
+  # Egress permitted to any namespace on standard kubernetes service ports
+  egress:
+    # Allow DNS (53/udp and 53/tcp) - kubernetes DNS service
+    - ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow HTTP and HTTPS (80/tcp and 443/tcp) - kubernetes API services
+    - ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+    # Allow kubernetes API server (6443/tcp) - default kubernetes API server port
+    - ports:
+        - protocol: TCP
+          port: 6443
+
 serviceAccount:
   # Specifies whether a service account should be created
   create: true
