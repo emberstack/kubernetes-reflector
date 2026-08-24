@@ -49,6 +49,10 @@ spec:
               value: {{ .Values.configuration.logging.minimumLevel | quote }}
             - name: ES_Reflector__Watcher__Timeout
               value: {{ .Values.configuration.watcher.timeout | quote }}
+            - name: ES_Reflector__Watcher__RetryDelay
+              value: {{ .Values.configuration.watcher.retryDelay | quote }}
+            - name: ES_Reflector__Watcher__RetryDelayMax
+              value: {{ .Values.configuration.watcher.retryDelayMax | quote }}
             - name: ES_Reflector__Watcher__ExcludedNamespaces
               value: {{ .Values.configuration.watcher.excludedNamespaces | quote }}
             - name: ES_Ignite__KubernetesClient__SkipTlsVerify

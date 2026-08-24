@@ -28,6 +28,8 @@ configuration:
     minimumLevel: Information
   watcher:
     timeout: ""
+    retryDelay: ""
+    retryDelayMax: ""
     # Comma-separated list of namespace glob patterns to exclude from reflection processing.
     # Supports wildcards: * (any characters), ? (single character).
     # Example: "kube-system,*-suffix,prefix-*"

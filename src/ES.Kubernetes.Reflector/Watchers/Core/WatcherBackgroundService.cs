@@ -17,13 +17,18 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
     where TResource : IKubernetesObject<V1ObjectMeta>
 {
     protected int WatcherTimeout => options.CurrentValue.Watcher?.Timeout ?? 3600;
+    protected int RetryDelay => options.CurrentValue.Watcher?.RetryDelay ?? 1;
+    protected int RetryDelayMax => options.CurrentValue.Watcher?.RetryDelayMax ?? 60;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var sessionStopwatch = new Stopwatch();
+        var consecutiveFaults = 0;
+        string? lastFaultSignature = null;
         while (!stoppingToken.IsCancellationRequested)
         {
             var sessionFaulted = false;
+            Exception? sessionException = null;
             sessionStopwatch.Restart();
 
             using var absoluteTimeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(WatcherTimeout + 3));
@@ -108,8 +113,8 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
             }
             catch (Exception exception)
             {
-                logger.LogError(exception, "Faulted due to exception.");
                 sessionFaulted = true;
+                sessionException = exception;
             }
             finally
             {
@@ -132,6 +137,39 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
                         ResourceType = typeof(TResource),
                         Faulted = sessionFaulted
                     }, stoppingToken);
+            }
+
+            if (!sessionFaulted || sessionStopwatch.Elapsed > TimeSpan.FromMinutes(1))
+            {
+                consecutiveFaults = 0;
+                lastFaultSignature = null;
+            }
+
+            if (!sessionFaulted || stoppingToken.IsCancellationRequested) continue;
+
+            consecutiveFaults++;
+            var delay = TimeSpan.FromSeconds(Math.Min(
+                RetryDelay * Math.Pow(2, consecutiveFaults - 1), RetryDelayMax));
+            var faultSignature = $"{sessionException!.GetType().FullName}:{sessionException.Message}";
+
+            if (faultSignature != lastFaultSignature)
+            {
+                lastFaultSignature = faultSignature;
+                logger.LogError(sessionException, "Faulted due to exception. Retrying in {delay}.", delay);
+            }
+            else
+            {
+                logger.LogWarning(
+                    "Session faulted again (same error, {count} consecutive). Retrying in {delay}.",
+                    consecutiveFaults, delay);
+            }
+
+            try
+            {
+                await Task.Delay(delay, stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
             }
         }
     }
