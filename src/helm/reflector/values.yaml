@@ -28,6 +28,8 @@ configuration:
     minimumLevel: Information
   watcher:
     timeout: ""
+    # Maximum seconds a single event may spend in its handlers before it is canceled and skipped (default 300).
+    eventHandlerTimeout: ""
     # Comma-separated list of namespace glob patterns to exclude from reflection processing.
     # Supports wildcards: * (any characters), ? (single character).
     # Example: "kube-system,*-suffix,prefix-*"

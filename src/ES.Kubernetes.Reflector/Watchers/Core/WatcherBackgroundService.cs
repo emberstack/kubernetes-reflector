@@ -16,7 +16,11 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
     : BackgroundService
     where TResource : IKubernetesObject<V1ObjectMeta>
 {
+    private static readonly TimeSpan ConsumerShutdownTimeout = TimeSpan.FromSeconds(30);
+
     protected int WatcherTimeout => options.CurrentValue.Watcher?.Timeout ?? 3600;
+
+    protected int EventHandlerTimeout => options.CurrentValue.Watcher?.EventHandlerTimeout ?? 300;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -42,6 +46,7 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
             var excludedNamespacePatterns = GlobMatcher.ParseGlobPatterns(options.CurrentValue.Watcher?.ExcludedNamespaces?.ToLowerInvariant());
             long namespaceExcludedCount = 0;
 
+            Task? consumerTask = null;
             try
             {
                 if (excludedNamespacePatterns.Length > 0)
@@ -52,25 +57,25 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
                     logger.LogInformation("Requesting {type} resources", typeof(TResource).Name);
 
                 //Read using a separate task so the watcher doesn't get stuck waiting on subscribers to handle the event
-                _ = Task.Run(async () =>
+                consumerTask = Task.Run(async () =>
                 {
                     try
                     {
-                        while (!cancellationToken.IsCancellationRequested)
-                        {
-                            var watcherEvent = await eventChannel.Reader.ReadAsync(cancellationToken)
+                        await foreach (var watcherEvent in eventChannel.Reader.ReadAllAsync(cancellationToken)
+                                           .ConfigureAwait(false))
+                        foreach (var watcherEventHandler in watcherEventHandlers)
+                            await HandleEvent(watcherEventHandler, watcherEvent, cancellationToken)
                                 .ConfigureAwait(false);
-                            foreach (var watcherEventHandler in watcherEventHandlers)
-                                await watcherEventHandler.Handle(new WatcherEvent
-                                {
-                                    Item = watcherEvent.Item,
-                                    EventType = watcherEvent.EventType
-                                }, cancellationToken);
-                        }
                     }
-                    catch (OperationCanceledException)
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                     {
                         // Expected on session shutdown when cancellation propagates through API calls.
+                    }
+                    catch (Exception exception)
+                    {
+                        logger.LogCritical(exception, "Event processing for {type} stopped unexpectedly.",
+                            typeof(TResource).Name);
+                        throw;
                     }
                 }, cancellationToken);
 
@@ -80,6 +85,16 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
                 {
                     await foreach (var (type, item) in watchList)
                     {
+                        // If event processing stopped, restart the session instead of silently
+                        // buffering events that will never be handled.
+                        if (consumerTask.IsCompleted)
+                        {
+                            logger.LogWarning("Event processing for {type} is not running. Restarting session.",
+                                typeof(TResource).Name);
+                            sessionFaulted = true;
+                            break;
+                        }
+
                         // For cluster-scoped resources like V1Namespace, Metadata.NamespaceProperty is null,
                         // so this exclusion check intentionally becomes a no-op and namespace events
                         // continue flowing to support auto-reflection on new namespace creation.
@@ -116,6 +131,26 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
                 eventChannel.Writer.Complete();
                 while (eventChannel.Reader.TryRead(out _)) ;
 
+                if (consumerTask is not null)
+                    try
+                    {
+                        // Let the in-flight event finish, but never block the next session on it.
+                        await consumerTask.WaitAsync(ConsumerShutdownTimeout, stoppingToken).ConfigureAwait(false);
+                    }
+                    catch (TimeoutException)
+                    {
+                        logger.LogWarning("Event processing for {type} did not stop within {timeout}.",
+                            typeof(TResource).Name, ConsumerShutdownTimeout);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                    }
+                    catch (Exception)
+                    {
+                        // Already logged by the consumer.
+                        sessionFaulted = true;
+                    }
+
                 var sessionElapsed = sessionStopwatch.Elapsed;
                 sessionStopwatch.Stop();
                 if (namespaceExcludedCount > 0)
@@ -133,6 +168,34 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
                         Faulted = sessionFaulted
                     }, stoppingToken);
             }
+        }
+    }
+
+    private async Task HandleEvent(IWatcherEventHandler handler, WatcherEvent watcherEvent,
+        CancellationToken cancellationToken)
+    {
+        using var eventTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        eventTimeoutCts.CancelAfter(TimeSpan.FromSeconds(EventHandlerTimeout));
+        try
+        {
+            await handler.Handle(new WatcherEvent
+            {
+                Item = watcherEvent.Item,
+                EventType = watcherEvent.EventType
+            }, eventTimeoutCts.Token).ConfigureAwait(false);
+        }
+        // Only session shutdown may stop event processing; any other failure skips this event.
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            if (eventTimeoutCts.IsCancellationRequested)
+                logger.LogError(
+                    "Handling {eventType} {type} {namespace}/{name} did not complete within {timeout}s and was canceled.",
+                    watcherEvent.EventType, typeof(TResource).Name, watcherEvent.Item?.Metadata?.NamespaceProperty,
+                    watcherEvent.Item?.Metadata?.Name, EventHandlerTimeout);
+            else
+                logger.LogError(exception, "Failed to handle {eventType} {type} {namespace}/{name}.",
+                    watcherEvent.EventType, typeof(TResource).Name, watcherEvent.Item?.Metadata?.NamespaceProperty,
+                    watcherEvent.Item?.Metadata?.Name);
         }
     }
 
