@@ -9,6 +9,21 @@ namespace ES.Kubernetes.Reflector.Mirroring;
 public class SecretMirror(ILogger<SecretMirror> logger, IKubernetes kubernetesClient)
     : ResourceMirror<V1Secret>(logger, kubernetesClient)
 {
+    protected override async Task DiscoverAutoMirrorSourcesFromClusterAsync(
+        CancellationToken cancellationToken)
+    {
+        string? continueParameter = null;
+        do
+        {
+            var list = await Kubernetes.CoreV1.ListSecretForAllNamespacesAsync(
+                continueParameter: continueParameter,
+                cancellationToken: cancellationToken);
+            foreach (var secret in list.Items)
+                RefreshRememberedAutoMirrorFromResource(secret);
+            continueParameter = list.Metadata?.ContinueProperty;
+        } while (!string.IsNullOrEmpty(continueParameter));
+    }
+
     protected override async Task<V1Secret[]> OnResourceWithNameList(string itemRefName,
         CancellationToken cancellationToken) =>
     [
