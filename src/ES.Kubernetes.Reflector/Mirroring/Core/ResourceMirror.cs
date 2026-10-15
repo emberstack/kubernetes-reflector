@@ -3,6 +3,7 @@ using System.Net;
 using ES.FX.Additions.KubernetesClient.Models;
 using ES.FX.Additions.KubernetesClient.Models.Extensions;
 using ES.FX.Additions.Newtonsoft.Json.Serialization;
+using ES.Kubernetes.Reflector.Metrics;
 using ES.Kubernetes.Reflector.Watchers.Core.Events;
 using k8s;
 using k8s.Autorest;
@@ -12,11 +13,12 @@ using Newtonsoft.Json;
 
 namespace ES.Kubernetes.Reflector.Mirroring.Core;
 
-public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kubernetes) :
+public abstract class ResourceMirror<TResource> :
     IWatcherEventHandler, IWatcherClosedHandler
     where TResource : class, IKubernetesObject<V1ObjectMeta>
 {
     private static readonly IDictionary<string, string> EmptyLabels = new Dictionary<string, string>();
+    private static readonly string Kind = ReflectorMetrics.ResourceKind(typeof(TResource));
 
     private readonly ConcurrentDictionary<NamespacedName, HashSet<NamespacedName>> _autoReflectionCache = new();
     private readonly ConcurrentDictionary<NamespacedName, bool> _autoSources = new();
@@ -26,8 +28,22 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
     private readonly ConcurrentDictionary<NamespacedName, bool> _notFoundCache = new();
     private readonly ConcurrentDictionary<NamespacedName, MirroringProperties> _propertiesCache = new();
     private readonly ConcurrentDictionary<NamespacedName, string> _lastWarnedSelectorErrors = new();
-    protected readonly IKubernetes Kubernetes = kubernetes;
-    protected readonly ILogger Logger = logger;
+    protected readonly IKubernetes Kubernetes;
+    protected readonly ILogger Logger;
+    private readonly ReflectorMetrics Metrics;
+
+    protected ResourceMirror(ILogger logger, IKubernetes kubernetes, ReflectorMetrics metrics)
+    {
+        Logger = logger;
+        Kubernetes = kubernetes;
+        Metrics = metrics;
+
+        metrics.RegisterReflectionState(() => new ReflectionState(
+            Kind,
+            _autoSources.Values.Count(isAutoSource => isAutoSource),
+            _directReflectionCache.Values.Sum(reflections => reflections.Count),
+            _autoReflectionCache.Values.Sum(reflections => reflections.Count)));
+    }
 
 
     /// <summary>
@@ -99,7 +115,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                                 {
                                     Logger.LogDebug("Deleting {objNsName} - Source {sourceNsName} has been deleted",
                                         reflectionNsName, objNsName);
-                                    await OnResourceDelete(reflectionNsName);
+                                    await DeleteReflection(reflectionNsName);
                                 }
 
                             _autoSources.Remove(objNsName, out _);
@@ -162,7 +178,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                         Logger.LogDebug(
                             "Deleting {reflectionNsName} - namespace {ns} no longer matches selector for source {sourceNsName}",
                             reflectionNsName, ns.Name(), sourceNsName);
-                        await OnResourceDelete(reflectionNsName);
+                        await DeleteReflection(reflectionNsName);
                     }
                 }
 
@@ -258,7 +274,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                             "Source {sourceNsName} no longer permits the auto reflection to {reflectionNsName}. " +
                             "Deleting {reflectionNsName}.",
                             objNsName, reflectionNsName, reflectionNsName);
-                        await OnResourceDelete(reflectionNsName);
+                        await DeleteReflection(reflectionNsName);
                     }
                 }
 
@@ -376,7 +392,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                 {
                     Logger.LogInformation("Source {sourceNsName} no longer exists. Deleting {reflectionNsName}.",
                         sourceNsName, objNsName);
-                    await OnResourceDelete(objNsName);
+                    await DeleteReflection(objNsName);
                     return;
                 }
 
@@ -390,7 +406,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                     {
                         Logger.LogInformation("Source {sourceNsName} no longer exists. Deleting {reflectionNsName}.",
                             sourceNsName, objNsName);
-                        await OnResourceDelete(objNsName);
+                        await DeleteReflection(objNsName);
                         return;
                     }
 
@@ -409,7 +425,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                         "Source {sourceNsName} no longer permits the auto reflection to {reflectionNsName}. Deleting {reflectionNsName}.",
                         sourceNsName, objNsName,
                         objNsName);
-                    await OnResourceDelete(objNsName);
+                    await DeleteReflection(objNsName);
                 }
 
                 break;
@@ -452,7 +468,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
             .Select(s => s.NamespacedName())
             .ToList();
 
-        foreach (var reference in toDelete) await OnResourceDelete(reference);
+        foreach (var reference in toDelete) await DeleteReflection(reference);
 
         sourceObj ??= await TryResourceGet(sourceNsName, cancellationToken);
         if (sourceObj is null) return;
@@ -576,6 +592,7 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
                     await OnResourceCreate(newResource, reflectionNsName.Namespace);
                     Logger.LogInformation("Created {reflectionNsName} as a reflection of {sourceNsName}",
                         reflectionNsName, sourceNsName);
+                    Metrics.AddReflection(Kind, "created");
                     return;
                 }
                 catch (HttpOperationException ex) when (ex.Response.StatusCode == HttpStatusCode.Conflict)
@@ -605,14 +622,22 @@ public abstract class ResourceMirror<TResource>(ILogger logger, IKubernetes kube
             await OnResourceApplyPatch(new V1Patch(patch, V1Patch.PatchType.JsonPatch), reflectionNsName);
             Logger.LogInformation("Patched {reflectionNsName} as a reflection of {sourceNsName}",
                 reflectionNsName, sourceNsName);
+            Metrics.AddReflection(Kind, "patched");
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Could not reflect {sourceNsName} to {reflectionNsName} due to exception.",
                 sourceNsName, reflectionNsName);
+            Metrics.AddReflectionError(Kind);
         }
     }
 
+
+    private async Task DeleteReflection(NamespacedName resourceId)
+    {
+        await OnResourceDelete(resourceId);
+        Metrics.AddReflection(Kind, "deleted");
+    }
 
     protected abstract Task OnResourceApplyPatch(V1Patch source, NamespacedName refId);
     protected abstract Task OnResourceConfigurePatch(TResource source, JsonPatchDocument<TResource> patchDoc);

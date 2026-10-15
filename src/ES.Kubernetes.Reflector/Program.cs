@@ -7,6 +7,7 @@ using ES.FX.Ignite.KubernetesClient.Hosting;
 using ES.FX.Ignite.OpenTelemetry.Exporter.Seq.Hosting;
 using ES.FX.Ignite.Serilog.Hosting;
 using ES.Kubernetes.Reflector.Configuration;
+using ES.Kubernetes.Reflector.Metrics;
 using ES.Kubernetes.Reflector.Mirroring;
 using ES.Kubernetes.Reflector.Watchers;
 using ES.Kubernetes.Reflector.Watchers.Core.Events;
@@ -30,13 +31,19 @@ return await ProgramEntry.CreateBuilder(args).UseSerilog().Build().RunAsync(asyn
 
     if (igniteSettings is { OpenTelemetry.Enabled: true })
         builder.Services.AddOpenTelemetry()
-            .WithMetrics(metrics => metrics.AddPrometheusExporter());
+            .WithMetrics(metrics =>
+            {
+                metrics.AddMeter(ReflectorMetrics.MeterName);
+                metrics.AddPrometheusExporter();
+            });
 
     builder.Services.Configure<ReflectorOptions>(builder.Configuration.GetSection(nameof(ES.Kubernetes.Reflector)));
 
     builder.Services.AddHostedService<NamespaceWatcher>();
     builder.Services.AddHostedService<SecretWatcher>();
     builder.Services.AddHostedService<ConfigMapWatcher>();
+
+    builder.Services.AddSingleton<ReflectorMetrics>();
 
     builder.Services.AddSingleton<SecretMirror>();
     builder.Services.AddSingleton<ConfigMapMirror>();

@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Threading.Channels;
 using ES.Kubernetes.Reflector.Configuration;
+using ES.Kubernetes.Reflector.Metrics;
 using ES.Kubernetes.Reflector.Watchers.Core.Events;
 using k8s;
 using k8s.Models;
@@ -11,11 +12,14 @@ namespace ES.Kubernetes.Reflector.Watchers.Core;
 public abstract class WatcherBackgroundService<TResource, TResourceList>(
     ILogger logger,
     IOptionsMonitor<ReflectorOptions> options,
+    ReflectorMetrics metrics,
     IEnumerable<IWatcherEventHandler> watcherEventHandlers,
     IEnumerable<IWatcherClosedHandler> watcherClosedHandlers)
     : BackgroundService
     where TResource : IKubernetesObject<V1ObjectMeta>
 {
+    private static readonly string ResourceType = ReflectorMetrics.ResourceKind(typeof(TResource));
+
     protected int WatcherTimeout => options.CurrentValue.Watcher?.Timeout ?? 3600;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -86,6 +90,7 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
                         if (GlobMatcher.IsNamespaceExcluded(item.Metadata?.NamespaceProperty, excludedNamespacePatterns))
                         {
                             namespaceExcludedCount++;
+                            metrics.AddWatcherExcludedEvent(ResourceType);
                             continue;
                         }
 
@@ -118,6 +123,7 @@ public abstract class WatcherBackgroundService<TResource, TResourceList>(
 
                 var sessionElapsed = sessionStopwatch.Elapsed;
                 sessionStopwatch.Stop();
+                metrics.AddWatcherSession(ResourceType, sessionFaulted);
                 if (namespaceExcludedCount > 0)
                     logger.LogInformation(
                         "Session closed. Duration: {duration}. Faulted: {faulted}. Namespace-excluded events: {excluded}.",

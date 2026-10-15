@@ -21,5 +21,8 @@ public class MetricsIntegrationTests(ReflectorIntegrationFixture integrationFixt
 
         var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Contains("target_info", content);
+
+        Assert.Contains("reflector_tracked_sources", content);
+        Assert.Contains("reflector_tracked_reflections", content);
     }
 }

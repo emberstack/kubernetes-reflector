@@ -1,4 +1,5 @@
 ﻿using ES.FX.Additions.KubernetesClient.Models;
+using ES.Kubernetes.Reflector.Metrics;
 using ES.Kubernetes.Reflector.Mirroring.Core;
 using k8s;
 using k8s.Models;
@@ -6,8 +7,8 @@ using Microsoft.AspNetCore.JsonPatch;
 
 namespace ES.Kubernetes.Reflector.Mirroring;
 
-public class ConfigMapMirror(ILogger<ConfigMapMirror> logger, IKubernetes kubernetes)
-    : ResourceMirror<V1ConfigMap>(logger, kubernetes)
+public class ConfigMapMirror(ILogger<ConfigMapMirror> logger, IKubernetes kubernetes, ReflectorMetrics metrics)
+    : ResourceMirror<V1ConfigMap>(logger, kubernetes, metrics)
 {
     protected override async Task<V1ConfigMap[]> OnResourceWithNameList(string itemRefName,
         CancellationToken cancellationToken) =>
