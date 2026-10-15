@@ -34,9 +34,35 @@ configuration:
     excludedNamespaces: ""
   kubernetes:
     skipTlsVerify: false
+  openTelemetry:
+    # Enables the application's OpenTelemetry features, including the /metrics Prometheus endpoint
+    enabled: true
 
 rbac:
   enabled: true
+
+service:
+  # Specifies whether a Service should be created
+  enabled: true
+  type: ClusterIP
+  port: 8080
+  # annotations to add to the Service
+  annotations: {}
+
+serviceMonitor:
+  # Specifies whether a ServiceMonitor (Prometheus Operator) should be created
+  enabled: false
+  # Namespace where the ServiceMonitor will be created. Defaults to the release namespace.
+  namespace: ""
+  # Prometheus scrape interval
+  interval: 30s
+  # Prometheus scrape timeout
+  scrapeTimeout: 10s
+  # Path of the metrics endpoint
+  path: /metrics
+  # honorLabels: false
+  # Additional labels to set on the ServiceMonitor
+  labels: {}
 
 serviceAccount:
   # Specifies whether a service account should be created

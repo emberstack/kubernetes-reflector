@@ -1,6 +1,7 @@
 using ES.FX.Additions.KubernetesClient.Models.Extensions;
 using ES.FX.Additions.Serilog.Lifetime;
 using ES.FX.Hosting.Lifetime;
+using ES.FX.Ignite.Configuration;
 using ES.FX.Ignite.Hosting;
 using ES.FX.Ignite.KubernetesClient.Hosting;
 using ES.FX.Ignite.OpenTelemetry.Exporter.Seq.Hosting;
@@ -10,6 +11,8 @@ using ES.Kubernetes.Reflector.Mirroring;
 using ES.Kubernetes.Reflector.Watchers;
 using ES.Kubernetes.Reflector.Watchers.Core.Events;
 using k8s.Models;
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
 
 return await ProgramEntry.CreateBuilder(args).UseSerilog().Build().RunAsync(async _ =>
 {
@@ -18,11 +21,16 @@ return await ProgramEntry.CreateBuilder(args).UseSerilog().Build().RunAsync(asyn
     builder.Configuration.AddEnvironmentVariables("ES_");
 
     builder.Logging.ClearProviders();
-    builder.Ignite();
+    IgniteSettings? igniteSettings = null;
+    builder.Ignite(settings => igniteSettings = settings);
     builder.IgniteSerilog(config =>
         config.Destructure.ByTransforming<V1ObjectReference>(v => v.NamespacedName()));
     builder.IgniteSeqOpenTelemetryExporter();
     builder.IgniteKubernetesClient();
+
+    if (igniteSettings is { OpenTelemetry.Enabled: true })
+        builder.Services.AddOpenTelemetry()
+            .WithMetrics(metrics => metrics.AddPrometheusExporter());
 
     builder.Services.Configure<ReflectorOptions>(builder.Configuration.GetSection(nameof(ES.Kubernetes.Reflector)));
 
@@ -41,6 +49,8 @@ return await ProgramEntry.CreateBuilder(args).UseSerilog().Build().RunAsync(asyn
 
     var app = builder.Build();
     app.Ignite();
+    if (igniteSettings is { OpenTelemetry.Enabled: true })
+        app.MapPrometheusScrapingEndpoint();
     await app.RunAsync();
     return 0;
 });

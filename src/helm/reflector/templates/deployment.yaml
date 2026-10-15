@@ -53,6 +53,8 @@ spec:
               value: {{ .Values.configuration.watcher.excludedNamespaces | quote }}
             - name: ES_Ignite__KubernetesClient__SkipTlsVerify
               value: {{ .Values.configuration.kubernetes.skipTlsVerify | quote }}
+            - name: ES_Ignite__Settings__OpenTelemetry__Enabled
+              value: {{ .Values.configuration.openTelemetry.enabled | quote }}
             {{- with .Values.extraEnv }}
               {{- toYaml . | nindent 12 }}
             {{- end }}

@@ -17,6 +17,7 @@
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
     <PackageVersion Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
     <PackageVersion Include="Moq" Version="4.20.72" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.19.1-beta.1" />
     <PackageVersion Include="Polly.Core" Version="8.7.0" />
     <PackageVersion Include="Testcontainers.K3s" Version="4.14.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
