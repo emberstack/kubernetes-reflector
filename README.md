@@ -73,6 +73,18 @@ Each release (found on the [Releases](https://github.com/emberstack/kubernetes-r
 $ kubectl -n kube-system apply -f https://github.com/emberstack/kubernetes-reflector/releases/latest/download/reflector.yaml
 ```
 
+### FIPS-enabled nodes
+
+The Reflector image is based on Microsoft's .NET image (Ubuntu). On nodes where the kernel runs in FIPS mode, Ubuntu's OpenSSL requires its FIPS provider, which is not included in the image, and Reflector crashes on startup (exit code 139). To run Reflector on these nodes, set `OPENSSL_FORCE_FIPS_MODE=0`:
+
+```yaml
+extraEnv:
+  - name: OPENSSL_FORCE_FIPS_MODE
+    value: "0"
+```
+
+If you deploy with `reflector.yaml`, add the same environment variable to the Deployment. With this setting, Reflector uses OpenSSL's default provider. It is not FIPS-validated.
+
 
 ## Usage
 
