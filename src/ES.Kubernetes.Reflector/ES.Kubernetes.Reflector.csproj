@@ -19,6 +19,7 @@
 		<PackageReference Include="ES.FX.Additions.Newtonsoft.Json" />
 		<PackageReference Include="ES.FX.Additions.KubernetesClient" />
 		<PackageReference Include="Microsoft.AspNetCore.JsonPatch" />
+		<PackageReference Include="Polly.Core" />
 	</ItemGroup>
 
 </Project>
