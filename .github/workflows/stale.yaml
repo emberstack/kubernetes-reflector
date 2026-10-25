@@ -19,25 +19,35 @@ jobs:
 
           # General behavior
           stale-issue-message: >
-            Automatically marked as stale due to no recent activity. 
-            It will be closed if no further activity occurs. Thank you for your contributions.
+            This issue has had no activity for 60 days and has been marked as stale.
+            It will be closed in 14 days unless there is further activity.
+            Leave a comment if it is still relevant. Thank you for your contributions.
           close-issue-message: >
-            Automatically closed stale item.
+            Closed after 14 days without activity since being marked as stale.
+            Feel free to reopen or open a new issue if this is still relevant.
           stale-pr-message: >
-            Automatically marked as stale due to no recent activity. 
-            It will be closed if no further activity occurs. Thank you for your contributions.
+            This pull request has had no activity for 30 days and has been marked as stale.
+            It will be closed in 14 days unless there is further activity.
+            Push a commit or leave a comment if it is still relevant. Thank you for your contributions.
           close-pr-message: >
-            Automatically closed stale item.
+            Closed after 14 days without activity since being marked as stale.
+            Feel free to reopen if this is still relevant.
 
-          days-before-stale: 14
-          days-before-close: 14
+          # Timing
+          days-before-issue-stale: 60
+          days-before-issue-close: 14
+          days-before-pr-stale: 30
+          days-before-pr-close: 14
 
           # Labels
           stale-issue-label: 'stale'
           stale-pr-label: 'stale'
 
-          exempt-issue-labels: 'pinned,security,[Status] Maybe Later'
+          exempt-issue-labels: 'pinned,security,[Status] Maybe Later,help wanted,good first issue'
           exempt-pr-labels: 'pinned,security,[Status] Maybe Later'
+
+          # Items tied to a milestone are planned work
+          exempt-all-milestones: true
 
           # Limits
           operations-per-run: 30

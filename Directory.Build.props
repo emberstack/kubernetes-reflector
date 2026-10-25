@@ -28,7 +28,7 @@
 	</ItemGroup>
 	<PropertyGroup Condition="'$(MSBuildProjectName)' == '' Or $(MSBuildProjectName.Contains('.Tests'))">
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-		<VSTestLogger>trx%3bLogFileName=$(MSBuildProjectName).trx</VSTestLogger>
-		<VSTestResultsDirectory>$(MSBuildThisFileDirectory).artifacts/TestResults</VSTestResultsDirectory>
+		<!--dotnet test runs in Microsoft.Testing.Platform mode (see global.json): one xUnit TRX report per project-->
+		<TestingPlatformCommandLineArguments>$(TestingPlatformCommandLineArguments) --results-directory "$(MSBuildThisFileDirectory).artifacts/TestResults" --report-xunit-trx --report-xunit-trx-filename $(MSBuildProjectName).trx</TestingPlatformCommandLineArguments>
 	</PropertyGroup>
 </Project>

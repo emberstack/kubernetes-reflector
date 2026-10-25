@@ -14,13 +14,11 @@
 
 	<ItemGroup>
 		<PackageReference Include="ES.FX.Ignite" />
-		<PackageReference Include="ES.FX.Ignite.OpenTelemetry.Exporter.Seq" />
 		<PackageReference Include="ES.FX.Ignite.Serilog" />
 		<PackageReference Include="ES.FX.Ignite.KubernetesClient" />
 		<PackageReference Include="ES.FX.Additions.Newtonsoft.Json" />
 		<PackageReference Include="ES.FX.Additions.KubernetesClient" />
 		<PackageReference Include="Microsoft.AspNetCore.JsonPatch" />
-	<PackageReference Include="Polly.Core" VersionOverride="8.6.6" />
 	</ItemGroup>
 
 </Project>

@@ -3,7 +3,6 @@ using ES.FX.Additions.Serilog.Lifetime;
 using ES.FX.Hosting.Lifetime;
 using ES.FX.Ignite.Hosting;
 using ES.FX.Ignite.KubernetesClient.Hosting;
-using ES.FX.Ignite.OpenTelemetry.Exporter.Seq.Hosting;
 using ES.FX.Ignite.Serilog.Hosting;
 using ES.Kubernetes.Reflector.Configuration;
 using ES.Kubernetes.Reflector.Mirroring;
@@ -21,7 +20,6 @@ return await ProgramEntry.CreateBuilder(args).UseSerilog().Build().RunAsync(asyn
     builder.Ignite();
     builder.IgniteSerilog(config =>
         config.Destructure.ByTransforming<V1ObjectReference>(v => v.NamespacedName()));
-    builder.IgniteSeqOpenTelemetryExporter();
     builder.IgniteKubernetesClient();
 
     builder.Services.Configure<ReflectorOptions>(builder.Configuration.GetSection(nameof(ES.Kubernetes.Reflector)));
