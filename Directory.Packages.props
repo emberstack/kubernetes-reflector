@@ -16,7 +16,7 @@
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageVersion Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
     <PackageVersion Include="Moq" Version="4.21.0" />
-    <PackageVersion Include="Polly.Core" Version="8.8.1" />
+    <PackageVersion Include="Polly.Core" Version="8.9.0" />
     <PackageVersion Include="Testcontainers.K3s" Version="4.16.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
     <PackageVersion Include="xunit.v3" Version="4.0.2" />
